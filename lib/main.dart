@@ -6,11 +6,16 @@ import 'config/supabase_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/products_provider.dart';
+import 'providers/orders_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/cart/cart_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/checkout/checkout_screen.dart';
+import 'screens/orders/order_history_screen.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -27,6 +32,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => ProductsProvider()),
+        ChangeNotifierProvider(create: (_) => OrdersProvider()),
       ],
       child: const DalanovaEcommerceApp(),
     ),
@@ -73,6 +80,18 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/home',
       builder: (context, state) => const HomeScreen(),
+    ),
+    GoRoute(
+      path: '/cart',
+      builder: (context, state) => const CartScreen(),
+    ),
+    GoRoute(
+      path: '/checkout',
+      builder: (context, state) => const CheckoutScreen(),
+    ),
+    GoRoute(
+      path: '/orders',
+      builder: (context, state) => const OrderHistoryScreen(),
     ),
     GoRoute(
       path: '/admin',
