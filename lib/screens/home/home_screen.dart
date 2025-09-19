@@ -10,6 +10,7 @@ import '../../models/order.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/search_filter_widget.dart';
 import '../product/product_detail_screen.dart';
+import '../orders/order_tracking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -388,7 +389,8 @@ class _HomeContentState extends State<HomeContent> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: 0.8,
+                childAspectRatio: 0.65,
+                mainAxisExtent: 320,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -397,15 +399,18 @@ class _HomeContentState extends State<HomeContent> {
                   }
 
                   final product = productsProvider.products[index];
-                  return ProductCard(
-                    product: product,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => ProductDetailScreen(product: product),
-                        ),
-                      );
-                    },
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    child: ProductCard(
+                      product: product,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => ProductDetailScreen(product: product),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
                 childCount: productsProvider.products.length,
@@ -522,7 +527,8 @@ class SearchContent extends StatelessWidget {
               crossAxisCount: 2,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 0.75,
+              childAspectRatio: 0.65,
+              mainAxisExtent: 320,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
@@ -1018,8 +1024,12 @@ class OrdersContent extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           child: InkWell(
             onTap: () {
-              // Navigate to order details
-              context.go('/orders');
+              // Navigate to order tracking
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => OrderTrackingScreen(order: order),
+                ),
+              );
             },
             borderRadius: BorderRadius.circular(12),
             child: Padding(
