@@ -34,7 +34,7 @@ class ProductCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(
-          height: 280, // Fixed height to prevent overflow
+          height: 300, // Increased height to accommodate content
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -139,16 +139,14 @@ class ProductCard extends StatelessWidget {
                       const SizedBox(height: 2),
 
                       // Product Name
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            height: 1.1,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        product.name,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          height: 1.1,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
 
                       const SizedBox(height: 4),
@@ -181,7 +179,7 @@ class ProductCard extends StatelessWidget {
                         ],
                       ),
 
-                      const Spacer(),
+                      const SizedBox(height: 8),
 
                       // Add to Cart Button
                       if (showAddToCart)

@@ -233,33 +233,37 @@ class _HomeContentState extends State<HomeContent> {
           // Quick Stats
           SliverToBoxAdapter(
             child: Container(
-              margin: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  _buildQuickStat(
-                    context,
-                    '${productsProvider.products.length}',
-                    'Products',
-                    Icons.inventory,
-                    Colors.blue,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildQuickStat(
-                    context,
-                    '${productsProvider.discountedProducts.length}',
-                    'On Sale',
-                    Icons.discount,
-                    Colors.red,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildQuickStat(
-                    context,
-                    '${productsProvider.categories.length}',
-                    'Categories',
-                    Icons.category,
-                    Colors.green,
-                  ),
-                ],
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildQuickStat(
+                      context,
+                      '${productsProvider.products.length}',
+                      'Products',
+                      Icons.inventory,
+                      Colors.blue,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildQuickStat(
+                      context,
+                      '${productsProvider.discountedProducts.length}',
+                      'On Sale',
+                      Icons.discount,
+                      Colors.red,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildQuickStat(
+                      context,
+                      '${productsProvider.categories.length}',
+                      'Categories',
+                      Icons.category,
+                      Colors.green,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -348,7 +352,7 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
-                    height: 280,
+                    height: 300,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -382,9 +386,9 @@ class _HomeContentState extends State<HomeContent> {
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.75,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.8,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -457,39 +461,39 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildQuickStat(BuildContext context, String value, String label, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).shadowColor.withValues(alpha: 0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -516,8 +520,8 @@ class SearchContent extends StatelessWidget {
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
               childAspectRatio: 0.75,
             ),
             delegate: SliverChildBuilderDelegate(
@@ -676,74 +680,88 @@ class _CartContentState extends State<CartContent> {
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: Column(
           children: [
-            // Product Image
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).cardColor,
-              ),
-              child: item.imageUrl.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        item.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.inventory_2,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                          );
-                        },
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Product Image
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Theme.of(context).cardColor,
+                  ),
+                  child: item.imageUrl.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            item.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.inventory_2,
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              );
+                            },
+                          ),
+                        )
+                      : Icon(
+                          Icons.inventory_2,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // Product Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    )
-                  : Icon(
-                      Icons.inventory_2,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Rp ${item.currentPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (item.discountAmount > 0)
+                        Text(
+                          'Saved: Rp ${item.discountAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
 
-            const SizedBox(width: 12),
-
-            // Product Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Rp ${item.currentPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (item.discountAmount > 0)
-                    Text(
-                      'Saved: Rp ${item.discountAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.green,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            const SizedBox(height: 12),
 
             // Quantity Controls
-            Column(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                IconButton(
+                  onPressed: () => _showRemoveDialog(context, item, cartProvider),
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  iconSize: 20,
+                  tooltip: 'Remove item',
+                ),
                 Row(
                   children: [
                     IconButton(
@@ -773,11 +791,6 @@ class _CartContentState extends State<CartContent> {
                     ),
                   ],
                 ),
-                IconButton(
-                  onPressed: () => _showRemoveDialog(context, item, cartProvider),
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  iconSize: 20,
-                ),
               ],
             ),
           ],
@@ -800,14 +813,18 @@ class _CartContentState extends State<CartContent> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Summary
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Subtotal (${cartProvider.itemCount} items):',
-                style: Theme.of(context).textTheme.bodyLarge,
+              Flexible(
+                child: Text(
+                  'Subtotal (${cartProvider.itemCount} items):',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               Text(
                 'Rp ${cartProvider.subtotal.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
@@ -823,10 +840,13 @@ class _CartContentState extends State<CartContent> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Discount:',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.green,
+                Flexible(
+                  child: Text(
+                    'Discount:',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.green,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Text(
@@ -851,11 +871,14 @@ class _CartContentState extends State<CartContent> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                'Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+              Flexible(
+                child: Text(
+                  'Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

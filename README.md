@@ -1,275 +1,303 @@
 # Dalanova Ecommerce App
 
-A beautiful and modern Flutter e-commerce application for Muslim fashion, built with Supabase backend and featuring a complete shopping experience.
+A modern, fully-animated Flutter e-commerce application for Muslim fashion with Google authentication, Supabase backend, and beautiful UI themes.
 
 ## 🚀 Features
 
-### ✅ Core Features Implemented
-- **🔐 Authentication System**
-  - Google Sign-In integration
-  - Email/password authentication
-  - User registration with profile completion
-  - Role-based access (Admin/Customer)
-  - Forgot password functionality
+### ✅ **Core Features**
+- **Google Authentication** - Sign in with Google account
+- **User Registration** - Complete profile with name, phone, and address
+- **Product Catalog** - Browse products with search and filtering
+- **Shopping Cart** - Add, remove, and manage cart items
+- **Checkout Process** - Complete order with receiver information
+- **Order History** - Track orders with status updates
+- **PDF Invoice Generation** - Generate printable invoices
 
-- **🏠 Beautiful Homescreen**
-  - Modern UI with gradient backgrounds
-  - Advanced search and filtering
-  - Featured products carousel
-  - Best sellers section
-  - Product grid with badges and discounts
-  - Quick stats display
+### ✅ **Admin Features**
+- **Dashboard** - Sales analytics and overview
+- **Product Management** - CRUD operations for products
+- **Order Management** - Update order status and tracking
+- **User Management** - View and manage users
+- **Banner Management** - Manage promotional banners
+- **Stock Management** - Stock opname and inventory control
 
-- **🛒 Complete Shopping Cart**
-  - Add/remove products
-  - Quantity management
-  - Real-time price calculations
-  - Discount calculations
-  - Persistent cart storage
-  - Empty cart state
+### ✅ **UI/UX Features**
+- **Three Themes** - Light, Dark, and Luxury themes
+- **Fully Animated** - Smooth animations throughout the app
+- **Mobile Optimized** - Responsive design for mobile devices
+- **Modern Design** - Clean and beautiful interface
 
-- **💳 Checkout Process**
-  - Order summary review
-  - Shipping address management
-  - Payment method selection
-  - Order notes
-  - Order confirmation
+## 🛠️ **Setup Instructions**
 
-- **📦 Order Management**
-  - Order history with tabbed interface
-  - Order status tracking
-  - Detailed order information
-  - Order item management
-
-- **👤 User Profile**
-  - Profile information display
-  - Edit profile functionality
-  - User role management
-  - Quick stats and navigation
-
-- **🎨 Theme System**
-  - Light, Dark, and Luxury themes
-  - Persistent theme selection
-  - Beautiful color schemes
-
-### 🛠 Technical Features
-- **State Management**: Provider pattern
-- **Backend**: Supabase integration
-- **Database**: PostgreSQL with Row Level Security
-- **Authentication**: Supabase Auth
-- **Navigation**: Go Router
-- **Storage**: SharedPreferences for local data
-- **UI**: Material Design 3 with custom components
-
-## 📱 Screenshots
-
-*(Add screenshots of your app here)*
-
-## 🏗 Architecture
-
-```
-lib/
-├── config/
-│   └── supabase_config.dart          # Supabase configuration
-├── models/
-│   ├── product.dart                  # Product data model
-│   └── order.dart                    # Order and order item models
-├── providers/
-│   ├── auth_provider.dart            # Authentication management
-│   ├── cart_provider.dart            # Shopping cart logic
-│   ├── products_provider.dart        # Product data & filtering
-│   ├── orders_provider.dart          # Order management
-│   └── theme_provider.dart           # Theme management
-├── screens/
-│   ├── auth/
-│   │   ├── login_screen.dart         # Login with Google/Email
-│   │   ├── register_screen.dart      # User registration
-│   │   └── signup_screen.dart        # Sign up screen
-│   ├── home/
-│   │   └── home_screen.dart          # Main app with tabs
-│   ├── checkout/
-│   │   └── checkout_screen.dart      # Checkout process
-│   ├── orders/
-│   │   └── order_history_screen.dart # Order history
-│   ├── admin/
-│   │   └── admin_dashboard_screen.dart # Admin panel
-│   └── splash_screen.dart            # App launch screen
-├── widgets/
-│   ├── product_card.dart             # Product display component
-│   ├── search_filter_widget.dart     # Search & filter UI
-│   ├── custom_button.dart            # Reusable button component
-│   └── custom_text_field.dart        # Custom text input
-└── main.dart                         # App entry point
-```
-
-## 🚀 Getting Started
-
-### Prerequisites
+### 1. **Prerequisites**
 - Flutter SDK (3.9.0 or higher)
-- Dart SDK
 - Android Studio / VS Code
 - Supabase account
 
-### Installation
+### 2. **Clone and Setup**
+```bash
+# Clone the repository
+git clone <repository-url>
+cd dalanovaecomercekilo
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/dalanova-ecommerce.git
-   cd dalanova-ecommerce
-   ```
-
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Configure Supabase**
-
-   a. Create a new project on [Supabase](https://supabase.com)
-
-   b. Run the SQL schema from `database_schema.sql` in your Supabase SQL editor
-
-   c. Update the Supabase configuration in `lib/config/supabase_config.dart`:
-   ```dart
-   class SupabaseConfig {
-     static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-     static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
-   }
-   ```
-
-4. **Configure Google Sign-In (Android)**
-
-   a. Go to [Google Cloud Console](https://console.cloud.google.com/)
-
-   b. Create a new project or select existing one
-
-   c. Enable Google Sign-In API
-
-   d. Create OAuth 2.0 credentials
-
-   e. Add your SHA-1 fingerprint from Android Studio
-
-   f. Update the client ID in `android/app/src/main/AndroidManifest.xml`:
-   ```xml
-   <meta-data
-       android:name="com.google.android.gms.version"
-       android:value="@integer/google_play_services_version" />
-   <meta-data
-       android:name="com.google.android.gms.auth.api.signin.CLIENT_ID"
-       android:value="YOUR_CLIENT_ID.apps.googleusercontent.com" />
-   ```
-
-5. **Run the app**
-   ```bash
-   flutter run
-   ```
-
-## 🔧 Configuration
-
-### Environment Variables
-Create a `.env` file in the root directory:
-```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-GOOGLE_CLIENT_ID=your_google_client_id
+# Install dependencies
+flutter pub get
 ```
 
-### Build Configuration
+### 3. **Supabase Setup**
 
-**Android:**
+#### **Option A: Use Existing Supabase Project**
+The app is configured to use the existing Supabase project:
+- **Project ID**: `weagjqbymxgewtdpvagy`
+- **URL**: `https://weagjqbymxgewtdpvagy.supabase.co`
+- **API Key**: Already configured in `lib/config/supabase_config.dart`
+
+#### **Option B: Create New Supabase Project**
+1. Go to [Supabase](https://supabase.com)
+2. Create a new project
+3. Update the configuration in `lib/config/supabase_config.dart`
+
+### 4. **Database Schema Setup**
+
+#### **Important: Run the Migration Script**
+1. Open your Supabase project dashboard
+2. Go to **SQL Editor**
+3. Copy and paste the contents of `supabase_migration.sql`
+4. Click **Run** to execute the migration
+
+This will create all necessary tables:
+- `kl_users` - User profiles
+- `kl_products` - Product catalog
+- `kl_orders` - Order management
+- `kl_order_items` - Order line items
+- `kl_categories` - Product categories
+- `kl_banners` - Promotional banners
+- `kl_promo_codes` - Discount codes
+- And more...
+
+### 5. **Google Sign-In Setup**
+
+#### **Android Configuration**
+1. Open `android/app/src/main/AndroidManifest.xml`
+2. Add your Google Sign-In configuration:
+```xml
+<manifest>
+    <!-- Add this meta-data tag -->
+    <application>
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+    </application>
+</manifest>
+```
+
+#### **iOS Configuration**
+1. Open `ios/Runner/Info.plist`
+2. Add your Google Sign-In configuration:
+```xml
+<dict>
+    <!-- Add these keys -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.YOUR_CLIENT_ID</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+```
+
+### 6. **Run the App**
+```bash
+# Run on connected device/emulator
+flutter run
+
+# Run on specific platform
+flutter run -d android
+flutter run -d ios
+```
+
+## 🔧 **Troubleshooting**
+
+### **Product Card Overflow Issue**
+✅ **Fixed**: Updated grid layout with:
+- `childAspectRatio: 0.8` (increased from 0.75)
+- `mainAxisSpacing: 16` (increased from 12)
+- `crossAxisSpacing: 16` (increased from 12)
+
+### **Checkout Database Error**
+If you encounter: `"Could not find the 'receiver_name' column"`
+
+**Quick Fix**: Run this simple script in Supabase SQL Editor:
+```sql
+ALTER TABLE public.kl_orders
+ADD COLUMN IF NOT EXISTS receiver_name TEXT,
+ADD COLUMN IF NOT EXISTS receiver_phone TEXT;
+```
+
+**Full Solution**: Run the `supabase_migration.sql` script in your Supabase SQL Editor:
+1. Go to Supabase Dashboard → SQL Editor
+2. Copy the entire `supabase_migration.sql` content
+3. Click **Run**
+
+**Alternative**: Use the quick migration script `apply_migration.sql` for minimal changes.
+
+### **Layout Overflow Issues**
+✅ **Fixed**: Updated layout to prevent overflow:
+- Made quick stats horizontally scrollable
+- Improved cart item layout with better spacing
+- Added overflow handling for long text
+- Reduced padding and margins where needed
+
+The script will:
+- Create all required tables
+- Add missing columns (`receiver_name`, `receiver_phone`)
+- Set up proper indexes and triggers
+- Configure Row Level Security policies
+
+### **Common Issues**
+
+#### **Build Errors**
+```bash
+# Clean and rebuild
+flutter clean
+flutter pub get
+flutter run
+```
+
+#### **Supabase Connection Issues**
+- Verify your Supabase URL and API key in `lib/config/supabase_config.dart`
+- Check your internet connection
+- Ensure Supabase project is active
+
+#### **Google Sign-In Issues**
+- Verify Google Cloud Console configuration
+- Check SHA-1 certificate fingerprint
+- Ensure OAuth 2.0 client ID is correct
+
+## 📱 **App Architecture**
+
+### **State Management**
+- **Provider Pattern** - For state management
+- **MultiProvider** - Wraps the entire app
+- **ChangeNotifier** - For reactive UI updates
+
+### **Navigation**
+- **GoRouter** - Declarative routing
+- **Named Routes** - Clean navigation structure
+- **Route Guards** - Authentication-based routing
+
+### **Data Flow**
+```
+UI → Provider → Supabase → Database
+    ↓
+UI ← Provider ← Supabase ← Database
+```
+
+### **Key Components**
+- `AuthProvider` - Authentication management
+- `CartProvider` - Shopping cart functionality
+- `ThemeProvider` - Theme switching
+- `ProductsProvider` - Product data management
+- `OrdersProvider` - Order management
+
+## 🎨 **Themes**
+
+### **Light Theme** (Default)
+- Clean white background
+- Blue primary color (#6B46C1)
+- Green secondary color (#10B981)
+
+### **Dark Theme**
+- Dark slate background (#0F172A)
+- Purple primary color (#8B5CF6)
+- Teal secondary color (#34D399)
+
+### **Luxury Theme**
+- Elegant gold accents (#D4AF37)
+- Deep red secondary color (#B91C1C)
+- Premium feel with enhanced shadows
+
+## 📊 **Database Schema**
+
+### **Core Tables**
+- `kl_users` - User profiles and authentication
+- `kl_products` - Product catalog with pricing
+- `kl_orders` - Order management with status tracking
+- `kl_order_items` - Order line items
+- `kl_categories` - Product categorization
+- `kl_banners` - Promotional content
+
+### **Admin Tables**
+- `kl_promo_codes` - Discount and promo management
+- `kl_stock_opname` - Inventory management
+- `kl_product_batch` - Batch product operations
+
+## 🚀 **Deployment**
+
+### **Android APK**
 ```bash
 flutter build apk --release
 ```
 
-**iOS:**
+### **iOS App Store**
 ```bash
 flutter build ios --release
 ```
 
-**Web:**
+### **Web Deployment**
 ```bash
 flutter build web --release
 ```
 
-## 📊 Database Schema
+## 📝 **Development Notes**
 
-The app uses the following main tables:
-
-- `kl_users` - User profiles and authentication
-- `kl_products` - Product catalog
-- `kl_categories` - Product categories
-- `kl_orders` - Order information
-- `kl_order_items` - Order line items
-- `kl_banners` - Promotional banners
-- `kl_promo_codes` - Discount codes
-
-## 🔐 Security Features
-
-- **Row Level Security (RLS)** enabled on all tables
-- **JWT Authentication** with Supabase
-- **Secure API calls** with proper error handling
-- **Data validation** on both client and server side
-
-## 🎨 Customization
-
-### Themes
-The app supports three themes:
-- **Light Theme**: Clean and minimal
-- **Dark Theme**: Easy on the eyes
-- **Luxury Theme**: Elegant gold accents (default)
-
-### Colors
-Primary colors can be customized in `lib/providers/theme_provider.dart`
-
-### Branding
-Update app icons and branding in:
-- `android/app/src/main/res/`
-- `ios/Runner/Assets.xcassets/`
-
-## 🧪 Testing
-
-Run tests:
-```bash
-flutter test
+### **Code Structure**
+```
+lib/
+├── config/          # Configuration files
+├── models/          # Data models
+├── providers/       # State management
+├── screens/         # UI screens
+├── widgets/         # Reusable widgets
+└── main.dart        # App entry point
 ```
 
-Run integration tests:
-```bash
-flutter drive --target=test_driver/app.dart
-```
+### **Key Files**
+- `lib/main.dart` - App initialization and routing
+- `lib/config/supabase_config.dart` - Supabase configuration
+- `database_schema.sql` - Database schema definition
+- `supabase_migration.sql` - Database migration script
 
-## 📱 Supported Platforms
+### **Best Practices**
+- ✅ Clean Architecture
+- ✅ Provider for state management
+- ✅ Repository pattern for data
+- ✅ Error handling
+- ✅ Loading states
+- ✅ Responsive design
 
-- ✅ Android
-- ✅ iOS
-- ✅ Web
-- ✅ Windows
-- ✅ macOS
-- ✅ Linux
-
-## 🤝 Contributing
+## 🤝 **Contributing**
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-## 📄 License
+## 📄 **License**
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## 📞 **Support**
 
-- [Flutter](https://flutter.dev/) - Beautiful native apps in record time
-- [Supabase](https://supabase.com/) - The open source Firebase alternative
-- [Google Sign-In](https://pub.dev/packages/google_sign_in) - Google authentication
-- [Provider](https://pub.dev/packages/provider) - State management
-
-## 📞 Support
-
-For support, email support@dalanova.com or join our Discord community.
+For support and questions:
+- Create an issue in the repository
+- Check the troubleshooting section
+- Review the Supabase documentation
 
 ---
 
-**Made with ❤️ for the Muslim fashion community**
+**🎉 Happy coding with Dalanova Ecommerce!**
