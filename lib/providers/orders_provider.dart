@@ -100,131 +100,85 @@ class OrdersProvider extends ChangeNotifier {
       // Generate order number
       final orderNumber = Order.generateOrderNumber();
 
-      // Try to create order with database, fallback to local creation if database fails
-      try {
-        // Create order data
-        final orderData = {
-          'user_id': userId,
-          'order_number': orderNumber,
-          'status': 'not_paid',
-          'total_amount': totalAmount,
-          'shipping_address': shippingAddress,
-          'payment_method': paymentMethod,
-          'payment_status': 'pending',
-          'notes': notes,
-          'receiver_name': receiverName,
-          'receiver_phone': receiverPhone,
+      // Create order data
+      final orderData = {
+        'user_id': userId,
+        'order_number': orderNumber,
+        'status': 'not_paid',
+        'total_amount': totalAmount,
+        'shipping_address': shippingAddress,
+        'payment_method': paymentMethod,
+        'payment_status': 'pending',
+        'notes': notes,
+        'receiver_name': receiverName,
+        'receiver_phone': receiverPhone,
+      };
+
+      // Insert order
+      final orderResponse = await _supabase
+          .from('kl_orders')
+          .insert(orderData)
+          .select()
+          .single();
+
+      final orderId = orderResponse['id'];
+
+      // Create order items
+      final orderItems = cartItems.map((cartItem) {
+        return {
+          'order_id': orderId,
+          'product_id': cartItem.productId,
+          'product_name': cartItem.name,
+          'product_image_url': cartItem.imageUrl,
+          'quantity': cartItem.quantity,
+          'unit_price': cartItem.price,
+          'discount_price': cartItem.discountPrice,
+          'total_price': cartItem.totalPrice,
         };
+      }).toList();
 
-        // Insert order
-        final orderResponse = await _supabase
-            .from('kl_orders')
-            .insert(orderData)
-            .select()
-            .single();
+      await _supabase
+          .from('kl_order_items')
+          .insert(orderItems);
 
-        final orderId = orderResponse['id'];
+      // Create order object
+      final orderItemsObjects = orderItems.map((item) => OrderItem(
+        id: '', // Will be set by database
+        orderId: orderId,
+        productId: item['product_id'],
+        productName: item['product_name'],
+        productImageUrl: item['product_image_url'],
+        quantity: item['quantity'],
+        unitPrice: item['unit_price'],
+        discountPrice: item['discount_price'],
+        totalPrice: item['total_price'],
+        createdAt: DateTime.now(),
+      )).toList();
 
-        // Create order items
-        final orderItems = cartItems.map((cartItem) {
-          return {
-            'order_id': orderId,
-            'product_id': cartItem.productId,
-            'product_name': cartItem.name,
-            'product_image_url': cartItem.imageUrl,
-            'quantity': cartItem.quantity,
-            'unit_price': cartItem.price,
-            'discount_price': cartItem.discountPrice,
-            'total_price': cartItem.totalPrice,
-          };
-        }).toList();
+      final order = Order(
+        id: orderId,
+        userId: userId,
+        orderNumber: orderNumber,
+        status: OrderStatus.notPaid,
+        totalAmount: totalAmount,
+        shippingAddress: shippingAddress,
+        paymentMethod: paymentMethod,
+        paymentStatus: PaymentStatus.pending,
+        notes: notes,
+        receiverName: receiverName,
+        receiverPhone: receiverPhone,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        items: orderItemsObjects,
+      );
 
-        await _supabase
-            .from('kl_order_items')
-            .insert(orderItems);
+      // Add to local orders list for immediate UI update
+      _orders.insert(0, order);
 
-        // Create order object
-        final orderItemsObjects = orderItems.map((item) => OrderItem(
-          id: '', // Will be set by database
-          orderId: orderId,
-          productId: item['product_id'],
-          productName: item['product_name'],
-          productImageUrl: item['product_image_url'],
-          quantity: item['quantity'],
-          unitPrice: item['unit_price'],
-          discountPrice: item['discount_price'],
-          totalPrice: item['total_price'],
-          createdAt: DateTime.now(),
-        )).toList();
+      _isLoading = false;
+      notifyListeners();
 
-        final order = Order(
-          id: orderId,
-          userId: userId,
-          orderNumber: orderNumber,
-          status: OrderStatus.notPaid,
-          totalAmount: totalAmount,
-          shippingAddress: shippingAddress,
-          paymentMethod: paymentMethod,
-          paymentStatus: PaymentStatus.pending,
-          notes: notes,
-          receiverName: receiverName,
-          receiverPhone: receiverPhone,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          items: orderItemsObjects,
-        );
-
-        // Add to local orders list
-        _orders.insert(0, order);
-
-        _isLoading = false;
-        notifyListeners();
-
-        return order;
-      } catch (dbError) {
-        print('Database error, creating local order: $dbError');
-
-        // Fallback: Create local order without database
-        final orderId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-
-        final orderItemsObjects = cartItems.map((cartItem) => OrderItem(
-          id: 'local_item_${cartItem.productId}',
-          orderId: orderId,
-          productId: cartItem.productId,
-          productName: cartItem.name,
-          productImageUrl: cartItem.imageUrl,
-          quantity: cartItem.quantity,
-          unitPrice: cartItem.price,
-          discountPrice: cartItem.discountPrice,
-          totalPrice: cartItem.totalPrice,
-          createdAt: DateTime.now(),
-        )).toList();
-
-        final order = Order(
-          id: orderId,
-          userId: userId,
-          orderNumber: orderNumber,
-          status: OrderStatus.notPaid,
-          totalAmount: totalAmount,
-          shippingAddress: shippingAddress,
-          paymentMethod: paymentMethod,
-          paymentStatus: PaymentStatus.pending,
-          notes: notes,
-          receiverName: receiverName,
-          receiverPhone: receiverPhone,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          items: orderItemsObjects,
-        );
-
-        // Add to local orders list
-        _orders.insert(0, order);
-
-        _isLoading = false;
-        notifyListeners();
-
-        return order;
-      }
+      return order;
     } catch (e) {
       _error = 'Failed to create order: ${e.toString()}';
       print('Error creating order: $e');

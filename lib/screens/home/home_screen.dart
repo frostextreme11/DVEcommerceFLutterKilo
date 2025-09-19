@@ -234,6 +234,7 @@ class _HomeContentState extends State<HomeContent> {
           // Quick Stats
           SliverToBoxAdapter(
             child: Container(
+              alignment: Alignment.center,
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
