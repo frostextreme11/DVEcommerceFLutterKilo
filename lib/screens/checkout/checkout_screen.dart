@@ -19,6 +19,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _receiverNameController = TextEditingController();
   final _receiverPhoneController = TextEditingController();
   final _receiverAddressController = TextEditingController();
+  final _courierController = TextEditingController();
   final _notesController = TextEditingController();
 
   String _selectedPaymentMethod = 'Bank Transfer';
@@ -45,6 +46,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _receiverNameController.dispose();
     _receiverPhoneController.dispose();
     _receiverAddressController.dispose();
+    _courierController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -359,6 +361,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
             const SizedBox(height: 16),
 
+            // Courier Selection
+            TextFormField(
+              controller: _courierController,
+              decoration: InputDecoration(
+                labelText: 'Courier Service',
+                hintText: 'e.g., JNE, TIKI, POS Indonesia, etc.',
+                prefixIcon: const Icon(Icons.local_shipping),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).cardColor,
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please select a courier service';
+                }
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 16),
+
             // Order Notes
             TextFormField(
               controller: _notesController,
@@ -530,6 +555,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
         receiverName: _receiverNameController.text.trim(),
         receiverPhone: _receiverPhoneController.text.trim(),
+        courierInfo: _courierController.text.trim(),
       );
 
       if (order != null && mounted) {

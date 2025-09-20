@@ -961,21 +961,49 @@ class _CartContentState extends State<CartContent> {
   }
 }
 
-class OrdersContent extends StatelessWidget {
+class OrdersContent extends StatefulWidget {
   const OrdersContent({super.key});
+
+  @override
+  State<OrdersContent> createState() => _OrdersContentState();
+}
+
+class _OrdersContentState extends State<OrdersContent> {
+  @override
+  void initState() {
+    super.initState();
+    // Load orders when the orders tab is first accessed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+      if (ordersProvider.shouldLoadOrders()) {
+        print('OrdersContent: Loading orders on tab access...');
+        ordersProvider.loadUserOrders();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final ordersProvider = Provider.of<OrdersProvider>(context);
 
-    return ordersProvider.isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : ordersProvider.orders.isEmpty
-            ? _buildEmptyOrders(context)
-            : _buildOrdersList(context, ordersProvider);
+    return RefreshIndicator(
+      onRefresh: () async {
+        final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+        await ordersProvider.forceRefreshOrders();
+      },
+      child: ordersProvider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ordersProvider.orders.isEmpty && !ordersProvider.isInitialized
+              ? _buildEmptyOrders(context)
+              : ordersProvider.orders.isEmpty
+                  ? _buildEmptyOrders(context)
+                  : _buildOrdersList(context, ordersProvider),
+    );
   }
 
   Widget _buildEmptyOrders(BuildContext context) {
+    final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -987,119 +1015,159 @@ class OrdersContent extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No orders yet',
+            ordersProvider.isInitialized ? 'No orders yet' : 'Loading orders...',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your order history will appear here',
+            ordersProvider.isInitialized
+                ? 'Your order history will appear here'
+                : 'Please wait while we load your orders',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => context.go('/home'),
-            icon: const Icon(Icons.shopping_bag),
-            label: const Text('Start Shopping'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          if (ordersProvider.isInitialized) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Switch to home tab
+                final homeScreenState = context.findAncestorStateOfType<_HomeScreenState>();
+                homeScreenState?.setState(() {
+                  homeScreenState._selectedIndex = 0;
+                });
+              },
+              icon: const Icon(Icons.shopping_bag),
+              label: const Text('Start Shopping'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
             ),
-          ),
+          ] else ...[
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildOrdersList(BuildContext context, OrdersProvider ordersProvider) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: ordersProvider.orders.length,
-      itemBuilder: (context, index) {
-        final order = ordersProvider.orders[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: InkWell(
-            onTap: () {
-              // Navigate to order tracking
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => OrderTrackingScreen(order: order),
+    return Column(
+      children: [
+        // Refresh button
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Your Orders',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                onPressed: () async {
+                  await ordersProvider.forceRefreshOrders();
+                },
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh Orders',
+              ),
+            ],
+          ),
+        ),
+
+        // Orders list
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: ordersProvider.orders.length,
+            itemBuilder: (context, index) {
+              final order = ordersProvider.orders[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: InkWell(
+                  onTap: () {
+                    // Navigate to order tracking
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => OrderTrackingScreen(order: order),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Order #${order.orderNumber}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: order.status.color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                order.status.displayName,
+                                style: TextStyle(
+                                  color: order.status.color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total: Rp ${order.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            Text(
+                              order.createdAt.toString().split(' ')[0],
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               );
             },
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Order #${order.orderNumber}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: order.status.color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          order.status.displayName,
-                          style: TextStyle(
-                            color: order.status.color,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total: Rp ${order.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      Text(
-                        order.createdAt.toString().split(' ')[0],
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ),
-        );
-      },
+        )
+      ],
     );
   }
 }
@@ -1280,12 +1348,16 @@ class _ProfileContentState extends State<ProfileContent> {
                   Colors.blue,
                 ),
                 const SizedBox(width: 12),
-                _buildStatCard(
-                  context,
-                  '0', // TODO: Replace with actual order count
-                  'Total Orders',
-                  Icons.receipt,
-                  Colors.green,
+                Consumer<OrdersProvider>(
+                  builder: (context, ordersProvider, child) {
+                    return _buildStatCard(
+                      context,
+                      '${ordersProvider.orders.length}',
+                      'Total Orders',
+                      Icons.receipt,
+                      Colors.green,
+                    );
+                  },
                 ),
               ],
             ),

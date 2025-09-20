@@ -65,6 +65,8 @@ class OrderTrackingScreen extends StatelessWidget {
                     _buildOrderDetail('Total Amount', 'Rp ${order.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}'),
                     _buildOrderDetail('Payment Method', order.paymentMethod ?? 'Not specified'),
                     _buildOrderDetail('Shipping Address', order.shippingAddress),
+                    if (order.courierInfo != null && order.courierInfo!.isNotEmpty)
+                      _buildOrderDetail('Courier Service', order.courierInfo!),
                     if (order.notes != null && order.notes!.isNotEmpty)
                       _buildOrderDetail('Notes', order.notes!),
                     _buildOrderDetail('Order Date', order.createdAt.toString().split(' ')[0]),

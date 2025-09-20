@@ -10,10 +10,12 @@ class OrdersProvider extends ChangeNotifier {
   List<Order> _orders = [];
   bool _isLoading = false;
   String? _error;
+  bool _isInitialized = false;
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isInitialized => _isInitialized;
 
   // Get orders by status
   List<Order> getOrdersByStatus(OrderStatus status) {
@@ -22,6 +24,36 @@ class OrdersProvider extends ChangeNotifier {
 
   // Get recent orders (last 10)
   List<Order> get recentOrders => _orders.take(10).toList();
+
+  OrdersProvider() {
+    _initializeOrdersProvider();
+  }
+
+  void _initializeOrdersProvider() {
+    // Listen for auth state changes to load orders when user signs in
+    _supabase.auth.onAuthStateChange.listen((event) async {
+      print('OrdersProvider: Auth state changed: ${event.event}');
+
+      if (event.event == AuthChangeEvent.signedIn && event.session?.user != null) {
+        if (shouldLoadOrders()) {
+          print('OrdersProvider: User signed in, loading orders...');
+          await loadUserOrders();
+        }
+      } else if (event.event == AuthChangeEvent.signedOut) {
+        print('OrdersProvider: User signed out, clearing orders...');
+        _orders.clear();
+        _isInitialized = false;
+        _error = null;
+        notifyListeners();
+      }
+    });
+
+    // Check if user is already authenticated and load orders
+    if (shouldLoadOrders()) {
+      print('OrdersProvider: User already authenticated, loading orders...');
+      loadUserOrders();
+    }
+  }
 
   Future<void> loadUserOrders() async {
     _isLoading = true;
@@ -64,6 +96,8 @@ class OrdersProvider extends ChangeNotifier {
       }
 
       _orders = orders;
+      _isInitialized = true;
+      print('OrdersProvider: Successfully loaded ${orders.length} orders');
     } catch (e) {
       _error = 'Failed to load orders: ${e.toString()}';
       print('Error loading orders: $e');
@@ -80,6 +114,7 @@ class OrdersProvider extends ChangeNotifier {
     String? notes,
     String? receiverName,
     String? receiverPhone,
+    required String courierInfo,
   }) async {
     _isLoading = true;
     _error = null;
@@ -109,6 +144,7 @@ class OrdersProvider extends ChangeNotifier {
         'shipping_address': shippingAddress,
         'payment_method': paymentMethod,
         'payment_status': 'pending',
+        'courier_info': courierInfo,
         'notes': notes,
         'receiver_name': receiverName,
         'receiver_phone': receiverPhone,
@@ -164,6 +200,7 @@ class OrdersProvider extends ChangeNotifier {
         shippingAddress: shippingAddress,
         paymentMethod: paymentMethod,
         paymentStatus: PaymentStatus.pending,
+        courierInfo: courierInfo,
         notes: notes,
         receiverName: receiverName,
         receiverPhone: receiverPhone,
@@ -174,10 +211,12 @@ class OrdersProvider extends ChangeNotifier {
 
       // Add to local orders list for immediate UI update
       _orders.insert(0, order);
+      _isInitialized = true;
 
       _isLoading = false;
       notifyListeners();
 
+      print('OrdersProvider: Order created successfully: ${order.orderNumber}');
       return order;
     } catch (e) {
       _error = 'Failed to create order: ${e.toString()}';
@@ -255,6 +294,20 @@ class OrdersProvider extends ChangeNotifier {
   }
 
   Future<void> refreshOrders() async {
+    _isInitialized = false; // Reset initialization to force reload
     await loadUserOrders();
+  }
+
+  Future<void> forceRefreshOrders() async {
+    print('OrdersProvider: Force refreshing orders...');
+    _isInitialized = false;
+    _orders.clear();
+    _error = null;
+    await loadUserOrders();
+  }
+
+  bool shouldLoadOrders() {
+    final currentUser = _supabase.auth.currentUser;
+    return currentUser != null && !_isInitialized && !_isLoading;
   }
 }
