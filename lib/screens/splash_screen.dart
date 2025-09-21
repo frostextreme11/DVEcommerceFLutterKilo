@@ -46,28 +46,38 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Navigate after animation completes or auth state is determined
     Timer(const Duration(seconds: 3), () async {
-      if (mounted) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (mounted && context != null) {
+        try {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-        // Refresh auth state to ensure it's up to date
-        await authProvider.refreshAuthState();
+          // Refresh auth state to ensure it's up to date
+          await authProvider.refreshAuthState();
 
-        print('Splash screen navigation:');
-        print('  isAuthenticated: ${authProvider.isAuthenticated}');
-        print('  isAdmin: ${authProvider.isAdmin}');
-        print('  user: ${authProvider.user?.email}');
+          print('Splash screen navigation:');
+          print('  isAuthenticated: ${authProvider.isAuthenticated}');
+          print('  isAdmin: ${authProvider.isAdmin}');
+          print('  user: ${authProvider.user?.email}');
 
-        if (authProvider.isAuthenticated) {
-          if (authProvider.isAdmin) {
-            print('Navigating to admin dashboard');
-            GoRouter.of(context).go('/admin');
+          if (authProvider.isAuthenticated) {
+            if (authProvider.isAdmin) {
+              print('Navigating to admin dashboard');
+              GoRouter.of(context).go('/admin');
+            } else {
+              print('Navigating to home screen');
+              GoRouter.of(context).go('/home');
+            }
           } else {
-            print('Navigating to home screen');
-            GoRouter.of(context).go('/home');
+            print('Navigating to login screen');
+            GoRouter.of(context).go('/login');
           }
-        } else {
-          print('Navigating to login screen');
-          GoRouter.of(context).go('/login');
+        } catch (e) {
+          print('Splash screen navigation error: $e');
+          // If there's an error, navigate to login as fallback
+          try {
+            GoRouter.of(context).go('/login');
+          } catch (e2) {
+            print('Failed to navigate to login: $e2');
+          }
         }
       }
     });

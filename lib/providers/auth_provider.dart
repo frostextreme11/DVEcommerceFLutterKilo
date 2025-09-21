@@ -26,39 +26,53 @@ class AuthProvider extends ChangeNotifier {
   bool get isInitialized => _user != null || _userProfile != null || !_isLoading;
 
   AuthProvider() {
-    _initializeAuth();
+    try {
+      _initializeAuth();
+    } catch (e) {
+      print('AuthProvider initialization error: $e');
+      // Don't throw error, just log it and continue with null user
+      _user = null;
+      _userProfile = null;
+    }
   }
 
   void _initializeAuth() async {
     print('Initializing AuthProvider...');
 
-    // Check current session first
-    final session = _supabase.auth.currentSession;
-    print('Current session: ${session != null ? 'exists' : 'null'}');
+    try {
+      // Check current session first
+      final session = _supabase.auth.currentSession;
+      print('Current session: ${session != null ? 'exists' : 'null'}');
 
-    if (session != null) {
-      _user = session.user;
-      print('User from session: ${_user?.email}');
-      await _loadUserProfile();
-    } else {
-      print('No active session found');
-    }
-
-    // Listen for auth state changes
-    _supabase.auth.onAuthStateChange.listen((event) {
-      print('Auth state change: ${event.event}');
-      _user = event.session?.user;
-      if (_user != null) {
-        print('User authenticated: ${_user?.email}');
-        _loadUserProfile();
+      if (session != null) {
+        _user = session.user;
+        print('User from session: ${_user?.email}');
+        await _loadUserProfile();
       } else {
-        print('User signed out');
-        _userProfile = null;
+        print('No active session found');
       }
-      notifyListeners();
-    });
 
-    print('AuthProvider initialization complete');
+      // Listen for auth state changes
+      _supabase.auth.onAuthStateChange.listen((event) {
+        print('Auth state change: ${event.event}');
+        _user = event.session?.user;
+        if (_user != null) {
+          print('User authenticated: ${_user?.email}');
+          _loadUserProfile();
+        } else {
+          print('User signed out');
+          _userProfile = null;
+        }
+        notifyListeners();
+      });
+
+      print('AuthProvider initialization complete');
+    } catch (e) {
+      print('AuthProvider initialization error: $e');
+      // Don't throw error, just log it and continue with null user
+      _user = null;
+      _userProfile = null;
+    }
   }
 
   Future<void> _loadUserProfile() async {

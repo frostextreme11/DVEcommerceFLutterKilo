@@ -167,44 +167,56 @@ final GoRouter _router = GoRouter(
     ),
   ],
   redirect: (context, state) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final isLoggedIn = authProvider.isAuthenticated;
-    final isAdmin = authProvider.isAdmin;
+    try {
+      // Check if context is available and has providers
+      if (context == null) {
+        print('Router redirect: context is null, redirecting to splash');
+        return '/splash';
+      }
 
-    print('Router redirect check:');
-    print('  Location: ${state.matchedLocation}');
-    print('  isLoggedIn: $isLoggedIn');
-    print('  isAdmin: $isAdmin');
-    print('  user: ${authProvider.user?.email}');
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final isLoggedIn = authProvider.isAuthenticated;
+      final isAdmin = authProvider.isAdmin;
 
-    // Allow access to auth-related routes
-    if (state.matchedLocation == '/splash' ||
-        state.matchedLocation == '/login' ||
-        state.matchedLocation == '/signup' ||
-        state.matchedLocation == '/register') {
-      print('  Allowing access to auth route');
+      print('Router redirect check:');
+      print('  Location: ${state.matchedLocation}');
+      print('  isLoggedIn: $isLoggedIn');
+      print('  isAdmin: $isAdmin');
+      print('  user: ${authProvider.user?.email}');
+
+      // Allow access to auth-related routes
+      if (state.matchedLocation == '/splash' ||
+          state.matchedLocation == '/login' ||
+          state.matchedLocation == '/signup' ||
+          state.matchedLocation == '/register') {
+        print('  Allowing access to auth route');
+        return null;
+      }
+
+      // If not logged in, redirect to login
+      if (!isLoggedIn) {
+        print('  Redirecting to login (not logged in)');
+        return '/login';
+      }
+
+      // If logged in as admin and trying to access home, redirect to admin
+      if (isLoggedIn && isAdmin && state.matchedLocation == '/home') {
+        print('  Redirecting admin to admin dashboard');
+        return '/admin';
+      }
+
+      // If logged in as regular user and trying to access admin, redirect to home
+      if (isLoggedIn && !isAdmin && state.matchedLocation == '/admin') {
+        print('  Redirecting regular user away from admin');
+        return '/home';
+      }
+
+      print('  No redirect needed');
       return null;
+    } catch (e) {
+      print('Router redirect error: $e');
+      // If there's an error with auth provider, redirect to splash to reinitialize
+      return '/splash';
     }
-
-    // If not logged in, redirect to login
-    if (!isLoggedIn) {
-      print('  Redirecting to login (not logged in)');
-      return '/login';
-    }
-
-    // If logged in as admin and trying to access home, redirect to admin
-    if (isLoggedIn && isAdmin && state.matchedLocation == '/home') {
-      print('  Redirecting admin to admin dashboard');
-      return '/admin';
-    }
-
-    // If logged in as regular user and trying to access admin, redirect to home
-    if (isLoggedIn && !isAdmin && state.matchedLocation == '/admin') {
-      print('  Redirecting regular user away from admin');
-      return '/home';
-    }
-
-    print('  No redirect needed');
-    return null;
   },
 );
