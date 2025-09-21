@@ -8,12 +8,24 @@ import 'providers/theme_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/products_provider.dart';
 import 'providers/orders_provider.dart';
+import 'providers/admin_products_provider.dart';
+import 'providers/admin_orders_provider.dart';
+import 'providers/admin_users_provider.dart';
+import 'providers/admin_categories_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/cart/cart_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/admin/products_admin_screen.dart';
+import 'screens/admin/orders_admin_screen.dart';
+import 'screens/admin/users_admin_screen.dart';
+import 'screens/admin/categories_admin_screen.dart';
+import 'screens/admin/product_form_screen.dart';
+import 'screens/admin/order_details_screen.dart';
+import 'screens/admin/user_form_screen.dart';
+import 'screens/admin/category_form_screen.dart';
 import 'screens/checkout/checkout_screen.dart';
 import 'screens/orders/order_history_screen.dart';
 import 'screens/splash_screen.dart';
@@ -34,6 +46,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => OrdersProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProductsProvider()),
+        ChangeNotifierProvider(create: (_) => AdminOrdersProvider()),
+        ChangeNotifierProvider(create: (_) => AdminUsersProvider()),
+        ChangeNotifierProvider(create: (_) => AdminCategoriesProvider()),
       ],
       child: const DalanovaEcommerceApp(),
     ),
@@ -96,6 +112,58 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/admin',
       builder: (context, state) => const AdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/admin/products',
+      builder: (context, state) => const ProductsAdminScreen(),
+    ),
+    GoRoute(
+      path: '/admin/products/add',
+      builder: (context, state) => const ProductFormScreen(),
+    ),
+    GoRoute(
+      path: '/admin/products/edit',
+      builder: (context, state) {
+        final product = state.extra as dynamic;
+        return ProductFormScreen(product: product);
+      },
+    ),
+    GoRoute(
+      path: '/admin/orders',
+      builder: (context, state) => const OrdersAdminScreen(),
+    ),
+    GoRoute(
+      path: '/admin/orders/:id',
+      builder: (context, state) {
+        final order = state.extra as dynamic;
+        return OrderDetailsScreen(order: order);
+      },
+    ),
+    GoRoute(
+      path: '/admin/users',
+      builder: (context, state) => const UsersAdminScreen(),
+    ),
+    GoRoute(
+      path: '/admin/users/edit',
+      builder: (context, state) {
+        final user = state.extra as dynamic;
+        return UserFormScreen(user: user);
+      },
+    ),
+    GoRoute(
+      path: '/admin/categories',
+      builder: (context, state) => const CategoriesAdminScreen(),
+    ),
+    GoRoute(
+      path: '/admin/categories/add',
+      builder: (context, state) => const CategoryFormScreen(),
+    ),
+    GoRoute(
+      path: '/admin/categories/edit',
+      builder: (context, state) {
+        final category = state.extra as dynamic;
+        return CategoryFormScreen(category: category);
+      },
     ),
   ],
   redirect: (context, state) {

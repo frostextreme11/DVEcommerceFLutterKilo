@@ -5,6 +5,7 @@
 
     <application
         android:label="DalanovaKL"
+        android:name="com.example.dalanovaecommerecekilo"
         android:icon="@mipmap/ic_launcher">
 
         <!-- Google Sign-In -->

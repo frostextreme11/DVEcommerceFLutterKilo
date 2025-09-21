@@ -6,12 +6,22 @@ ALTER TABLE public.kl_orders
 ADD COLUMN IF NOT EXISTS receiver_name TEXT,
 ADD COLUMN IF NOT EXISTS receiver_phone TEXT;
 
+-- Add additional costs columns to kl_orders table
+ALTER TABLE public.kl_orders
+ADD COLUMN IF NOT EXISTS additional_costs DECIMAL(10,2) DEFAULT 0 CHECK (additional_costs >= 0),
+ADD COLUMN IF NOT EXISTS additional_costs_notes TEXT;
+
+-- Update existing orders to have default value for additional_costs
+UPDATE public.kl_orders
+SET additional_costs = 0
+WHERE additional_costs IS NULL;
+
 -- Verify the columns were added
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_name = 'kl_orders'
 AND table_schema = 'public'
-AND column_name IN ('receiver_name', 'receiver_phone');
+AND column_name IN ('receiver_name', 'receiver_phone', 'additional_costs', 'additional_costs_notes');
 
 -- Test insert (optional - remove this in production)
 -- INSERT INTO public.kl_orders (

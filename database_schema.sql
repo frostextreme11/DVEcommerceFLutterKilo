@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS public.kl_orders (
     notes TEXT,
     receiver_name TEXT,
     receiver_phone TEXT,
+    additional_costs DECIMAL(10,2) DEFAULT 0 CHECK (additional_costs >= 0),
+    additional_costs_notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );

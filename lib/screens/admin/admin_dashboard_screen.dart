@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../providers/admin_products_provider.dart';
+import '../../providers/admin_orders_provider.dart';
+import '../../providers/admin_users_provider.dart';
+import '../../providers/admin_categories_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../models/order.dart';
+import '../admin/products_admin_screen.dart';
+import '../admin/orders_admin_screen.dart';
+import '../admin/users_admin_screen.dart';
+import '../admin/categories_admin_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
+  const AdminDashboardScreen({Key? key}) : super(key: key);
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -14,51 +23,81 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    DashboardContent(),
-    ProductsContent(),
-    OrdersContent(),
-    UsersContent(),
-    SettingsContent(),
+  final List<Widget> _screens = [
+    const DashboardOverviewScreen(),
+    const ProductsAdminScreen(),
+    const OrdersAdminScreen(),
+    const UsersAdminScreen(),
+    const CategoriesAdminScreen(),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
+  final List<String> _titles = [
+    'Dashboard',
+    'Products',
+    'Orders',
+    'Users',
+    'Categories',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load data when dashboard opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
     });
+  }
+
+  void _loadInitialData() {
+    final productsProvider = context.read<AdminProductsProvider>();
+    final ordersProvider = context.read<AdminOrdersProvider>();
+    final usersProvider = context.read<AdminUsersProvider>();
+    final categoriesProvider = context.read<AdminCategoriesProvider>();
+
+    // Load all data
+    productsProvider.loadProducts();
+    ordersProvider.loadAllOrders();
+    usersProvider.loadUsers();
+    categoriesProvider.loadCategories();
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: Text(_titles[_selectedIndex]),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
+          // Theme Settings Button
           IconButton(
-            icon: const Icon(Icons.brightness_6),
+            icon: const Icon(Icons.palette),
             onPressed: () {
-              Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+              _showThemeSettingsDialog(context);
             },
+            tooltip: 'Theme Settings',
           ),
+          // Logout Button
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authProvider.signOut();
-              if (context.mounted) {
-                GoRouter.of(context).go('/login');
-              }
+            onPressed: () {
+              _showLogoutDialog(context);
             },
             tooltip: 'Logout',
           ),
         ],
       ),
-      body: _widgetOptions.elementAt(_selectedIndex),
+      body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
@@ -76,22 +115,125 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             label: 'Users',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: Icon(Icons.category),
+            label: 'Categories',
           ),
         ],
-        currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).primaryColor,
         unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
+      ),
+    );
+  }
+
+  void _showThemeSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Theme Settings'),
+        content: Consumer<ThemeProvider>(
+          builder: (context, themeProvider, child) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<AppTheme>(
+                  title: const Text('Light Theme'),
+                  value: AppTheme.light,
+                  groupValue: themeProvider.currentAppTheme,
+                  onChanged: (value) {
+                    if (value != null) {
+                      themeProvider.setTheme(value);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Theme updated to Light'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                RadioListTile<AppTheme>(
+                  title: const Text('Dark Theme'),
+                  value: AppTheme.dark,
+                  groupValue: themeProvider.currentAppTheme,
+                  onChanged: (value) {
+                    if (value != null) {
+                      themeProvider.setTheme(value);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Theme updated to Dark'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                RadioListTile<AppTheme>(
+                  title: const Text('Luxury Theme'),
+                  value: AppTheme.luxury,
+                  groupValue: themeProvider.currentAppTheme,
+                  onChanged: (value) {
+                    if (value != null) {
+                      themeProvider.setTheme(value);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Theme updated to Luxury'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<AuthProvider>().signOut();
+              Navigator.pop(context);
+              context.go('/login');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Logged out successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Logout'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+          ),
+        ],
       ),
     );
   }
 }
 
-class DashboardContent extends StatelessWidget {
-  const DashboardContent({super.key});
+class DashboardOverviewScreen extends StatelessWidget {
+  const DashboardOverviewScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -100,100 +242,158 @@ class DashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Dashboard Overview',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+          const Text(
+            'Admin Dashboard',
+            style: TextStyle(
+              fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Overview of your e-commerce platform',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 24),
 
+          // Sales Statistics Cards
+          Consumer<AdminOrdersProvider>(
+            builder: (context, ordersProvider, child) {
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildSalesCard(
+                      context,
+                      'Monthly Sales',
+                      'Rp ${ordersProvider.monthlySales.toStringAsFixed(0)}',
+                      Icons.trending_up,
+                      Colors.green,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildSalesCard(
+                      context,
+                      'Yearly Sales',
+                      'Rp ${ordersProvider.yearlySales.toStringAsFixed(0)}',
+                      Icons.calendar_today,
+                      Colors.blue,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
           const SizedBox(height: 24),
 
           // Stats Cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Total Sales',
-                  'Rp 0',
-                  Icons.attach_money,
-                  Colors.green,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Total Orders',
-                  '0',
-                  Icons.shopping_cart,
-                  Colors.blue,
-                ),
-              ),
-            ],
-          ),
+          Consumer4<AdminProductsProvider, AdminOrdersProvider, AdminUsersProvider, AdminCategoriesProvider>(
+            builder: (context, productsProvider, ordersProvider, usersProvider, categoriesProvider, child) {
+              final totalProducts = productsProvider.products.length;
+              final totalOrders = ordersProvider.orders.length;
+              final totalUsers = usersProvider.users.length;
+              final totalCategories = categoriesProvider.categories.length;
 
-          const SizedBox(height: 16),
+              final pendingOrders = ordersProvider.getOrdersByStatus(OrderStatus.notPaid).length +
+                                   ordersProvider.getOrdersByStatus(OrderStatus.paid).length;
+              final completedOrders = ordersProvider.getOrdersByStatus(OrderStatus.delivered).length;
+              final activeProducts = productsProvider.products.where((p) => p.isActive).length;
 
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Total Products',
-                  '0',
-                  Icons.inventory,
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  context,
-                  'Total Users',
-                  '0',
-                  Icons.people,
-                  Colors.purple,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          // Recent Orders
-          Text(
-            'Recent Orders',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(context).dividerColor,
-              ),
-            ),
-            child: const Center(
-              child: Text('Recent orders will be displayed here'),
-            ),
+              return GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  _buildStatCard(
+                    context,
+                    'Total Products',
+                    totalProducts.toString(),
+                    Icons.inventory,
+                    Colors.blue,
+                  ),
+                  _buildStatCard(
+                    context,
+                    'Active Products',
+                    activeProducts.toString(),
+                    Icons.check_circle,
+                    Colors.green,
+                  ),
+                  _buildStatCard(
+                    context,
+                    'Total Orders',
+                    totalOrders.toString(),
+                    Icons.shopping_cart,
+                    Colors.orange,
+                  ),
+                  _buildStatCard(
+                    context,
+                    'Pending Orders',
+                    pendingOrders.toString(),
+                    Icons.pending,
+                    Colors.yellow.shade700,
+                  ),
+                  _buildStatCard(
+                    context,
+                    'Total Users',
+                    totalUsers.toString(),
+                    Icons.people,
+                    Colors.purple,
+                  ),
+                  _buildStatCard(
+                    context,
+                    'Categories',
+                    totalCategories.toString(),
+                    Icons.category,
+                    Colors.teal,
+                  ),
+                ],
+              );
+            },
           ),
 
           const SizedBox(height: 32),
 
           // Quick Actions
-          Text(
+          const Text(
             'Quick Actions',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            style: TextStyle(
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionButton(
+                  context,
+                  'Add Product',
+                  Icons.add,
+                  Colors.blue,
+                  () {
+                    context.go('/admin/products/add');
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildQuickActionButton(
+                  context,
+                  'Add Category',
+                  Icons.category,
+                  Colors.teal,
+                  () {
+                    context.go('/admin/categories/add');
+                  },
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
@@ -201,23 +401,33 @@ class DashboardContent extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildQuickActionCard(
+                child: _buildQuickActionButton(
                   context,
-                  'Add Product',
-                  Icons.add_box,
+                  'View Orders',
+                  Icons.list,
+                  Colors.orange,
                   () {
-                    // Navigate to add product
+                    // Switch to orders tab
+                    final state = context.findAncestorStateOfType<_AdminDashboardScreenState>();
+                    state?.setState(() {
+                      state._selectedIndex = 2; // Orders tab index
+                    });
                   },
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildQuickActionCard(
+                child: _buildQuickActionButton(
                   context,
-                  'View Reports',
-                  Icons.analytics,
+                  'Manage Users',
+                  Icons.people,
+                  Colors.purple,
                   () {
-                    // Navigate to reports
+                    // Switch to users tab
+                    final state = context.findAncestorStateOfType<_AdminDashboardScreenState>();
+                    state?.setState(() {
+                      state._selectedIndex = 3; // Users tab index
+                    });
                   },
                 ),
               ),
@@ -230,34 +440,34 @@ class DashboardContent extends StatelessWidget {
 
   Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: color,
               size: 32,
+              color: color,
             ),
             const SizedBox(height: 8),
             Text(
-              title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey,
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -265,80 +475,67 @@ class DashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionCard(BuildContext context, String title, IconData icon, VoidCallback onTap) {
+  Widget _buildSalesCard(BuildContext context, String title, String value, IconData icon, Color color) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: Theme.of(context).primaryColor,
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: color,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
               ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-class ProductsContent extends StatelessWidget {
-  const ProductsContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Products Management - Coming Soon'),
-    );
-  }
-}
-
-class OrdersContent extends StatelessWidget {
-  const OrdersContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Orders Management - Coming Soon'),
-    );
-  }
-}
-
-class UsersContent extends StatelessWidget {
-  const UsersContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Users Management - Coming Soon'),
-    );
-  }
-}
-
-class SettingsContent extends StatelessWidget {
-  const SettingsContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Settings - Coming Soon'),
+  Widget _buildQuickActionButton(BuildContext context, String title, IconData icon, Color color, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

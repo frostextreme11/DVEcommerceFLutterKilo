@@ -10,6 +10,7 @@ import '../../models/order.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/search_filter_widget.dart';
 import '../product/product_detail_screen.dart';
+import '../product/product_by_category_screen.dart';
 import '../orders/order_tracking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -232,190 +233,122 @@ class _HomeContentState extends State<HomeContent> {
           ),
 
           // Quick Stats
+          // SliverToBoxAdapter(
+          //   child: Container(
+          //     alignment: Alignment.center,
+          //     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //     child: SingleChildScrollView(
+          //       scrollDirection: Axis.horizontal,
+          //       child: Row(
+          //         mainAxisSize: MainAxisSize.min,
+          //         children: [
+          //           _buildQuickStat(
+          //             context,
+          //             '${productsProvider.products.length}',
+          //             'Products',
+          //             Icons.inventory,
+          //             Colors.blue,
+          //           ),
+          //           const SizedBox(width: 12),
+          //           _buildQuickStat(
+          //             context,
+          //             '${productsProvider.discountedProducts.length}',
+          //             'On Sale',
+          //             Icons.discount,
+          //             Colors.red,
+          //           ),
+          //           const SizedBox(width: 12),
+          //           _buildQuickStat(
+          //             context,
+          //             '${productsProvider.categories.length}',
+          //             'Categories',
+          //             Icons.category,
+          //             Colors.green,
+          //           ),
+          //         ],
+          //       ),
+          //     ),
+          //   ),
+          // ),
+
+          // Categories Section
           SliverToBoxAdapter(
-            child: Container(
-              alignment: Alignment.center,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildQuickStat(
-                      context,
-                      '${productsProvider.products.length}',
-                      'Products',
-                      Icons.inventory,
-                      Colors.blue,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    'Shop by Category',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 12),
-                    _buildQuickStat(
-                      context,
-                      '${productsProvider.discountedProducts.length}',
-                      'On Sale',
-                      Icons.discount,
-                      Colors.red,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildQuickStat(
-                      context,
-                      '${productsProvider.categories.length}',
-                      'Categories',
-                      Icons.category,
-                      Colors.green,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-
-          // Featured Products Section
-          if (productsProvider.featuredProducts.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                const SizedBox(height: 16),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 1.0,
+                ),
+                itemCount: productsProvider.categories.length,
+                itemBuilder: (context, index) {
+                  final category = productsProvider.categories[index];
+                  return ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => ProductByCategoryScreen(category: category),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).cardColor,
+                      foregroundColor: Theme.of(context).colorScheme.onSurface,
+                      elevation: 4,
+                      shadowColor: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'Featured Products',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.category,
+                            size: 32,
+                            color: Theme.of(context).primaryColor,
                           ),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            // Navigate to featured products
-                          },
-                          child: const Text('View All'),
+                        const SizedBox(height: 8),
+                        Text(
+                          category,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 280,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: productsProvider.featuredProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = productsProvider.featuredProducts[index];
-                        return Container(
-                          width: 200,
-                          margin: const EdgeInsets.only(right: 12),
-                          child: ProductCard(
-                            product: product,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => ProductDetailScreen(product: product),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Best Sellers Section
-          if (productsProvider.bestSellerProducts.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Best Sellers',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            // Navigate to best sellers
-                          },
-                          child: const Text('View All'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 300,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: productsProvider.bestSellerProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = productsProvider.bestSellerProducts[index];
-                        return Container(
-                          width: 200,
-                          margin: const EdgeInsets.only(right: 12),
-                          child: ProductCard(
-                            product: product,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => ProductDetailScreen(product: product),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // All Products Grid
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.65,
-                mainAxisExtent: 320,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  if (index >= productsProvider.products.length) {
-                    return null;
-                  }
-
-                  final product = productsProvider.products[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    child: ProductCard(
-                      product: product,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => ProductDetailScreen(product: product),
-                          ),
-                        );
-                      },
                     ),
                   );
                 },
-                childCount: productsProvider.products.length,
               ),
+              ],
             ),
           ),
 
@@ -1368,6 +1301,26 @@ class _ProfileContentState extends State<ProfileContent> {
             Column(
               children: [
                 if (!_isEditing) ...[
+                  // Admin Access Button (only for admins)
+                  if (authProvider.isAdmin) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          context.go('/admin');
+                        },
+                        icon: const Icon(Icons.admin_panel_settings),
+                        label: const Text('Admin Dashboard'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(

@@ -23,7 +23,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _notesController = TextEditingController();
 
   String _selectedPaymentMethod = 'Bank Transfer';
+  String? _selectedCourier;
   bool _isProcessing = false;
+
+  final List<String> _courierOptions = [
+    'Jne REG',
+    'JNT REG',
+    'Indah Cargo',
+    'SPX',
+    'Lion REG',
+    'Lion Jago',
+    'JTR',
+    'Sentral Cargo',
+    'Baraka',
+    'SPX Resi Otomatis',
+    'JNT Resi Otomatis',
+  ];
 
   final List<String> _paymentMethods = [
     'Bank Transfer',
@@ -362,11 +377,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 16),
 
             // Courier Selection
-            TextFormField(
-              controller: _courierController,
+            DropdownButtonFormField<String>(
+              value: _selectedCourier,
               decoration: InputDecoration(
                 labelText: 'Courier Service',
-                hintText: 'e.g., JNE, TIKI, POS Indonesia, etc.',
+                hintText: 'Select a courier service',
                 prefixIcon: const Icon(Icons.local_shipping),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -374,6 +389,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 filled: true,
                 fillColor: Theme.of(context).cardColor,
               ),
+              items: _courierOptions.map((courier) {
+                return DropdownMenuItem<String>(
+                  value: courier,
+                  child: Text(courier),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCourier = value;
+                });
+              },
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please select a courier service';
@@ -555,7 +581,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
         receiverName: _receiverNameController.text.trim(),
         receiverPhone: _receiverPhoneController.text.trim(),
-        courierInfo: _courierController.text.trim(),
+        courierInfo: _selectedCourier ?? '',
       );
 
       if (order != null && mounted) {

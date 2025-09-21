@@ -14,6 +14,8 @@ class Order {
   final String? notes;
   final String? receiverName;
   final String? receiverPhone;
+  final double? additionalCosts;
+  final String? additionalCostsNotes;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<OrderItem> items;
@@ -31,6 +33,8 @@ class Order {
     this.notes,
     this.receiverName,
     this.receiverPhone,
+    this.additionalCosts,
+    this.additionalCostsNotes,
     required this.createdAt,
     required this.updatedAt,
     required this.items,
@@ -56,6 +60,8 @@ class Order {
       notes: json['notes'],
       receiverName: json['receiver_name'],
       receiverPhone: json['receiver_phone'],
+      additionalCosts: (json['additional_costs'] as num?)?.toDouble(),
+      additionalCostsNotes: json['additional_costs_notes'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       items: items,
@@ -76,6 +82,8 @@ class Order {
       'notes': notes,
       'receiver_name': receiverName,
       'receiver_phone': receiverPhone,
+      'additional_costs': additionalCosts,
+      'additional_costs_notes': additionalCostsNotes,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -100,6 +108,8 @@ class Order {
     String? notes,
     String? receiverName,
     String? receiverPhone,
+    double? additionalCosts,
+    String? additionalCostsNotes,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<OrderItem>? items,
@@ -117,6 +127,8 @@ class Order {
       notes: notes ?? this.notes,
       receiverName: receiverName ?? this.receiverName,
       receiverPhone: receiverPhone ?? this.receiverPhone,
+      additionalCosts: additionalCosts ?? this.additionalCosts,
+      additionalCostsNotes: additionalCostsNotes ?? this.additionalCostsNotes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       items: items ?? this.items,
