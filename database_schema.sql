@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.kl_users (
     full_name TEXT,
     phone_number TEXT,
     full_address TEXT,
-    role TEXT NOT NULL DEFAULT 'Customer' CHECK (role IN ('Admin', 'Customer')),
+    role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.kl_categories (
     description TEXT,
     image_url TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
+    display_order INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -155,6 +156,8 @@ CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON public.kl_order_items(ord
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON public.kl_order_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_banners_is_active ON public.kl_banners(is_active);
 CREATE INDEX IF NOT EXISTS idx_banners_display_order ON public.kl_banners(display_order);
+CREATE INDEX IF NOT EXISTS idx_categories_display_order ON public.kl_categories(display_order);
+CREATE INDEX IF NOT EXISTS idx_categories_is_active ON public.kl_categories(is_active);
 CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON public.kl_promo_codes(code);
 CREATE INDEX IF NOT EXISTS idx_promo_codes_is_active ON public.kl_promo_codes(is_active);
 CREATE INDEX IF NOT EXISTS idx_stock_opname_product_id ON public.kl_stock_opname(product_id);
@@ -175,7 +178,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
         SELECT 1 FROM public.kl_users
-        WHERE id = user_id AND role = 'Admin'
+        WHERE id = user_id AND role = 'admin'
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

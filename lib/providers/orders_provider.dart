@@ -306,6 +306,44 @@ class OrdersProvider extends ChangeNotifier {
     await loadUserOrders();
   }
 
+  Future<void> refreshOrderById(String orderId) async {
+    try {
+      print('OrdersProvider: Refreshing order by ID: $orderId');
+
+      // Load specific order
+      final orderResponse = await _supabase
+          .from('kl_orders')
+          .select()
+          .eq('id', orderId)
+          .single();
+
+      // Load order items for this order
+      final itemsResponse = await _supabase
+          .from('kl_order_items')
+          .select()
+          .eq('order_id', orderId);
+
+      final items = (itemsResponse as List)
+          .map((item) => OrderItem.fromJson(item))
+          .toList();
+
+      final updatedOrder = Order.fromJson(orderResponse, items);
+
+      // Update local order
+      final orderIndex = _orders.indexWhere((order) => order.id == orderId);
+      if (orderIndex >= 0) {
+        _orders[orderIndex] = updatedOrder;
+        notifyListeners();
+        print('OrdersProvider: Order updated successfully: ${updatedOrder.orderNumber}');
+      } else {
+        print('OrdersProvider: Order not found in local list: $orderId');
+      }
+    } catch (e) {
+      _error = 'Failed to refresh order: ${e.toString()}';
+      print('Error refreshing order: $e');
+    }
+  }
+
   bool shouldLoadOrders() {
     final currentUser = _supabase.auth.currentUser;
     return currentUser != null && !_isInitialized && !_isLoading;

@@ -107,7 +107,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
 
       if (success && mounted) {
-        context.go('/admin');
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -142,7 +142,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/admin'),
+          onPressed: () => Navigator.of(context).pop(),
           tooltip: 'Back',
         ),
       ),

@@ -27,7 +27,7 @@ class User {
       phoneNumber: json['phone_number'],
       fullAddress: json['full_address'],
       role: UserRole.values.firstWhere(
-        (e) => e.toString().split('.').last == (json['role'] ?? 'Customer'),
+        (e) => e.toString().split('.').last == (json['role'] ?? 'customer'),
         orElse: () => UserRole.customer,
       ),
       createdAt: DateTime.parse(json['created_at']),

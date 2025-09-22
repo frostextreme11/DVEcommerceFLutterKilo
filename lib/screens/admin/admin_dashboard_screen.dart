@@ -377,7 +377,7 @@ class DashboardOverviewScreen extends StatelessWidget {
                   Icons.add,
                   Colors.blue,
                   () {
-                    context.go('/admin/products/add');
+                    context.push('/admin/products/add');
                   },
                 ),
               ),
@@ -389,7 +389,7 @@ class DashboardOverviewScreen extends StatelessWidget {
                   Icons.category,
                   Colors.teal,
                   () {
-                    context.go('/admin/categories/add');
+                    context.push('/admin/categories/add'); 
                   },
                 ),
               ),

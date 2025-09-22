@@ -10,6 +10,8 @@ class OrderTrackingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ordersProvider = Provider.of<OrdersProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Order #${order.orderNumber}'),
@@ -20,7 +22,11 @@ class OrderTrackingScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ordersProvider.refreshOrderById(order.id);
+        },
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,8 +140,10 @@ class OrderTrackingScreen extends StatelessWidget {
               ],
             ),
           ],
+        
         ),
       ),
+      )
     );
   }
 

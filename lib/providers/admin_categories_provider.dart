@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/category.dart';
+import 'products_provider.dart';
 
 class AdminCategoriesProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -41,6 +42,7 @@ class AdminCategoriesProvider extends ChangeNotifier {
       final response = await _supabase
           .from('kl_categories')
           .select()
+          .order('display_order', ascending: true)
           .order('created_at', ascending: false);
 
       final categoriesData = response as List;
@@ -58,8 +60,13 @@ class AdminCategoriesProvider extends ChangeNotifier {
 
   Future<bool> createCategory(Category category) async {
     try {
+      // Get the next display order
+      final maxOrder = _categories.isEmpty ? 0 : _categories.map((c) => c.displayOrder).reduce((a, b) => a > b ? a : b);
+      final newOrder = maxOrder + 1;
+
       final categoryData = category.toJson();
       categoryData.remove('id'); // Remove id as it will be auto-generated
+      categoryData['display_order'] = newOrder;
 
       final response = await _supabase
           .from('kl_categories')
@@ -68,7 +75,8 @@ class AdminCategoriesProvider extends ChangeNotifier {
           .single();
 
       final newCategory = Category.fromJson(response);
-      _categories.insert(0, newCategory);
+      _categories.add(newCategory);
+      _sortCategoriesByOrder();
       notifyListeners();
 
       print('AdminCategoriesProvider: Category created successfully: ${newCategory.name}');
@@ -181,5 +189,85 @@ class AdminCategoriesProvider extends ChangeNotifier {
       (category) => category.name == name,
       orElse: () => throw Exception('Category not found'),
     );
+  }
+
+  // Reordering methods
+  void _sortCategoriesByOrder() {
+    _categories.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    notifyListeners();
+  }
+
+  Future<bool> reorderCategories(List<String> categoryIds) async {
+    try {
+      // Update display_order for each category
+      for (int i = 0; i < categoryIds.length; i++) {
+        await _supabase
+            .from('kl_categories')
+            .update({
+              'display_order': i,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', categoryIds[i]);
+      }
+
+      // Reload categories to get updated order
+      await loadCategories();
+
+      // Refresh categories in products provider to reflect new order
+      try {
+        final productsProvider = ProductsProvider();
+        await productsProvider.refreshCategories();
+        print('AdminCategoriesProvider: Products provider categories refreshed');
+      } catch (e) {
+        print('AdminCategoriesProvider: Failed to refresh products provider categories: $e');
+      }
+
+      print('AdminCategoriesProvider: Categories reordered successfully');
+      return true;
+    } catch (e) {
+      _error = 'Failed to reorder categories: ${e.toString()}';
+      print('Error reordering categories: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateCategoryOrder(String categoryId, int newOrder) async {
+    try {
+      await _supabase
+          .from('kl_categories')
+          .update({
+            'display_order': newOrder,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', categoryId);
+
+      // Update local category
+      final index = _categories.indexWhere((c) => c.id == categoryId);
+      if (index >= 0) {
+        _categories[index] = _categories[index].copyWith(displayOrder: newOrder);
+        _sortCategoriesByOrder();
+      }
+
+      print('AdminCategoriesProvider: Category order updated successfully: $categoryId');
+      return true;
+    } catch (e) {
+      _error = 'Failed to update category order: ${e.toString()}';
+      print('Error updating category order: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Get categories ordered by display_order
+  List<Category> get orderedCategories {
+    final sorted = List<Category>.from(_categories);
+    sorted.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    return sorted;
+  }
+
+  // Get active categories ordered by display_order
+  List<Category> get orderedActiveCategories {
+    return orderedCategories.where((category) => category.isActive).toList();
   }
 }

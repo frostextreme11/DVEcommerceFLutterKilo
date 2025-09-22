@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/product.dart';
+import 'admin_categories_provider.dart';
 
 enum SortOption {
   newest,
@@ -73,7 +74,9 @@ class ProductsProvider extends ChangeNotifier {
       final response = await _supabase
           .from('kl_categories')
           .select('name')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .order('display_order', ascending: true)
+          .order('created_at', ascending: false);
 
       _categories = (response as List)
           .map((json) => json['name'] as String)
@@ -205,5 +208,40 @@ class ProductsProvider extends ChangeNotifier {
   // Refresh products
   Future<void> refreshProducts() async {
     await loadProducts();
+  }
+
+  // Refresh categories (call this when categories are reordered)
+  Future<void> refreshCategories() async {
+    await loadCategories();
+  }
+
+  // Refresh specific product by ID
+  Future<void> refreshProductById(String productId) async {
+    try {
+      print('ProductsProvider: Refreshing product by ID: $productId');
+
+      // Load specific product
+      final response = await _supabase
+          .from('kl_products')
+          .select()
+          .eq('id', productId)
+          .eq('is_active', true)
+          .single();
+
+      final updatedProduct = Product.fromJson(response);
+
+      // Update local product
+      final productIndex = _products.indexWhere((product) => product.id == productId);
+      if (productIndex >= 0) {
+        _products[productIndex] = updatedProduct;
+        _applyFilters(); // Re-apply filters to update filtered list
+        notifyListeners();
+        print('ProductsProvider: Product updated successfully: ${updatedProduct.name}');
+      } else {
+        print('ProductsProvider: Product not found in local list: $productId');
+      }
+    } catch (e) {
+      print('Error refreshing product: $e');
+    }
   }
 }

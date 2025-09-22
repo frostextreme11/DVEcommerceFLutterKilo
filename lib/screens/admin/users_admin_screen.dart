@@ -74,49 +74,54 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
 
           // Users List
           Expanded(
-            child: Consumer<AdminUsersProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Error: ${provider.error}',
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        CustomButton(
-                          text: 'Retry',
-                          onPressed: () => provider.loadUsers(),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final users = provider.filteredUsers;
-
-                if (users.isEmpty) {
-                  return const Center(
-                    child: Text('No users found'),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    final user = users[index];
-                    return _buildUserCard(user);
-                  },
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await context.read<AdminUsersProvider>().loadUsers();
               },
+              child: Consumer<AdminUsersProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (provider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error: ${provider.error}',
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          CustomButton(
+                            text: 'Retry',
+                            onPressed: () => provider.loadUsers(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final users = provider.filteredUsers;
+
+                  if (users.isEmpty) {
+                    return const Center(
+                      child: Text('No users found'),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: users.length,
+                    itemBuilder: (context, index) {
+                      final user = users[index];
+                      return _buildUserCard(user);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],

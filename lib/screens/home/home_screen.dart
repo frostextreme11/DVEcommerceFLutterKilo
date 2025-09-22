@@ -446,7 +446,11 @@ class SearchContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final productsProvider = Provider.of<ProductsProvider>(context);
 
-    return CustomScrollView(
+    return RefreshIndicator(
+      onRefresh: () async {
+        await productsProvider.refreshProducts();
+      },
+      child: CustomScrollView(
       slivers: [
         // Search and Filter Widget
         const SliverToBoxAdapter(
@@ -529,7 +533,8 @@ class SearchContent extends StatelessWidget {
               ),
             ),
           ),
-      ],
+        ],
+      )
     );
   }
 

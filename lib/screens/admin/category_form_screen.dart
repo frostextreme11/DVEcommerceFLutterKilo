@@ -64,6 +64,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
             ? _imageUrlController.text.trim()
             : null,
         isActive: _isActive,
+        displayOrder: widget.category?.displayOrder ?? 0,
         createdAt: widget.category?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -78,7 +79,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
       }
 
       if (success && mounted) {
-        context.go('/admin');
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -113,7 +114,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/admin'),
+          onPressed: () => Navigator.of(context).pop(),
           tooltip: 'Back',
         ),
       ),

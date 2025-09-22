@@ -4,6 +4,7 @@ class Category {
   final String? description;
   final String? imageUrl;
   final bool isActive;
+  final int displayOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -13,6 +14,7 @@ class Category {
     this.description,
     this.imageUrl,
     required this.isActive,
+    required this.displayOrder,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -24,6 +26,7 @@ class Category {
       description: json['description'],
       imageUrl: json['image_url'],
       isActive: json['is_active'] ?? true,
+      displayOrder: json['display_order'] ?? 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
     );
@@ -47,6 +50,7 @@ class Category {
     String? description,
     String? imageUrl,
     bool? isActive,
+    int? displayOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -56,6 +60,7 @@ class Category {
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
       isActive: isActive ?? this.isActive,
+      displayOrder: displayOrder ?? this.displayOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

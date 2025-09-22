@@ -92,49 +92,57 @@ class _CategoriesAdminScreenState extends State<CategoriesAdminScreen> {
 
           // Categories List
           Expanded(
-            child: Consumer<AdminCategoriesProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Error: ${provider.error}',
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        CustomButton(
-                          text: 'Retry',
-                          onPressed: () => provider.loadCategories(),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final categories = provider.filteredCategories;
-
-                if (categories.isEmpty) {
-                  return const Center(
-                    child: Text('No categories found'),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: categories.length,
-                  itemBuilder: (context, index) {
-                    final category = categories[index];
-                    return _buildCategoryCard(category);
-                  },
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await context.read<AdminCategoriesProvider>().loadCategories();
               },
+              child: Consumer<AdminCategoriesProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (provider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error: ${provider.error}',
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          CustomButton(
+                            text: 'Retry',
+                            onPressed: () => provider.loadCategories(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final categories = provider.filteredCategories;
+
+                  if (categories.isEmpty) {
+                    return const Center(
+                      child: Text('No categories found'),
+                    );
+                  }
+
+                  return ReorderableListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: categories.length,
+                    onReorder: (oldIndex, newIndex) {
+                      _handleReorder(oldIndex, newIndex);
+                    },
+                    itemBuilder: (context, index) {
+                      final category = categories[index];
+                      return _buildCategoryCard(category, index + 1);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -142,8 +150,9 @@ class _CategoriesAdminScreenState extends State<CategoriesAdminScreen> {
     );
   }
 
-  Widget _buildCategoryCard(Category category) {
+  Widget _buildCategoryCard(Category category, int orderNumber) {
     return Card(
+      key: ValueKey(category.id),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -152,10 +161,47 @@ class _CategoriesAdminScreenState extends State<CategoriesAdminScreen> {
           children: [
             Row(
               children: [
+                // Drag Handle
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Icon(
+                    Icons.drag_handle,
+                    color: Theme.of(context).primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Order Number
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Center(
+                    child: Text(
+                      orderNumber.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
                 // Category Icon/Image
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: Theme.of(context).primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -163,7 +209,7 @@ class _CategoriesAdminScreenState extends State<CategoriesAdminScreen> {
                   child: Icon(
                     Icons.category,
                     color: Theme.of(context).primaryColor,
-                    size: 24,
+                    size: 20,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -315,5 +361,39 @@ class _CategoriesAdminScreenState extends State<CategoriesAdminScreen> {
         ],
       ),
     );
+  }
+
+  void _handleReorder(int oldIndex, int newIndex) async {
+    final provider = context.read<AdminCategoriesProvider>();
+    final categories = provider.filteredCategories;
+
+    // Adjust newIndex if necessary (when dragging down, newIndex is greater than oldIndex)
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+
+    // Create new order list
+    final categoryIds = categories.map((c) => c.id).toList();
+    final movedItem = categoryIds.removeAt(oldIndex);
+    categoryIds.insert(newIndex, movedItem);
+
+    // Update the order in the database
+    final success = await provider.reorderCategories(categoryIds);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Category order updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update category order: ${provider.error}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

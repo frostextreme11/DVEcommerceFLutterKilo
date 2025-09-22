@@ -143,48 +143,48 @@ class ThemeProvider extends ChangeNotifier {
   static final ThemeData _luxuryTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    primaryColor: const Color(0xFFD4AF37), // Gold
+    primaryColor: const Color(0xFF8B4513), // Dark Brown
     scaffoldBackgroundColor: const Color(0xFFFEFEFE),
     colorScheme: const ColorScheme.light(
-      primary: Color(0xFFD4AF37),
-      secondary: Color(0xFFB91C1C), // Deep Red
+      primary: Color(0xFF8B4513),
+      secondary: Color(0xFF654321), // Darker Brown
       surface: Colors.white,
       background: Color(0xFFFEFEFE),
       error: Color(0xFFDC2626),
-      onPrimary: Color(0xFF1F2937),
+      onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: Color(0xFF1F2937),
       onBackground: Color(0xFF1F2937),
       onError: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFFD4AF37),
-      foregroundColor: Color(0xFF1F2937),
+      backgroundColor: Color(0xFF8B4513),
+      foregroundColor: Colors.white,
       elevation: 2,
-      shadowColor: Color(0xFFD4AF37),
+      shadowColor: Color(0xFF8B4513),
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
-      shadowColor: const Color(0xFFD4AF37).withValues(alpha: 0.2),
+      shadowColor: const Color(0xFF8B4513).withValues(alpha: 0.2),
       elevation: 6,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: const Color(0xFFD4AF37),
+          color: const Color(0xFF8B4513),
           width: 1,
         ),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFD4AF37),
-        foregroundColor: const Color(0xFF1F2937),
+        backgroundColor: const Color(0xFF8B4513),
+        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
         elevation: 4,
-        shadowColor: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+        shadowColor: const Color(0xFF8B4513).withValues(alpha: 0.3),
       ),
     ),
     textTheme: const TextTheme(

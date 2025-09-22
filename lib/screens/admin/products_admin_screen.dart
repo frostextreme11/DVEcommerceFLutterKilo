@@ -95,49 +95,54 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
 
           // Products List
           Expanded(
-            child: Consumer<AdminProductsProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Error: ${provider.error}',
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        CustomButton(
-                          text: 'Retry',
-                          onPressed: () => provider.loadProducts(),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final products = provider.filteredProducts;
-
-                if (products.isEmpty) {
-                  return const Center(
-                    child: Text('No products found'),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return _buildProductCard(product);
-                  },
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await context.read<AdminProductsProvider>().loadProducts();
               },
+              child: Consumer<AdminProductsProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (provider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error: ${provider.error}',
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          CustomButton(
+                            text: 'Retry',
+                            onPressed: () => provider.loadProducts(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final products = provider.filteredProducts;
+
+                  if (products.isEmpty) {
+                    return const Center(
+                      child: Text('No products found'),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return _buildProductCard(product);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],

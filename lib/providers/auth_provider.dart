@@ -22,7 +22,7 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
-  bool get isAdmin => _userProfile?['role'] == 'Admin';
+  bool get isAdmin => _userProfile?['role'] == 'admin';
   bool get isInitialized => _user != null || _userProfile != null || !_isLoading;
 
   AuthProvider() {
@@ -220,7 +220,7 @@ class AuthProvider extends ChangeNotifier {
         'full_name': fullName,
         'phone_number': phoneNumber,
         'full_address': fullAddress,
-        'role': 'Customer',
+        'role': 'customer',
         'created_at': DateTime.now().toIso8601String(),
       });
 

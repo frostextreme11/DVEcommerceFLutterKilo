@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/admin_orders_provider.dart';
 import '../../models/order.dart';
 import '../../widgets/custom_button.dart';
+import '../../services/print_service.dart';
 import 'order_details_screen.dart';
 
 class OrdersAdminScreen extends StatefulWidget {
@@ -78,6 +79,12 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                       _buildCourierFilterButton('Resi Otomatis', 'resi_otomatis'),
                       const SizedBox(width: 8),
                       _buildDateFilterButton(),
+                      const SizedBox(width: 8),
+                      _buildPrintPreviewButton(),
+                      const SizedBox(width: 8),
+                      _buildPrintButton(),
+                      const SizedBox(width: 8),
+                      _buildPdfButton(),
                     ],
                   ),
                 ),
@@ -87,49 +94,54 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
 
           // Orders List
           Expanded(
-            child: Consumer<AdminOrdersProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Error: ${provider.error}',
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        CustomButton(
-                          text: 'Retry',
-                          onPressed: () => provider.loadAllOrders(),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final orders = provider.filteredOrders;
-
-                if (orders.isEmpty) {
-                  return const Center(
-                    child: Text('No orders found'),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    final order = orders[index];
-                    return _buildOrderCard(order);
-                  },
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await context.read<AdminOrdersProvider>().loadAllOrders();
               },
+              child: Consumer<AdminOrdersProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (provider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error: ${provider.error}',
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          CustomButton(
+                            text: 'Retry',
+                            onPressed: () => provider.loadAllOrders(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final orders = provider.filteredOrders;
+
+                  if (orders.isEmpty) {
+                    return const Center(
+                      child: Text('No orders found'),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: orders.length,
+                    itemBuilder: (context, index) {
+                      final order = orders[index];
+                      return _buildOrderCard(order);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -233,6 +245,72 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                 ? '${provider.dateRange!.start.toString().substring(5, 10)} - ${provider.dateRange!.end.toString().substring(5, 10)}'
                 : 'Date Filter',
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPrintButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final orders = provider.filteredOrders;
+        final hasOrders = orders.isNotEmpty;
+
+        return ElevatedButton.icon(
+          onPressed: hasOrders ? () => _handlePrint() : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
+            foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          icon: const Icon(Icons.print, size: 16),
+          label: Text('Print (${orders.length})'),
+        );
+      },
+    );
+  }
+
+  Widget _buildPdfButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final orders = provider.filteredOrders;
+        final hasOrders = orders.isNotEmpty;
+
+        return ElevatedButton.icon(
+          onPressed: hasOrders ? () => _handlePdfExport() : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
+            foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          icon: const Icon(Icons.picture_as_pdf, size: 16),
+          label: Text('PDF (${orders.length})'),
+        );
+      },
+    );
+  }
+
+  Widget _buildPrintPreviewButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final orders = provider.filteredOrders;
+        final hasOrders = orders.isNotEmpty;
+
+        return ElevatedButton.icon(
+          onPressed: hasOrders ? () => _handlePrintPreview() : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
+            foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          icon: const Icon(Icons.visibility, size: 16),
+          label: Text('Preview (${orders.length})'),
         );
       },
     );
@@ -551,6 +629,99 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             'Date filter applied: ${picked.start.toString().substring(5, 10)} - ${picked.end.toString().substring(5, 10)}',
           ),
           backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _handlePrint() async {
+    final provider = context.read<AdminOrdersProvider>();
+    final orders = provider.filteredOrders;
+
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No orders to print'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await PrintService.printDeliveryAddresses(orders);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Printing ${orders.length} orders...'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Print failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _handlePdfExport() async {
+    final provider = context.read<AdminOrdersProvider>();
+    final orders = provider.filteredOrders;
+
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No orders to export'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final filename = 'delivery_addresses_$timestamp.pdf';
+
+      await PrintService.saveDeliveryAddressesAsPdf(orders, filename);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF saved: $filename'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF export failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _handlePrintPreview() async {
+    final provider = context.read<AdminOrdersProvider>();
+    final orders = provider.filteredOrders;
+
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No orders to preview'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await PrintService.showPrintPreview(context, orders);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Preview failed: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     }
