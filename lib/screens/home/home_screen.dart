@@ -286,64 +286,73 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                 ),
                 const SizedBox(height: 16),
-              GridView.builder(
+              ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 1.0,
-                ),
                 itemCount: productsProvider.categories.length,
                 itemBuilder: (context, index) {
                   final category = productsProvider.categories[index];
-                  return ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => ProductByCategoryScreen(category: category),
+                  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+                  final isLuxury = themeProvider.currentAppTheme == AppTheme.luxury;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => ProductByCategoryScreen(category: category),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).cardColor,
+                        foregroundColor: Theme.of(context).colorScheme.onSurface,
+                        elevation: 2,
+                        shadowColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).cardColor,
-                      foregroundColor: Theme.of(context).colorScheme.onSurface,
-                      elevation: 4,
-                      shadowColor: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       ),
-                      padding: const EdgeInsets.all(16),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
+                      child: Row(
+                        children: [
+                          // Category Text (Left)
+                          Expanded(
+                            child: Text(
+                              category,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: isLuxury
+                                  ? const Color(0xFFD4AF37) // Gold color for luxury theme
+                                  : Theme.of(context).primaryColor, // Dark brown for other themes
+                              ),
+                            ),
                           ),
-                          child: Icon(
-                            Icons.category,
-                            size: 32,
-                            color: Theme.of(context).primaryColor,
+
+                          const SizedBox(width: 16),
+
+                          // Category Icon (Right)
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isLuxury
+                                ? const Color(0xFFD4AF37).withValues(alpha: 0.1) // Light gold background
+                                : Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.category,
+                              size: 24,
+                              color: isLuxury
+                                ? const Color(0xFFD4AF37) // Gold color for luxury theme
+                                : Theme.of(context).primaryColor, // Dark brown for other themes
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          category,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
