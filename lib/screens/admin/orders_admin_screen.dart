@@ -257,7 +257,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         final hasOrders = orders.isNotEmpty;
 
         return ElevatedButton.icon(
-          onPressed: hasOrders ? () => _handlePrint() : null,
+          onPressed: hasOrders ? () => _handlePrintNew() : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
             foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
@@ -301,7 +301,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         final hasOrders = orders.isNotEmpty;
 
         return ElevatedButton.icon(
-          onPressed: hasOrders ? () => _handlePrintPreview() : null,
+          onPressed: hasOrders ? () => _handlePrintNew() : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
             foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
@@ -721,6 +721,38 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Preview failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _handlePrintNew() async {
+    final provider = context.read<AdminOrdersProvider>();
+    final orders = provider.filteredOrders;
+
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No orders to print'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await PrintService.printDeliveryAddressesNew(orders);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Printing ${orders.length} orders with new format...'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Print failed: $e'),
           backgroundColor: Colors.red,
         ),
       );

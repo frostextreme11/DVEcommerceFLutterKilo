@@ -16,6 +16,9 @@ class Order {
   final String? receiverPhone;
   final double? additionalCosts;
   final String? additionalCostsNotes;
+  final bool isDropship;
+  final String? senderName;
+  final String? senderPhone;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<OrderItem> items;
@@ -35,6 +38,9 @@ class Order {
     this.receiverPhone,
     this.additionalCosts,
     this.additionalCostsNotes,
+    this.isDropship = false,
+    this.senderName,
+    this.senderPhone,
     required this.createdAt,
     required this.updatedAt,
     required this.items,
@@ -62,6 +68,9 @@ class Order {
       receiverPhone: json['receiver_phone'],
       additionalCosts: (json['additional_costs'] as num?)?.toDouble(),
       additionalCostsNotes: json['additional_costs_notes'],
+      isDropship: json['is_dropship'] ?? false,
+      senderName: json['sender_name'],
+      senderPhone: json['sender_phone'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       items: items,
@@ -84,6 +93,9 @@ class Order {
       'receiver_phone': receiverPhone,
       'additional_costs': additionalCosts,
       'additional_costs_notes': additionalCostsNotes,
+      'is_dropship': isDropship,
+      'sender_name': senderName,
+      'sender_phone': senderPhone,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -110,6 +122,9 @@ class Order {
     String? receiverPhone,
     double? additionalCosts,
     String? additionalCostsNotes,
+    bool? isDropship,
+    String? senderName,
+    String? senderPhone,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<OrderItem>? items,
@@ -129,6 +144,9 @@ class Order {
       receiverPhone: receiverPhone ?? this.receiverPhone,
       additionalCosts: additionalCosts ?? this.additionalCosts,
       additionalCostsNotes: additionalCostsNotes ?? this.additionalCostsNotes,
+      isDropship: isDropship ?? this.isDropship,
+      senderName: senderName ?? this.senderName,
+      senderPhone: senderPhone ?? this.senderPhone,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       items: items ?? this.items,

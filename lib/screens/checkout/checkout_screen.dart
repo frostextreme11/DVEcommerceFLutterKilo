@@ -21,10 +21,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _receiverAddressController = TextEditingController();
   final _courierController = TextEditingController();
   final _notesController = TextEditingController();
+  final _senderNameController = TextEditingController();
+  final _senderPhoneController = TextEditingController();
 
   String _selectedPaymentMethod = 'Bank Transfer';
   String? _selectedCourier;
   bool _isProcessing = false;
+  bool _isDropship = false;
 
   final List<String> _courierOptions = [
     'Jne REG',
@@ -63,6 +66,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _receiverAddressController.dispose();
     _courierController.dispose();
     _notesController.dispose();
+    _senderNameController.dispose();
+    _senderPhoneController.dispose();
     super.dispose();
   }
 
@@ -428,6 +433,112 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
             const SizedBox(height: 16),
 
+            // Dropship Checkbox
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).dividerColor,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: _isDropship,
+                    onChanged: (value) {
+                      setState(() {
+                        _isDropship = value ?? false;
+                        if (!_isDropship) {
+                          // Clear sender fields when dropship is unchecked
+                          _senderNameController.clear();
+                          _senderPhoneController.clear();
+                        }
+                      });
+                    },
+                    activeColor: Theme.of(context).primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Dropship Order',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Sender Information (only show if dropship is checked)
+            if (_isDropship) ...[
+              Text(
+                'Sender Information',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Sender Name
+              TextFormField(
+                controller: _senderNameController,
+                decoration: InputDecoration(
+                  labelText: 'Sender Full Name',
+                  hintText: 'Enter sender\'s full name',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
+                validator: (value) {
+                  if (_isDropship && (value == null || value.trim().isEmpty)) {
+                    return 'Please enter sender\'s name';
+                  }
+                  if (_isDropship && value != null && value.trim().length < 2) {
+                    return 'Name must be at least 2 characters';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Sender Phone Number
+              TextFormField(
+                controller: _senderPhoneController,
+                decoration: InputDecoration(
+                  labelText: 'Sender Phone Number',
+                  hintText: '+62xxxxxxxxxx',
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (_isDropship && (value == null || value.trim().isEmpty)) {
+                    return 'Please enter sender\'s phone number';
+                  }
+                  if (_isDropship && value != null && value.trim().length < 10) {
+                    return 'Please enter a valid phone number';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
+            ],
+
             // Address Preview
             Container(
               padding: const EdgeInsets.all(12),
@@ -567,13 +678,60 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder(BuildContext context, CartProvider cartProvider, OrdersProvider ordersProvider) async {
-    if (!_formKey.currentState!.validate()) return;
+    // Check authentication first
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to place an order'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all required fields correctly'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Additional validation for dropship
+    if (_isDropship) {
+      if (_senderNameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter sender name for dropship order'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      if (_senderPhoneController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter sender phone number for dropship order'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+    }
 
     setState(() {
       _isProcessing = true;
     });
 
     try {
+      print('CheckoutScreen: Placing order...');
+      print('CheckoutScreen: Cart items: ${cartProvider.items.length}');
+      print('CheckoutScreen: Total amount: ${cartProvider.total}');
+      print('CheckoutScreen: User authenticated: ${authProvider.isAuthenticated}');
+
       final order = await ordersProvider.createOrder(
         cartItems: cartProvider.items,
         shippingAddress: _receiverAddressController.text.trim(),
@@ -582,9 +740,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         receiverName: _receiverNameController.text.trim(),
         receiverPhone: _receiverPhoneController.text.trim(),
         courierInfo: _selectedCourier ?? '',
+        isDropship: _isDropship,
+        senderName: _isDropship ? _senderNameController.text.trim() : null,
+        senderPhone: _isDropship ? _senderPhoneController.text.trim() : null,
       );
 
       if (order != null && mounted) {
+        print('CheckoutScreen: Order created successfully: ${order.orderNumber}');
+
         // Clear cart
         await cartProvider.clearCart();
 
@@ -600,21 +763,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // Navigate to order details or home
         context.go('/home');
       } else {
+        print('CheckoutScreen: Order creation failed');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(ordersProvider.error ?? 'Failed to place order'),
+              content: Text(ordersProvider.error ?? 'Failed to place order. Please try again.'),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
             ),
           );
         }
       }
     } catch (e) {
+      print('CheckoutScreen: Error placing order: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text('Error placing order: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

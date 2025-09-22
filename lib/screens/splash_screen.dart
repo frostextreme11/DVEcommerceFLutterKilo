@@ -16,6 +16,8 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _bounceAnimation;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -40,6 +42,22 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.elasticOut,
+    ));
+
+    _bounceAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.bounceOut,
+    ));
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
     ));
 
     _animationController.forward();
@@ -114,25 +132,41 @@ class _SplashScreenState extends State<SplashScreen>
                     opacity: _fadeAnimation,
                     child: ScaleTransition(
                       scale: _scaleAnimation,
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(context).primaryColor,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(context).primaryColor.withOpacity(0.3),
-                              blurRadius: 20,
-                              spreadRadius: 5,
+                      child: AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _bounceAnimation.value,
+                            child: Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Theme.of(context).primaryColor,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: AnimatedBuilder(
+                                animation: _pulseAnimation,
+                                builder: (context, child) {
+                                  return Transform.scale(
+                                    scale: _pulseAnimation.value,
+                                    child: const Icon(
+                                      Icons.shopping_bag,
+                                      color: Colors.white,
+                                      size: 60,
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.shopping_bag,
-                          color: Colors.white,
-                          size: 60,
-                        ),
+                          );
+                        },
                       ),
                     ),
                   );
@@ -161,15 +195,21 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                         ),
                         const SizedBox(height: 16),
-                        SizedBox(
-                          width: 40,
-                          height: 4,
-                          child: LinearProgressIndicator(
-                            backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Theme.of(context).primaryColor,
-                            ),
-                          ),
+                        AnimatedBuilder(
+                          animation: _animationController,
+                          builder: (context, child) {
+                            return SizedBox(
+                              width: 40,
+                              height: 4,
+                              child: LinearProgressIndicator(
+                                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Theme.of(context).primaryColor,
+                                ),
+                                value: _fadeAnimation.value,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

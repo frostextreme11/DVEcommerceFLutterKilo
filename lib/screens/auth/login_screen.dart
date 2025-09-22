@@ -20,6 +20,8 @@ class _LoginScreenState extends State<LoginScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _bounceAnimation;
 
   bool _isEmailLogin = false;
 
@@ -46,6 +48,22 @@ class _LoginScreenState extends State<LoginScreen>
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeOut,
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.elasticOut,
+    ));
+
+    _bounceAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.bounceOut,
     ));
 
     _animationController.forward();
@@ -262,42 +280,70 @@ class _LoginScreenState extends State<LoginScreen>
                         position: _slideAnimation,
                         child: Column(
                           children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Theme.of(context).primaryColor,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Theme.of(context).primaryColor.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    spreadRadius: 5,
+                            AnimatedBuilder(
+                              animation: _animationController,
+                              builder: (context, child) {
+                                return Transform.scale(
+                                  scale: _scaleAnimation.value,
+                                  child: Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Theme.of(context).primaryColor,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                          blurRadius: 20,
+                                          spreadRadius: 5,
+                                        ),
+                                      ],
+                                    ),
+                                    child: AnimatedBuilder(
+                                      animation: _bounceAnimation,
+                                      builder: (context, child) {
+                                        return Transform.scale(
+                                          scale: 0.8 + (_bounceAnimation.value * 0.2),
+                                          child: const Icon(
+                                            Icons.shopping_bag,
+                                            color: Colors.white,
+                                            size: 50,
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.shopping_bag,
-                                color: Colors.white,
-                                size: 50,
-                              ),
+                                );
+                              },
                             ),
                             const SizedBox(height: 24),
-                            Text(
-                              'Welcome to Dalanova',
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Your premium Muslim fashion destination',
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                              textAlign: TextAlign.center,
+                            AnimatedBuilder(
+                              animation: _animationController,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, _slideAnimation.value.dy * 20),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'Welcome to Dalanova',
+                                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Your premium Muslim fashion destination',
+                                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -321,30 +367,50 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Row(
                             children: [
                               Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () => setState(() => _isEmailLogin = false),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: !_isEmailLogin ? Theme.of(context).primaryColor : Colors.grey[300],
-                                    foregroundColor: !_isEmailLogin ? Colors.white : Colors.black,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                  child: ElevatedButton(
+                                    onPressed: () => setState(() => _isEmailLogin = false),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: !_isEmailLogin ? Theme.of(context).primaryColor : Colors.grey[300],
+                                      foregroundColor: !_isEmailLogin ? Colors.white : Colors.black,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: AnimatedDefaultTextStyle(
+                                      duration: const Duration(milliseconds: 200),
+                                      style: TextStyle(
+                                        fontWeight: !_isEmailLogin ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                      child: const Text('Google'),
                                     ),
                                   ),
-                                  child: const Text('Google'),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () => setState(() => _isEmailLogin = true),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isEmailLogin ? Theme.of(context).primaryColor : Colors.grey[300],
-                                    foregroundColor: _isEmailLogin ? Colors.white : Colors.black,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                  child: ElevatedButton(
+                                    onPressed: () => setState(() => _isEmailLogin = true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: _isEmailLogin ? Theme.of(context).primaryColor : Colors.grey[300],
+                                      foregroundColor: _isEmailLogin ? Colors.white : Colors.black,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: AnimatedDefaultTextStyle(
+                                      duration: const Duration(milliseconds: 200),
+                                      style: TextStyle(
+                                        fontWeight: _isEmailLogin ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                      child: const Text('Email'),
                                     ),
                                   ),
-                                  child: const Text('Email'),
                                 ),
                               ),
                             ],

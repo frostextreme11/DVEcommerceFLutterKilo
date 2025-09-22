@@ -32,6 +32,30 @@ class PrintService {
     return pdf.save();
   }
 
+  /// Generate PDF for delivery addresses with new format
+  static Future<Uint8List> generateDeliveryAddressPdfNew(List<Order> orders) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(15),
+        header: (context) => _buildHeader(),
+        build: (context) => [
+          pw.SizedBox(height: 10),
+          ...orders.map((order) => pw.Container(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: _buildOrderDeliveryLayoutNew(order),
+            ),
+          )),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
   /// Build header for each page
   static pw.Widget _buildHeader() {
     return pw.Container(
@@ -143,9 +167,155 @@ class PrintService {
     ];
   }
 
+  /// Generate print layout for delivery addresses with new format
+  static List<pw.Widget> _buildOrderDeliveryLayoutNew(Order order) {
+    final totalQuantity = order.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    final senderName = order.isDropship ? (order.senderName ?? 'Dropship') : 'Dalanova';
+    final senderPhone = order.isDropship ? (order.senderPhone ?? 'No phone') : '0823-1854-9875';
+
+    return [
+      // Order container - keeps entire order together
+      pw.Container(
+        padding: const pw.EdgeInsets.all(8),
+        margin: const pw.EdgeInsets.only(bottom: 8),
+        decoration: const pw.BoxDecoration(
+          border: pw.Border(
+            bottom: pw.BorderSide(width: 1, color: PdfColors.grey300),
+          ),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            // Header line
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    'Penerima: ${order.receiverName ?? 'No name'}',
+                    style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                  ),
+                ),
+                pw.Text(
+                  'Order ID: ${order.orderNumber}',
+                  style: pw.TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+
+            // Phone and courier info
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    'No HP: ${order.receiverPhone ?? 'No phone'}',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
+                ),
+                pw.Expanded(
+                  child: pw.Text(
+                    'Ekspedisi: ${order.courierInfo ?? 'No courier'}',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+
+            // Address
+            pw.Container(
+              width: double.infinity,
+              child: pw.Text(
+                'Alamat: ${order.shippingAddress}',
+                style: pw.TextStyle(fontSize: 10),
+              ),
+            ),
+            pw.SizedBox(height: 6),
+
+            // Sender info
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    'Pengirim: $senderName',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
+                ),
+                pw.Expanded(
+                  child: pw.Text(
+                    'Pengirim: $senderName',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    '',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
+                ),
+                pw.Expanded(
+                  child: pw.Text(
+                    'No Hp: $senderPhone',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+
+            // Total items
+            pw.Text(
+              'Total Barang: $totalQuantity',
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+
+            // Order items list - compact format
+            pw.Wrap(
+              spacing: 4,
+              runSpacing: 2,
+              children: order.items.map((item) => pw.Text(
+                '${item.productName}=(${item.quantity})',
+                style: pw.TextStyle(fontSize: 9),
+              )).toList(),
+            ),
+            pw.SizedBox(height: 6),
+
+            // Separator line
+            pw.Container(
+              width: double.infinity,
+              height: 1,
+              color: PdfColors.grey400,
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
   /// Print delivery addresses directly to printer
   static Future<void> printDeliveryAddresses(List<Order> orders) async {
     final pdfData = await generateDeliveryAddressPdf(orders);
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdfData,
+      format: PdfPageFormat.a4,
+    );
+  }
+
+  /// Print delivery addresses with new format directly to printer
+  static Future<void> printDeliveryAddressesNew(List<Order> orders) async {
+    final pdfData = await generateDeliveryAddressPdfNew(orders);
 
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdfData,
@@ -163,9 +333,34 @@ class PrintService {
     );
   }
 
+  /// Save delivery addresses with new format as PDF file
+  static Future<void> saveDeliveryAddressesAsPdfNew(List<Order> orders, String filename) async {
+    final pdfData = await generateDeliveryAddressPdfNew(orders);
+
+    await Printing.sharePdf(
+      bytes: pdfData,
+      filename: filename,
+    );
+  }
+
   /// Show print preview dialog
   static Future<void> showPrintPreview(BuildContext context, List<Order> orders) async {
     final pdfData = await generateDeliveryAddressPdf(orders);
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PrintPreviewScreen(
+          pdfData: pdfData,
+          orders: orders,
+        ),
+      ),
+    );
+  }
+
+  /// Show print preview dialog with new format
+  static Future<void> showPrintPreviewNew(BuildContext context, List<Order> orders) async {
+    final pdfData = await generateDeliveryAddressPdfNew(orders);
 
     await Navigator.push(
       context,

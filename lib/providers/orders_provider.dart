@@ -115,6 +115,9 @@ class OrdersProvider extends ChangeNotifier {
     String? receiverName,
     String? receiverPhone,
     required String courierInfo,
+    bool isDropship = false,
+    String? senderName,
+    String? senderPhone,
   }) async {
     _isLoading = true;
     _error = null;
@@ -148,6 +151,9 @@ class OrdersProvider extends ChangeNotifier {
         'notes': notes,
         'receiver_name': receiverName,
         'receiver_phone': receiverPhone,
+        'is_dropship': isDropship,
+        'sender_name': senderName,
+        'sender_phone': senderPhone,
       };
 
       // Insert order
@@ -204,6 +210,9 @@ class OrdersProvider extends ChangeNotifier {
         notes: notes,
         receiverName: receiverName,
         receiverPhone: receiverPhone,
+        isDropship: isDropship,
+        senderName: senderName,
+        senderPhone: senderPhone,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         items: orderItemsObjects,

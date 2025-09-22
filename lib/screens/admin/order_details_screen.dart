@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/admin_orders_provider.dart';
 import '../../models/order.dart';
 import '../../widgets/custom_button.dart';
+import '../../services/print_service.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   final Order order;
@@ -76,6 +77,41 @@ class OrderDetailsScreen extends StatelessWidget {
                     _buildInfoRow('Phone', order.receiverPhone ?? 'N/A'),
                     _buildInfoRow('Address', order.shippingAddress),
                     if (order.notes != null) _buildInfoRow('Notes', order.notes!),
+
+                    // Dropship Information
+                    if (order.isDropship) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          border: Border.all(color: Colors.orange),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.local_shipping, color: Colors.orange, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Dropship Order',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            _buildInfoRow('Sender Name', order.senderName ?? 'N/A'),
+                            _buildInfoRow('Sender Phone', order.senderPhone ?? 'N/A'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -178,26 +214,54 @@ class OrderDetailsScreen extends StatelessWidget {
             // Action Buttons
             Consumer<AdminOrdersProvider>(
               builder: (context, provider, child) {
-                return Row(
+                return Column(
                   children: [
-                    Expanded(
-                      child: CustomButton(
-                        text: 'Update Status',
-                        onPressed: () {
-                          _showStatusUpdateDialog(context);
-                        },
-                        backgroundColor: Theme.of(context).primaryColor,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Update Status',
+                            onPressed: () {
+                              _showStatusUpdateDialog(context);
+                            },
+                            backgroundColor: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Update Courier',
+                            onPressed: () {
+                              _showCourierUpdateDialog(context);
+                            },
+                            backgroundColor: Colors.orange,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: CustomButton(
-                        text: 'Update Courier',
-                        onPressed: () {
-                          _showCourierUpdateDialog(context);
-                        },
-                        backgroundColor: Colors.orange,
-                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Print Address',
+                            onPressed: () {
+                              _printDeliveryAddress(context);
+                            },
+                            backgroundColor: Colors.green,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Print Preview',
+                            onPressed: () {
+                              _showPrintPreview(context);
+                            },
+                            backgroundColor: Colors.blue,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 );
@@ -527,5 +591,43 @@ class OrderDetailsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _printDeliveryAddress(BuildContext context) async {
+    try {
+      await PrintService.printDeliveryAddressesNew([order]);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Delivery address sent to printer'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error printing: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPrintPreview(BuildContext context) async {
+    try {
+      await PrintService.showPrintPreviewNew(context, [order]);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error showing preview: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

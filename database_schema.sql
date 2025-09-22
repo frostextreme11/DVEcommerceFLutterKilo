@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS public.kl_orders (
     receiver_phone TEXT,
     additional_costs DECIMAL(10,2) DEFAULT 0 CHECK (additional_costs >= 0),
     additional_costs_notes TEXT,
+    is_dropship BOOLEAN NOT NULL DEFAULT false,
+    sender_name TEXT,
+    sender_phone TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
