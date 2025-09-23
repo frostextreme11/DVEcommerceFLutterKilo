@@ -117,12 +117,10 @@ class PrintService {
                     style: pw.TextStyle(fontSize: 10),
                   ),
                 ),
-                pw.Expanded(
-                  child: pw.Text(
+                pw.Text(
                     'Ekspedisi: ${order.courierInfo ?? 'No courier'}',
                     style: pw.TextStyle(fontSize: 10),
                   ),
-                ),
               ],
             ),
             pw.SizedBox(height: 6),
@@ -214,12 +212,10 @@ class PrintService {
                     style: pw.TextStyle(fontSize: 10),
                   ),
                 ),
-                pw.Expanded(
-                  child: pw.Text(
+                pw.Text(
                     'Ekspedisi: ${order.courierInfo ?? 'No courier'}',
                     style: pw.TextStyle(fontSize: 10),
                   ),
-                ),
               ],
             ),
             pw.SizedBox(height: 6),
@@ -240,16 +236,14 @@ class PrintService {
               children: [
                 pw.Expanded(
                   child: pw.Text(
-                    'Pengirim: $senderName',
+                    ' ',
                     style: pw.TextStyle(fontSize: 10),
                   ),
                 ),
-                pw.Expanded(
-                  child: pw.Text(
+                pw.Text(
                     'Pengirim: $senderName',
                     style: pw.TextStyle(fontSize: 10),
                   ),
-                ),
               ],
             ),
             pw.SizedBox(height: 6),
@@ -263,11 +257,9 @@ class PrintService {
                     style: pw.TextStyle(fontSize: 10),
                   ),
                 ),
-                pw.Expanded(
-                  child: pw.Text(
+                pw.Text(
                     'No Hp: $senderPhone',
                     style: pw.TextStyle(fontSize: 10),
-                  ),
                 ),
               ],
             ),
