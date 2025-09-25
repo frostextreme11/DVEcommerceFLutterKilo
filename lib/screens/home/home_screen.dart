@@ -205,7 +205,7 @@ class _HomeContentState extends State<HomeContent> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Discover premium Muslim fashion',
+                              'Discover premium Dalanova',
                               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                 color: Colors.white.withValues(alpha: 0.9),
                               ),
@@ -277,7 +277,7 @@ class _HomeContentState extends State<HomeContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
                   child: Text(
                     'Shop by Category',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -307,7 +307,7 @@ class _HomeContentState extends State<HomeContent> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).cardColor,
+                        backgroundColor: isLuxury? Theme.of(context).primaryColor : Theme.of(context).cardColor,
                         foregroundColor: Theme.of(context).colorScheme.onSurface,
                         elevation: 2,
                         shadowColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
@@ -326,7 +326,7 @@ class _HomeContentState extends State<HomeContent> {
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                                 color: isLuxury
-                                  ? const Color(0xFFD4AF37) // Gold color for luxury theme
+                                  ? const Color.fromARGB(255, 228, 181, 29) // Gold color for luxury theme
                                   : Theme.of(context).primaryColor, // Dark brown for other themes
                               ),
                             ),
@@ -339,15 +339,15 @@ class _HomeContentState extends State<HomeContent> {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: isLuxury
-                                ? const Color(0xFFD4AF37).withValues(alpha: 0.1) // Light gold background
+                                ? const Color.fromARGB(255, 228, 181, 29).withValues(alpha: 0.1) // Light gold background
                                 : Theme.of(context).primaryColor.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              Icons.category,
+                              Icons.shopping_bag,
                               size: 24,
                               color: isLuxury
-                                ? const Color(0xFFD4AF37) // Gold color for luxury theme
+                                ? const Color.fromARGB(255, 228, 181, 29) // Gold color for luxury theme
                                 : Theme.of(context).primaryColor, // Dark brown for other themes
                             ),
                           ),
