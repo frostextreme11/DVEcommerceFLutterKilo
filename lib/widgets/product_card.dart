@@ -89,7 +89,7 @@ class ProductCard extends StatelessWidget {
                         if (product.isFeatured)
                           _buildBadge('New', Colors.blue),
                         if (product.hasDiscount)
-                          _buildBadge('${product.discountPercentage?.toInt()}%', Colors.red),
+                          _buildBadge('${product.discountPercentage?.toInt() ?? ((product.price - product.discountPrice!) / product.price * 100).round()}%', Colors.red),
                       ],
                     ),
                   ),

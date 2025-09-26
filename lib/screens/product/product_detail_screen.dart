@@ -101,7 +101,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           if (widget.product.isFeatured)
                             _buildBadge('Featured', Colors.blue),
                           if (widget.product.hasDiscount)
-                            _buildBadge('${widget.product.discountPercentage?.toInt()}% OFF', Colors.red),
+                            _buildBadge('${widget.product.discountPercentage?.toInt() ?? ((widget.product.price - widget.product.discountPrice!) / widget.product.price * 100).round()}% OFF', Colors.red),
                         ],
                       ),
                     ),
