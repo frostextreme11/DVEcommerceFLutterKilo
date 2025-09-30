@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../providers/orders_provider.dart';
 import '../../models/order.dart';
 
@@ -36,11 +37,21 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
   Widget build(BuildContext context) {
     final ordersProvider = Provider.of<OrdersProvider>(context);
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate to home screen instead of going back
+        context.go('/home');
+        return false; // Prevent default back behavior
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Order History'),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -69,6 +80,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
           ]),
         ],
       ),
+      )
     );
   }
 

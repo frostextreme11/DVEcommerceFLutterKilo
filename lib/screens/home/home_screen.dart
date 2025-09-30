@@ -162,14 +162,14 @@ class _HomeContentState extends State<HomeContent> {
         controller: _scrollController,
         slivers: [
           // Search and Filter Widget
-          SliverToBoxAdapter(
-            child: const SearchFilterWidget(),
-          ),
+          // SliverToBoxAdapter(
+          //   child: const SearchFilterWidget(),
+          // ),
 
           // Welcome Banner
           SliverToBoxAdapter(
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(

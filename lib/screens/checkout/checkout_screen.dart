@@ -77,24 +77,49 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final ordersProvider = Provider.of<OrdersProvider>(context);
 
     if (cartProvider.items.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Checkout'),
-          backgroundColor: Theme.of(context).primaryColor,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: Text('Your cart is empty'),
+      return PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (!didPop) {
+            // Navigate back to cart screen when cart is empty
+            context.go('/cart');
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Checkout'),
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.go('/cart'),
+            ),
+          ),
+          body: const Center(
+            child: Text('Your cart is empty'),
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Checkout'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-      ),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Show confirmation dialog before leaving checkout
+          context.go('/cart');
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Checkout'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _handleBackPress(context),
+          ),
+        ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -160,6 +185,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         ),
       ),
+      )
     );
   }
 
@@ -675,6 +701,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       ),
     );
+  }
+
+  Future<bool> _showExitConfirmationDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Leave Checkout?'),
+          content: const Text('Are you sure you want to leave? Your checkout progress will be lost.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Leave'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
+
+  void _handleBackPress(BuildContext context) async {
+    final shouldPop = await _showExitConfirmationDialog(context);
+    if (shouldPop) {
+      context.go('/cart');
+    }
   }
 
   Future<void> _placeOrder(BuildContext context, CartProvider cartProvider, OrdersProvider ordersProvider) async {

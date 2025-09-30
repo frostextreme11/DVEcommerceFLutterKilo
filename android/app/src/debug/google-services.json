@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "774195136111",
+    "project_id": "dalanovaeccomercekl",
+    "storage_bucket": "dalanovaeccomercekl.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:774195136111:android:037554a78dfad14de12f9a",
+        "android_client_info": {
+          "package_name": "com.example.dalanovaecomercekilo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoxXSl5k2MJ5sFvMVxJF1c_bYLqEI25Ow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

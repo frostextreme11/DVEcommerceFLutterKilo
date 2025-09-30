@@ -5,10 +5,110 @@ import '../../models/order.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/print_service.dart';
 
-class OrderDetailsScreen extends StatelessWidget {
+class OrderDetailsScreen extends StatefulWidget {
+  final Order? order;
+  final String? orderId;
+
+  const OrderDetailsScreen({Key? key, this.order, this.orderId}) : super(key: key);
+
+  @override
+  State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
+  Order? _order;
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.order != null) {
+      _order = widget.order;
+    } else if (widget.orderId != null) {
+      _loadOrderById(widget.orderId!);
+    }
+  }
+
+  Future<void> _loadOrderById(String orderId) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final adminOrdersProvider = context.read<AdminOrdersProvider>();
+      _order = await adminOrdersProvider.getOrderById(orderId);
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load order: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Order Details'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Order Details'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_error!),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_order == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Order Details'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('Order not found'),
+        ),
+      );
+    }
+
+    return _OrderDetailsContent(order: _order!);
+  }
+}
+
+class _OrderDetailsContent extends StatelessWidget {
   final Order order;
 
-  const OrderDetailsScreen({Key? key, required this.order}) : super(key: key);
+  const _OrderDetailsContent({required this.order});
 
   @override
   Widget build(BuildContext context) {

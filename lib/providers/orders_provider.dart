@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/order.dart';
 import '../models/product.dart';
+import '../models/user.dart';
 import '../providers/cart_provider.dart';
+import '../providers/admin_notification_provider.dart';
+import '../services/notification_service.dart';
 
 class OrdersProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -222,6 +225,9 @@ class OrdersProvider extends ChangeNotifier {
       _orders.insert(0, order);
       _isInitialized = true;
 
+      // Send notification to admin
+      await _sendNotificationToAdmin(order, cartItems);
+
       _isLoading = false;
       notifyListeners();
 
@@ -356,5 +362,65 @@ class OrdersProvider extends ChangeNotifier {
   bool shouldLoadOrders() {
     final currentUser = _supabase.auth.currentUser;
     return currentUser != null && !_isInitialized && !_isLoading;
+  }
+
+  Future<void> _sendNotificationToAdmin(Order order, List<CartItem> cartItems) async {
+    try {
+      // Get customer information
+      final customerResponse = await _supabase
+          .from('kl_users')
+          .select('full_name')
+          .eq('id', order.userId)
+          .single();
+
+      final customerName = customerResponse['full_name'] ?? 'Unknown Customer';
+
+      // Calculate total quantity
+      final totalQuantity = cartItems.fold<int>(
+        0,
+        (sum, item) => sum + item.quantity,
+      );
+
+      // Get admin FCM tokens
+      final adminTokensResponse = await _supabase
+          .from('kl_admin_fcm_tokens')
+          .select('fcm_token');
+
+      final adminTokens = (adminTokensResponse as List)
+          .map((token) => token['fcm_token'] as String)
+          .toList();
+
+      // Send notification to each admin
+      for (final adminToken in adminTokens) {
+        try {
+          // Use the notification service to send push notification
+          await NotificationService().sendOrderNotificationToAdmin(
+            adminToken: adminToken,
+            customerName: customerName,
+            quantity: totalQuantity,
+            totalPrice: order.totalAmount,
+            orderId: order.id,
+            orderDate: order.createdAt,
+          );
+
+          // Also add to admin notifications table
+          final adminNotificationProvider = AdminNotificationProvider();
+          await adminNotificationProvider.addNotification(
+            orderId: order.id,
+            customerName: customerName,
+            quantity: totalQuantity,
+            totalPrice: order.totalAmount,
+            orderDate: order.createdAt,
+          );
+        } catch (e) {
+          print('Error sending notification to admin $adminToken: $e');
+        }
+      }
+
+      print('OrdersProvider: Notifications sent to ${adminTokens.length} admin(s)');
+    } catch (e) {
+      print('Error sending notifications to admin: $e');
+      // Don't throw error here as order creation should still succeed
+    }
   }
 }

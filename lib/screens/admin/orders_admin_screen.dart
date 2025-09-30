@@ -20,7 +20,14 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      context.read<AdminOrdersProvider>().setSearchQuery(_searchController.text);
+      context.read<AdminOrdersProvider>().setSearchQuery(
+        _searchController.text,
+      );
+    });
+
+    // Load orders when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AdminOrdersProvider>().loadAllOrders();
     });
   }
 
@@ -48,13 +55,18 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: 'Search orders...',
-                          prefixIcon: const Icon(Icons.search, color: Colors.white),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.white,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).brightness == Brightness.dark
+                          fillColor:
+                              Theme.of(context).brightness == Brightness.dark
                               ? Colors.grey[800]
                               : Colors.white,
                           hintStyle: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
                                 ? Colors.grey[400]
                                 : Colors.grey[600],
                           ),
@@ -76,7 +88,10 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                     children: [
                       _buildCourierFilterButton('All Orders', null),
                       const SizedBox(width: 8),
-                      _buildCourierFilterButton('Resi Otomatis', 'resi_otomatis'),
+                      _buildCourierFilterButton(
+                        'Resi Otomatis',
+                        'resi_otomatis',
+                      ),
                       const SizedBox(width: 8),
                       _buildDateFilterButton(),
                       const SizedBox(width: 8),
@@ -127,9 +142,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                   final orders = provider.filteredOrders;
 
                   if (orders.isEmpty) {
-                    return const Center(
-                      child: Text('No orders found'),
-                    );
+                    return const Center(child: Text('No orders found'));
                   }
 
                   return ListView.builder(
@@ -160,11 +173,14 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
           ),
           child: DropdownButton<OrderStatus?>(
             value: provider.selectedStatus,
-            hint: Text('Status', style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[300]
-                  : Colors.black54,
-            )),
+            hint: Text(
+              'Status',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[300]
+                    : Colors.black54,
+              ),
+            ),
             underline: const SizedBox(),
             dropdownColor: Theme.of(context).brightness == Brightness.dark
                 ? Colors.grey[800]
@@ -172,20 +188,26 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             items: [
               DropdownMenuItem<OrderStatus?>(
                 value: null,
-                child: Text('All Status', style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[300]
-                      : Colors.black,
-                )),
+                child: Text(
+                  'All Status',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[300]
+                        : Colors.black,
+                  ),
+                ),
               ),
               ...OrderStatus.values.map((status) {
                 return DropdownMenuItem<OrderStatus?>(
                   value: status,
-                  child: Text(status.displayName, style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[300]
-                        : Colors.black,
-                  )),
+                  child: Text(
+                    status.displayName,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[300]
+                          : Colors.black,
+                    ),
+                  ),
                 );
               }),
             ],
@@ -208,8 +230,12 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             provider.setCourierFilter(filter);
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
-            foregroundColor: isSelected ? Theme.of(context).primaryColor : Colors.white,
+            backgroundColor: isSelected
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -230,8 +256,12 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             _showDateRangePicker(context);
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: hasDateFilter ? Colors.white : Colors.white.withOpacity(0.3),
-            foregroundColor: hasDateFilter ? Theme.of(context).primaryColor : Colors.white,
+            backgroundColor: hasDateFilter
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: hasDateFilter
+                ? Theme.of(context).primaryColor
+                : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -259,8 +289,12 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         return ElevatedButton.icon(
           onPressed: hasOrders ? () => _handlePrintNew() : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
-            foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
+            backgroundColor: hasOrders
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: hasOrders
+                ? Theme.of(context).primaryColor
+                : Colors.white.withOpacity(0.5),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -281,8 +315,12 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         return ElevatedButton.icon(
           onPressed: hasOrders ? () => _handlePdfExport() : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
-            foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
+            backgroundColor: hasOrders
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: hasOrders
+                ? Theme.of(context).primaryColor
+                : Colors.white.withOpacity(0.5),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -303,8 +341,12 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         return ElevatedButton.icon(
           onPressed: hasOrders ? () => _handlePrintNew() : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: hasOrders ? Colors.white : Colors.white.withOpacity(0.3),
-            foregroundColor: hasOrders ? Theme.of(context).primaryColor : Colors.white.withOpacity(0.5),
+            backgroundColor: hasOrders
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: hasOrders
+                ? Theme.of(context).primaryColor
+                : Colors.white.withOpacity(0.5),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -404,10 +446,16 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                   Text(
                     order.courierInfo!,
                     style: TextStyle(
-                      color: order.courierInfo!.toLowerCase().contains('resi otomatis')
+                      color:
+                          order.courierInfo!.toLowerCase().contains(
+                            'resi otomatis',
+                          )
                           ? Colors.orange
                           : Colors.grey[600],
-                      fontWeight: order.courierInfo!.toLowerCase().contains('resi otomatis')
+                      fontWeight:
+                          order.courierInfo!.toLowerCase().contains(
+                            'resi otomatis',
+                          )
                           ? FontWeight.bold
                           : FontWeight.normal,
                     ),
@@ -420,10 +468,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             // Date
             Text(
               'Created: ${order.createdAt.toString().substring(0, 16)}',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
 
             const SizedBox(height: 12),
@@ -535,12 +580,12 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
           children: OrderStatus.values.map((status) {
             return ListTile(
               title: Text(status.displayName),
-              leading: Icon(
-                Icons.circle,
-                color: status.color,
-              ),
+              leading: Icon(Icons.circle, color: status.color),
               onTap: () {
-                context.read<AdminOrdersProvider>().updateOrderStatus(order.id, status);
+                context.read<AdminOrdersProvider>().updateOrderStatus(
+                  order.id,
+                  status,
+                );
                 Navigator.pop(context);
               },
             );
@@ -577,7 +622,10 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<AdminOrdersProvider>().updateCourierInfo(order.id, controller.text);
+              context.read<AdminOrdersProvider>().updateCourierInfo(
+                order.id,
+                controller.text,
+              );
               Navigator.pop(context);
             },
             child: const Text('Update'),
@@ -592,7 +640,9 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Order'),
-        content: Text('Are you sure you want to delete order "${order.orderNumber}"?'),
+        content: Text(
+          'Are you sure you want to delete order "${order.orderNumber}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

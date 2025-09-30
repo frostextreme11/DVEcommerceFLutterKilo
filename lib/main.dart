@@ -12,6 +12,8 @@ import 'providers/admin_products_provider.dart';
 import 'providers/admin_orders_provider.dart';
 import 'providers/admin_users_provider.dart';
 import 'providers/admin_categories_provider.dart';
+import 'providers/admin_notification_provider.dart';
+import 'services/notification_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -26,6 +28,7 @@ import 'screens/admin/product_form_screen.dart';
 import 'screens/admin/order_details_screen.dart';
 import 'screens/admin/user_form_screen.dart';
 import 'screens/admin/category_form_screen.dart';
+import 'screens/admin/admin_notifications_screen.dart';
 import 'screens/checkout/checkout_screen.dart';
 import 'screens/orders/order_history_screen.dart';
 import 'screens/splash_screen.dart';
@@ -50,6 +53,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AdminOrdersProvider()),
         ChangeNotifierProvider(create: (_) => AdminUsersProvider()),
         ChangeNotifierProvider(create: (_) => AdminCategoriesProvider()),
+        ChangeNotifierProvider(create: (_) => AdminNotificationProvider()),
       ],
       child: const DalanovaEcommerceApp(),
     ),
@@ -77,30 +81,15 @@ class DalanovaEcommerceApp extends StatelessWidget {
 final GoRouter _router = GoRouter(
   initialLocation: '/splash',
   routes: [
-    GoRoute(
-      path: '/splash',
-      builder: (context, state) => const SplashScreen(),
-    ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
     ),
-    GoRoute(
-      path: '/signup',
-      builder: (context, state) => const SignUpScreen(),
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (context, state) => const HomeScreen(),
-    ),
-    GoRoute(
-      path: '/cart',
-      builder: (context, state) => const CartScreen(),
-    ),
+    GoRoute(path: '/signup', builder: (context, state) => const SignUpScreen()),
+    GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+    GoRoute(path: '/cart', builder: (context, state) => const CartScreen()),
     GoRoute(
       path: '/checkout',
       builder: (context, state) => const CheckoutScreen(),
@@ -140,6 +129,13 @@ final GoRouter _router = GoRouter(
       },
     ),
     GoRoute(
+      path: '/admin/order-details/:orderId',
+      builder: (context, state) {
+        final orderId = state.pathParameters['orderId']!;
+        return OrderDetailsScreen(orderId: orderId);
+      },
+    ),
+    GoRoute(
       path: '/admin/users',
       builder: (context, state) => const UsersAdminScreen(),
     ),
@@ -164,6 +160,10 @@ final GoRouter _router = GoRouter(
         final category = state.extra as dynamic;
         return CategoryFormScreen(category: category);
       },
+    ),
+    GoRoute(
+      path: '/admin/notifications',
+      builder: (context, state) => const AdminNotificationsScreen(),
     ),
   ],
   redirect: (context, state) {

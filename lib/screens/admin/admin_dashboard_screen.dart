@@ -5,6 +5,7 @@ import '../../providers/admin_products_provider.dart';
 import '../../providers/admin_orders_provider.dart';
 import '../../providers/admin_users_provider.dart';
 import '../../providers/admin_categories_provider.dart';
+import '../../providers/admin_notification_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../models/order.dart';
@@ -70,6 +71,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Notifications Button
+          Consumer<AdminNotificationProvider>(
+            builder: (context, notificationProvider, child) {
+              final unreadCount = notificationProvider.unreadCount;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () {
+                      context.push('/admin/notifications');
+                    },
+                    tooltip: 'Notifications',
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           // Theme Settings Button
           IconButton(
             icon: const Icon(Icons.palette),
@@ -110,10 +153,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             icon: Icon(Icons.shopping_cart),
             label: 'Orders',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Users',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
           BottomNavigationBarItem(
             icon: Icon(Icons.category),
             label: 'Categories',
@@ -244,18 +284,12 @@ class DashboardOverviewScreen extends StatelessWidget {
         children: [
           const Text(
             'Admin Dashboard',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Overview of your e-commerce platform',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
           const SizedBox(height: 24),
 
@@ -290,70 +324,90 @@ class DashboardOverviewScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Stats Cards
-          Consumer4<AdminProductsProvider, AdminOrdersProvider, AdminUsersProvider, AdminCategoriesProvider>(
-            builder: (context, productsProvider, ordersProvider, usersProvider, categoriesProvider, child) {
-              final totalProducts = productsProvider.products.length;
-              final totalOrders = ordersProvider.orders.length;
-              final totalUsers = usersProvider.users.length;
-              final totalCategories = categoriesProvider.categories.length;
+          Consumer4<
+            AdminProductsProvider,
+            AdminOrdersProvider,
+            AdminUsersProvider,
+            AdminCategoriesProvider
+          >(
+            builder:
+                (
+                  context,
+                  productsProvider,
+                  ordersProvider,
+                  usersProvider,
+                  categoriesProvider,
+                  child,
+                ) {
+                  final totalProducts = productsProvider.products.length;
+                  final totalOrders = ordersProvider.orders.length;
+                  final totalUsers = usersProvider.users.length;
+                  final totalCategories = categoriesProvider.categories.length;
 
-              final pendingOrders = ordersProvider.getOrdersByStatus(OrderStatus.notPaid).length +
-                                   ordersProvider.getOrdersByStatus(OrderStatus.paid).length;
-              final completedOrders = ordersProvider.getOrdersByStatus(OrderStatus.delivered).length;
-              final activeProducts = productsProvider.products.where((p) => p.isActive).length;
+                  final pendingOrders =
+                      ordersProvider
+                          .getOrdersByStatus(OrderStatus.notPaid)
+                          .length +
+                      ordersProvider.getOrdersByStatus(OrderStatus.paid).length;
+                  final completedOrders = ordersProvider
+                      .getOrdersByStatus(OrderStatus.delivered)
+                      .length;
+                  final activeProducts = productsProvider.products
+                      .where((p) => p.isActive)
+                      .length;
 
-              return GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  _buildStatCard(
-                    context,
-                    'Total Products',
-                    totalProducts.toString(),
-                    Icons.inventory,
-                    Colors.blue,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Active Products',
-                    activeProducts.toString(),
-                    Icons.check_circle,
-                    Colors.green,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Total Orders',
-                    totalOrders.toString(),
-                    Icons.shopping_cart,
-                    Colors.orange,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Pending Orders',
-                    pendingOrders.toString(),
-                    Icons.pending,
-                    Colors.yellow.shade700,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Total Users',
-                    totalUsers.toString(),
-                    Icons.people,
-                    Colors.purple,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Categories',
-                    totalCategories.toString(),
-                    Icons.category,
-                    Colors.teal,
-                  ),
-                ],
-              );
-            },
+                  return GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    children: [
+                      _buildStatCard(
+                        context,
+                        'Total Products',
+                        totalProducts.toString(),
+                        Icons.inventory,
+                        Colors.blue,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Active Products',
+                        activeProducts.toString(),
+                        Icons.check_circle,
+                        Colors.green,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Total Orders',
+                        totalOrders.toString(),
+                        Icons.shopping_cart,
+                        Colors.orange,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Pending Orders',
+                        pendingOrders.toString(),
+                        Icons.pending,
+                        Colors.yellow.shade700,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Total Users',
+                        totalUsers.toString(),
+                        Icons.people,
+                        Colors.purple,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Categories',
+                        totalCategories.toString(),
+                        Icons.category,
+                        Colors.teal,
+                      ),
+                    ],
+                  );
+                },
           ),
 
           const SizedBox(height: 32),
@@ -361,10 +415,7 @@ class DashboardOverviewScreen extends StatelessWidget {
           // Quick Actions
           const Text(
             'Quick Actions',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
@@ -389,7 +440,7 @@ class DashboardOverviewScreen extends StatelessWidget {
                   Icons.category,
                   Colors.teal,
                   () {
-                    context.push('/admin/categories/add'); 
+                    context.push('/admin/categories/add');
                   },
                 ),
               ),
@@ -408,7 +459,8 @@ class DashboardOverviewScreen extends StatelessWidget {
                   Colors.orange,
                   () {
                     // Switch to orders tab
-                    final state = context.findAncestorStateOfType<_AdminDashboardScreenState>();
+                    final state = context
+                        .findAncestorStateOfType<_AdminDashboardScreenState>();
                     state?.setState(() {
                       state._selectedIndex = 2; // Orders tab index
                     });
@@ -424,7 +476,8 @@ class DashboardOverviewScreen extends StatelessWidget {
                   Colors.purple,
                   () {
                     // Switch to users tab
-                    final state = context.findAncestorStateOfType<_AdminDashboardScreenState>();
+                    final state = context
+                        .findAncestorStateOfType<_AdminDashboardScreenState>();
                     state?.setState(() {
                       state._selectedIndex = 3; // Users tab index
                     });
@@ -438,7 +491,13 @@ class DashboardOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 2,
       child: Padding(
@@ -446,11 +505,7 @@ class DashboardOverviewScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
-            ),
+            Icon(icon, size: 32, color: color),
             const SizedBox(height: 8),
             Text(
               value,
@@ -463,10 +518,7 @@ class DashboardOverviewScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -475,7 +527,13 @@ class DashboardOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSalesCard(BuildContext context, String title, String value, IconData icon, Color color) {
+  Widget _buildSalesCard(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 4,
       child: Padding(
@@ -483,11 +541,7 @@ class DashboardOverviewScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
-            ),
+            Icon(icon, size: 32, color: color),
             const SizedBox(height: 8),
             Text(
               value,
@@ -501,10 +555,7 @@ class DashboardOverviewScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ],
@@ -513,16 +564,20 @@ class DashboardOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionButton(BuildContext context, String title, IconData icon, Color color, VoidCallback onPressed) {
+  Widget _buildQuickActionButton(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

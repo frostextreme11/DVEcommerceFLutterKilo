@@ -24,22 +24,35 @@ class AdminOrdersProvider extends ChangeNotifier {
   // Filtered orders based on search, status, courier filter, and date range
   List<Order> get filteredOrders {
     return _orders.where((order) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          order.orderNumber.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          order.shippingAddress.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (order.receiverName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+      final matchesSearch =
+          _searchQuery.isEmpty ||
+          order.orderNumber.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          ) ||
+          order.shippingAddress.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          ) ||
+          (order.receiverName?.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ??
+              false);
 
-      final matchesStatus = _selectedStatus == null ||
-          order.status == _selectedStatus;
+      final matchesStatus =
+          _selectedStatus == null || order.status == _selectedStatus;
 
-      final matchesCourier = _courierFilter == null ||
+      final matchesCourier =
+          _courierFilter == null ||
           _courierFilter == 'all' ||
           (_courierFilter == 'resi_otomatis' &&
-           order.courierInfo?.toLowerCase().contains('resi otomatis') == true);
+              order.courierInfo?.toLowerCase().contains('resi otomatis') ==
+                  true);
 
-      final matchesDate = _dateRange == null ||
+      final matchesDate =
+          _dateRange == null ||
           (order.createdAt.isAfter(_dateRange!.start) &&
-           order.createdAt.isBefore(_dateRange!.end.add(const Duration(days: 1))));
+              order.createdAt.isBefore(
+                _dateRange!.end.add(const Duration(days: 1)),
+              ));
 
       return matchesSearch && matchesStatus && matchesCourier && matchesDate;
     }).toList();
@@ -59,6 +72,20 @@ class AdminOrdersProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('AdminOrdersProvider: Starting to load orders...');
+
+      // Test database connection first
+      try {
+        final testResponse = await _supabase
+            .from('kl_orders')
+            .select('id')
+            .limit(1);
+        print('AdminOrdersProvider: Database connection test successful');
+      } catch (e) {
+        print('AdminOrdersProvider: Database connection test failed: $e');
+        throw Exception('Database connection failed: $e');
+      }
+
       // Load orders
       final ordersResponse = await _supabase
           .from('kl_orders')
@@ -66,29 +93,48 @@ class AdminOrdersProvider extends ChangeNotifier {
           .order('created_at', ascending: false);
 
       final ordersData = ordersResponse as List;
+      print(
+        'AdminOrdersProvider: Found ${ordersData.length} orders in database',
+      );
 
       // Load order items for each order
       final orders = <Order>[];
       for (final orderData in ordersData) {
         final orderId = orderData['id'];
+        print('AdminOrdersProvider: Loading items for order: $orderId');
 
-        final itemsResponse = await _supabase
-            .from('kl_order_items')
-            .select()
-            .eq('order_id', orderId);
+        try {
+          final itemsResponse = await _supabase
+              .from('kl_order_items')
+              .select()
+              .eq('order_id', orderId);
 
-        final items = (itemsResponse as List)
-            .map((item) => OrderItem.fromJson(item))
-            .toList();
+          final items = (itemsResponse as List)
+              .map((item) => OrderItem.fromJson(item))
+              .toList();
 
-        orders.add(Order.fromJson(orderData, items));
+          orders.add(Order.fromJson(orderData, items));
+        } catch (e) {
+          print(
+            'AdminOrdersProvider: Error loading items for order $orderId: $e',
+          );
+          // Still add the order even if items fail to load
+          orders.add(Order.fromJson(orderData, []));
+        }
       }
 
       _orders = orders;
-      print('AdminOrdersProvider: Successfully loaded ${_orders.length} orders');
+      print(
+        'AdminOrdersProvider: Successfully loaded ${_orders.length} orders',
+      );
+
+      if (orders.isEmpty) {
+        print('AdminOrdersProvider: No orders found in database');
+      }
     } catch (e) {
       _error = 'Failed to load orders: ${e.toString()}';
-      print('Error loading orders: $e');
+      print('AdminOrdersProvider: Error loading orders: $e');
+      _orders = []; // Clear orders on error
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -122,7 +168,10 @@ class AdminOrdersProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updatePaymentStatus(String orderId, PaymentStatus newStatus) async {
+  Future<bool> updatePaymentStatus(
+    String orderId,
+    PaymentStatus newStatus,
+  ) async {
     try {
       await _supabase
           .from('kl_orders')
@@ -135,11 +184,15 @@ class AdminOrdersProvider extends ChangeNotifier {
       // Update local order
       final orderIndex = _orders.indexWhere((order) => order.id == orderId);
       if (orderIndex >= 0) {
-        _orders[orderIndex] = _orders[orderIndex].copyWith(paymentStatus: newStatus);
+        _orders[orderIndex] = _orders[orderIndex].copyWith(
+          paymentStatus: newStatus,
+        );
         notifyListeners();
       }
 
-      print('AdminOrdersProvider: Payment status updated successfully: $orderId');
+      print(
+        'AdminOrdersProvider: Payment status updated successfully: $orderId',
+      );
       return true;
     } catch (e) {
       _error = 'Failed to update payment status: ${e.toString()}';
@@ -162,7 +215,9 @@ class AdminOrdersProvider extends ChangeNotifier {
       // Update local order
       final orderIndex = _orders.indexWhere((order) => order.id == orderId);
       if (orderIndex >= 0) {
-        _orders[orderIndex] = _orders[orderIndex].copyWith(courierInfo: courierInfo);
+        _orders[orderIndex] = _orders[orderIndex].copyWith(
+          courierInfo: courierInfo,
+        );
         notifyListeners();
       }
 
@@ -176,7 +231,11 @@ class AdminOrdersProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateAdditionalCosts(String orderId, double additionalCosts, String? additionalCostsNotes) async {
+  Future<bool> updateAdditionalCosts(
+    String orderId,
+    double additionalCosts,
+    String? additionalCostsNotes,
+  ) async {
     try {
       await _supabase
           .from('kl_orders')
@@ -197,7 +256,9 @@ class AdminOrdersProvider extends ChangeNotifier {
         notifyListeners();
       }
 
-      print('AdminOrdersProvider: Additional costs updated successfully: $orderId');
+      print(
+        'AdminOrdersProvider: Additional costs updated successfully: $orderId',
+      );
       return true;
     } catch (e) {
       _error = 'Failed to update additional costs: ${e.toString()}';
@@ -210,16 +271,10 @@ class AdminOrdersProvider extends ChangeNotifier {
   Future<bool> deleteOrder(String orderId) async {
     try {
       // Delete order items first
-      await _supabase
-          .from('kl_order_items')
-          .delete()
-          .eq('order_id', orderId);
+      await _supabase.from('kl_order_items').delete().eq('order_id', orderId);
 
       // Delete order
-      await _supabase
-          .from('kl_orders')
-          .delete()
-          .eq('id', orderId);
+      await _supabase.from('kl_orders').delete().eq('id', orderId);
 
       _orders.removeWhere((order) => order.id == orderId);
       notifyListeners();
@@ -276,9 +331,13 @@ class AdminOrdersProvider extends ChangeNotifier {
 
   // Get orders with "Resi Otomatis" courier info
   List<Order> get ordersWithResiOtomatis {
-    return _orders.where((order) =>
-      order.courierInfo?.toLowerCase().contains('resi otomatis') == true
-    ).toList();
+    return _orders
+        .where(
+          (order) =>
+              order.courierInfo?.toLowerCase().contains('resi otomatis') ==
+              true,
+        )
+        .toList();
   }
 
   // Calculate total sales for current month
@@ -288,10 +347,13 @@ class AdminOrdersProvider extends ChangeNotifier {
     final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
     return _orders
-        .where((order) =>
-            order.createdAt.isAfter(startOfMonth) &&
-            order.createdAt.isBefore(endOfMonth) &&
-            (order.status == OrderStatus.paid || order.status == OrderStatus.delivered))
+        .where(
+          (order) =>
+              order.createdAt.isAfter(startOfMonth) &&
+              order.createdAt.isBefore(endOfMonth) &&
+              (order.status == OrderStatus.paid ||
+                  order.status == OrderStatus.delivered),
+        )
         .fold(0.0, (sum, order) => sum + order.totalAmount);
   }
 
@@ -302,18 +364,24 @@ class AdminOrdersProvider extends ChangeNotifier {
     final endOfYear = DateTime(now.year, 12, 31, 23, 59, 59);
 
     return _orders
-        .where((order) =>
-            order.createdAt.isAfter(startOfYear) &&
-            order.createdAt.isBefore(endOfYear) &&
-            (order.status == OrderStatus.paid || order.status == OrderStatus.delivered))
+        .where(
+          (order) =>
+              order.createdAt.isAfter(startOfYear) &&
+              order.createdAt.isBefore(endOfYear) &&
+              (order.status == OrderStatus.paid ||
+                  order.status == OrderStatus.delivered),
+        )
         .fold(0.0, (sum, order) => sum + order.totalAmount);
   }
 
   // Calculate total sales for all time
   double get totalSales {
     return _orders
-        .where((order) =>
-            order.status == OrderStatus.paid || order.status == OrderStatus.delivered)
+        .where(
+          (order) =>
+              order.status == OrderStatus.paid ||
+              order.status == OrderStatus.delivered,
+        )
         .fold(0.0, (sum, order) => sum + order.totalAmount);
   }
 }
