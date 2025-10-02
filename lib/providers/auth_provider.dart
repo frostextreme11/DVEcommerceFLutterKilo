@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
+import '../services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-      'profile',
-      'openid',
-    ],
-    serverClientId: '350136792509-5skp9610671pa007roroqim6pq441i3m.apps.googleusercontent.com',
+    scopes: ['email', 'profile', 'openid'],
+    serverClientId:
+        '350136792509-5skp9610671pa007roroqim6pq441i3m.apps.googleusercontent.com',
     signInOption: SignInOption.standard,
   );
 
@@ -23,7 +22,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
   bool get isAdmin => _userProfile?['role'] == 'admin';
-  bool get isInitialized => _user != null || _userProfile != null || !_isLoading;
+  bool get isInitialized =>
+      _user != null || _userProfile != null || !_isLoading;
 
   AuthProvider() {
     try {
@@ -59,6 +59,11 @@ class AuthProvider extends ChangeNotifier {
         if (_user != null) {
           print('User authenticated: ${_user?.email}');
           _loadUserProfile();
+
+          // Store FCM token for the authenticated user
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _storeFCMToken();
+          });
         } else {
           print('User signed out');
           _userProfile = null;
@@ -87,7 +92,9 @@ class AuthProvider extends ChangeNotifier {
           .single();
 
       _userProfile = response;
-      print('User profile loaded: ${_userProfile?['full_name']} (${_userProfile?['role']})');
+      print(
+        'User profile loaded: ${_userProfile?['full_name']} (${_userProfile?['role']})',
+      );
       notifyListeners();
     } catch (e) {
       print('Error loading user profile: $e');
@@ -117,19 +124,24 @@ class AuthProvider extends ChangeNotifier {
 
       print('Google Sign-In: User selected: ${googleUser.email}');
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       print('Google Sign-In: Authentication object received');
 
       // Check if we have the required tokens
       if (googleAuth.idToken == null || googleAuth.idToken!.isEmpty) {
         print('Google Sign-In Error: No ID token received');
-        print('Google Sign-In: Available tokens - ID: ${googleAuth.idToken != null}, Access: ${googleAuth.accessToken != null}');
+        print(
+          'Google Sign-In: Available tokens - ID: ${googleAuth.idToken != null}, Access: ${googleAuth.accessToken != null}',
+        );
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
-      print('Google Sign-In: ID token received, length: ${googleAuth.idToken!.length}');
+      print(
+        'Google Sign-In: ID token received, length: ${googleAuth.idToken!.length}',
+      );
       print('Google Sign-In: Attempting to authenticate with Supabase...');
 
       final AuthResponse response = await _supabase.auth.signInWithIdToken(
@@ -138,10 +150,15 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _user = response.user;
-      print('Google Sign-In: Authentication successful for user: ${_user?.email}');
+      print(
+        'Google Sign-In: Authentication successful for user: ${_user?.email}',
+      );
       print('Google Sign-In: User ID: ${_user?.id}');
 
       await _loadUserProfile();
+
+      // Store FCM token for the authenticated user
+      await _storeFCMToken();
 
       _isLoading = false;
       notifyListeners();
@@ -167,6 +184,9 @@ class AuthProvider extends ChangeNotifier {
 
       _user = response.user;
       await _loadUserProfile();
+
+      // Store FCM token for the authenticated user
+      await _storeFCMToken();
 
       _isLoading = false;
       notifyListeners();
@@ -262,7 +282,9 @@ class AuthProvider extends ChangeNotifier {
       _user = session.user;
       print('Session user: ${_user?.email}');
       await _loadUserProfile();
-      print('Refreshed auth state: user=${_user?.email}, profile=${_userProfile != null}, role=${_userProfile?['role']}');
+      print(
+        'Refreshed auth state: user=${_user?.email}, profile=${_userProfile != null}, role=${_userProfile?['role']}',
+      );
     } else {
       _user = null;
       _userProfile = null;
@@ -298,15 +320,49 @@ class AuthProvider extends ChangeNotifier {
       if (phoneNumber != null) updates['phone_number'] = phoneNumber;
       if (fullAddress != null) updates['full_address'] = fullAddress;
 
-      await _supabase
-          .from('kl_users')
-          .update(updates)
-          .eq('id', _user!.id);
+      await _supabase.from('kl_users').update(updates).eq('id', _user!.id);
 
       await _loadUserProfile();
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<void> _storeFCMToken() async {
+    if (_user == null) return;
+
+    try {
+      print('AuthProvider: Storing FCM token for user: ${_user!.id}');
+
+      // Get notification service instance and refresh token
+      final notificationService = NotificationService();
+      await notificationService.initialize();
+      await notificationService.refreshToken();
+
+      final token = notificationService.fcmToken;
+      if (token != null && token.isNotEmpty) {
+        // Store token based on user role
+        if (_userProfile?['role'] == 'admin') {
+          await _supabase.from('kl_admin_fcm_tokens').upsert({
+            'user_id': _user!.id,
+            'fcm_token': token,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, onConflict: 'user_id');
+          print('✅ Admin FCM token stored successfully');
+        } else {
+          await _supabase.from('kl_customer_fcm_tokens').upsert({
+            'user_id': _user!.id,
+            'fcm_token': token,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, onConflict: 'user_id');
+          print('✅ Customer FCM token stored successfully');
+        }
+      } else {
+        print('❌ FCM token is null or empty');
+      }
+    } catch (e) {
+      print('❌ Error storing FCM token: $e');
     }
   }
 }

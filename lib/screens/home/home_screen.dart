@@ -6,6 +6,7 @@ import '../../providers/cart_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/orders_provider.dart';
+import '../../providers/customer_notification_provider.dart';
 import '../../models/order.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/search_filter_widget.dart';
@@ -42,92 +43,135 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final cartProvider = Provider.of<CartProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dalanova'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: () {
-              Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
-            },
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart),
-                onPressed: () => _onItemTapped(2),
-              ),
-              if (cartProvider.itemCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Navigate back to cart screen when cart is empty
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Dalanova'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.brightness_6),
+              onPressed: () {
+                Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).toggleTheme();
+              },
+            ),
+            // Customer Notifications Button
+            Consumer<CustomerNotificationProvider>(
+              builder: (context, notificationProvider, child) {
+                final unreadCount = notificationProvider.unreadCount;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications),
+                      onPressed: () {
+                        context.go('/notifications');
+                      },
                     ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '${cartProvider.itemCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ),
-                      textAlign: TextAlign.center,
+                  ],
+                );
+              },
+            ),
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.shopping_cart),
+                  onPressed: () => _onItemTapped(2),
+                ),
+                if (cartProvider.itemCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '${cartProvider.itemCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authProvider.signOut();
-              if (context.mounted) {
-                GoRouter.of(context).go('/login');
-              }
-            },
-            tooltip: 'Logout',
-          ),
-        ],
-      ),
-      body: _widgetOptions.elementAt(_selectedIndex),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Cart',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Orders',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                await authProvider.signOut();
+                if (context.mounted) {
+                  GoRouter.of(context).go('/login');
+                }
+              },
+              tooltip: 'Logout',
+            ),
+          ],
+        ),
+        body: _widgetOptions.elementAt(_selectedIndex),
+        bottomNavigationBar: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart),
+              label: 'Cart',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long),
+              label: 'Orders',
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: Theme.of(context).primaryColor,
+          unselectedItemColor: Colors.grey,
+          onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed,
+        ),
       ),
     );
   }
@@ -181,7 +225,9 @@ class _HomeContentState extends State<HomeContent> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                    color: Theme.of(
+                      context,
+                    ).primaryColor.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -198,17 +244,19 @@ class _HomeContentState extends State<HomeContent> {
                           children: [
                             Text(
                               'Welcome${authProvider.userProfile?['full_name'] != null ? ', ${authProvider.userProfile!['full_name'].split(' ').first}' : ''}!',
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Discover premium Dalanova',
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
                             ),
                           ],
                         ),
@@ -286,77 +334,115 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                 ),
                 const SizedBox(height: 16),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: productsProvider.categories.length,
-                itemBuilder: (context, index) {
-                  final category = productsProvider.categories[index];
-                  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-                  final isLuxury = themeProvider.currentAppTheme == AppTheme.luxury;
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: productsProvider.categories.length,
+                  itemBuilder: (context, index) {
+                    final category = productsProvider.categories[index];
+                    final themeProvider = Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    );
+                    final isLuxury =
+                        themeProvider.currentAppTheme == AppTheme.luxury;
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => ProductByCategoryScreen(category: category),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ProductByCategoryScreen(category: category),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isLuxury
+                              ? Theme.of(context).primaryColor
+                              : Theme.of(context).cardColor,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onSurface,
+                          elevation: 2,
+                          shadowColor: Theme.of(
+                            context,
+                          ).primaryColor.withValues(alpha: 0.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isLuxury? Theme.of(context).primaryColor : Theme.of(context).cardColor,
-                        foregroundColor: Theme.of(context).colorScheme.onSurface,
-                        elevation: 2,
-                        shadowColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      ),
-                      child: Row(
-                        children: [
-                          // Category Text (Left)
-                          Expanded(
-                            child: Text(
-                              category,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: isLuxury
-                                  ? const Color.fromARGB(255, 228, 181, 29) // Gold color for luxury theme
-                                  : Theme.of(context).primaryColor, // Dark brown for other themes
+                        child: Row(
+                          children: [
+                            // Category Text (Left)
+                            Expanded(
+                              child: Text(
+                                category,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: isLuxury
+                                          ? const Color.fromARGB(
+                                              255,
+                                              228,
+                                              181,
+                                              29,
+                                            ) // Gold color for luxury theme
+                                          : Theme.of(
+                                              context,
+                                            ).primaryColor, // Dark brown for other themes
+                                    ),
                               ),
                             ),
-                          ),
 
-                          const SizedBox(width: 16),
+                            const SizedBox(width: 16),
 
-                          // Category Icon (Right)
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: isLuxury
-                                ? const Color.fromARGB(255, 228, 181, 29).withValues(alpha: 0.1) // Light gold background
-                                : Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
+                            // Category Icon (Right)
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isLuxury
+                                    ? const Color.fromARGB(
+                                        255,
+                                        228,
+                                        181,
+                                        29,
+                                      ).withValues(
+                                        alpha: 0.1,
+                                      ) // Light gold background
+                                    : Theme.of(
+                                        context,
+                                      ).primaryColor.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.shopping_bag,
+                                size: 24,
+                                color: isLuxury
+                                    ? const Color.fromARGB(
+                                        255,
+                                        228,
+                                        181,
+                                        29,
+                                      ) // Gold color for luxury theme
+                                    : Theme.of(
+                                        context,
+                                      ).primaryColor, // Dark brown for other themes
+                              ),
                             ),
-                            child: Icon(
-                              Icons.shopping_bag,
-                              size: 24,
-                              color: isLuxury
-                                ? const Color.fromARGB(255, 228, 181, 29) // Gold color for luxury theme
-                                : Theme.of(context).primaryColor, // Dark brown for other themes
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -381,20 +467,27 @@ class _HomeContentState extends State<HomeContent> {
                       Icon(
                         Icons.inventory_2_outlined,
                         size: 64,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'No products found',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Try adjusting your search or filters',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -408,7 +501,13 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildQuickStat(BuildContext context, String value, String label, IconData icon, Color color) {
+  Widget _buildQuickStat(
+    BuildContext context,
+    String value,
+    String label,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       width: 100,
       padding: const EdgeInsets.all(12),
@@ -437,7 +536,9 @@ class _HomeContentState extends State<HomeContent> {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -445,7 +546,6 @@ class _HomeContentState extends State<HomeContent> {
       ),
     );
   }
-
 }
 
 class SearchContent extends StatelessWidget {
@@ -460,25 +560,22 @@ class SearchContent extends StatelessWidget {
         await productsProvider.refreshProducts();
       },
       child: CustomScrollView(
-      slivers: [
-        // Search and Filter Widget
-        const SliverToBoxAdapter(
-          child: SearchFilterWidget(),
-        ),
+        slivers: [
+          // Search and Filter Widget
+          const SliverToBoxAdapter(child: SearchFilterWidget()),
 
-        // Search Results
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.65,
-              mainAxisExtent: 320,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
+          // Search Results
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.65,
+                mainAxisExtent: 320,
+              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
                 if (index >= productsProvider.products.length) {
                   return null;
                 }
@@ -489,64 +586,69 @@ class SearchContent extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => ProductDetailScreen(product: product),
+                        builder: (context) =>
+                            ProductDetailScreen(product: product),
                       ),
                     );
                   },
                 );
-              },
-              childCount: productsProvider.products.length,
+              }, childCount: productsProvider.products.length),
             ),
           ),
-        ),
 
-        // Loading indicator or empty state
-        if (productsProvider.isLoading)
-          const SliverToBoxAdapter(
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: CircularProgressIndicator(),
+          // Loading indicator or empty state
+          if (productsProvider.isLoading)
+            const SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(),
+                ),
               ),
-            ),
-          )
-        else if (productsProvider.products.isEmpty)
-          SliverToBoxAdapter(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No products found',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            )
+          else if (productsProvider.products.isEmpty)
+            SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.search_off,
+                        size: 64,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Try different keywords or adjust filters',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No products found',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Try different keywords or adjust filters',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
         ],
-      )
+      ),
     );
   }
-
 }
 
 class CartContent extends StatefulWidget {
@@ -593,27 +695,34 @@ class _CartContentState extends State<CartContent> {
           Icon(
             Icons.shopping_cart_outlined,
             size: 80,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             'Your cart is empty',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Add some products to get started',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () {
               // Switch to home tab
-              final homeScreenState = context.findAncestorStateOfType<_HomeScreenState>();
+              final homeScreenState = context
+                  .findAncestorStateOfType<_HomeScreenState>();
               homeScreenState?.setState(() {
                 homeScreenState._selectedIndex = 0;
               });
@@ -629,7 +738,11 @@ class _CartContentState extends State<CartContent> {
     );
   }
 
-  Widget _buildCartItem(BuildContext context, CartItem item, CartProvider cartProvider) {
+  Widget _buildCartItem(
+    BuildContext context,
+    CartItem item,
+    CartProvider cartProvider,
+  ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -656,14 +769,18 @@ class _CartContentState extends State<CartContent> {
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(
                                 Icons.inventory_2,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
                               );
                             },
                           ),
                         )
                       : Icon(
                           Icons.inventory_2,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                 ),
 
@@ -676,27 +793,28 @@ class _CartContentState extends State<CartContent> {
                     children: [
                       Text(
                         item.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Rp ${item.currentPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       if (item.discountAmount > 0)
                         Text(
                           'Saved: Rp ${item.discountAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.green,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
                     ],
                   ),
@@ -711,7 +829,8 @@ class _CartContentState extends State<CartContent> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  onPressed: () => _showRemoveDialog(context, item, cartProvider),
+                  onPressed: () =>
+                      _showRemoveDialog(context, item, cartProvider),
                   icon: const Icon(Icons.delete, color: Colors.red),
                   iconSize: 20,
                   tooltip: 'Remove item',
@@ -726,9 +845,14 @@ class _CartContentState extends State<CartContent> {
                       iconSize: 20,
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Theme.of(context).dividerColor),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -739,7 +863,8 @@ class _CartContentState extends State<CartContent> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () => cartProvider.incrementQuantity(item.productId),
+                      onPressed: () =>
+                          cartProvider.incrementQuantity(item.productId),
                       icon: const Icon(Icons.add),
                       iconSize: 20,
                     ),
@@ -782,9 +907,9 @@ class _CartContentState extends State<CartContent> {
               ),
               Text(
                 'Rp ${cartProvider.subtotal.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -797,9 +922,9 @@ class _CartContentState extends State<CartContent> {
                 Flexible(
                   child: Text(
                     'Discount:',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.green,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.green),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -821,9 +946,9 @@ class _CartContentState extends State<CartContent> {
             children: [
               Text(
                 'Total:',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               Flexible(
                 child: Text(
@@ -873,7 +998,11 @@ class _CartContentState extends State<CartContent> {
     );
   }
 
-  void _showRemoveDialog(BuildContext context, CartItem item, CartProvider cartProvider) {
+  void _showRemoveDialog(
+    BuildContext context,
+    CartItem item,
+    CartProvider cartProvider,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -921,7 +1050,10 @@ class _OrdersContentState extends State<OrdersContent> {
     super.initState();
     // Load orders when the orders tab is first accessed
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+      final ordersProvider = Provider.of<OrdersProvider>(
+        context,
+        listen: false,
+      );
       if (ordersProvider.shouldLoadOrders()) {
         print('OrdersContent: Loading orders on tab access...');
         ordersProvider.loadUserOrders();
@@ -935,16 +1067,19 @@ class _OrdersContentState extends State<OrdersContent> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+        final ordersProvider = Provider.of<OrdersProvider>(
+          context,
+          listen: false,
+        );
         await ordersProvider.forceRefreshOrders();
       },
       child: ordersProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : ordersProvider.orders.isEmpty && !ordersProvider.isInitialized
-              ? _buildEmptyOrders(context)
-              : ordersProvider.orders.isEmpty
-                  ? _buildEmptyOrders(context)
-                  : _buildOrdersList(context, ordersProvider),
+          ? _buildEmptyOrders(context)
+          : ordersProvider.orders.isEmpty
+          ? _buildEmptyOrders(context)
+          : _buildOrdersList(context, ordersProvider),
     );
   }
 
@@ -958,13 +1093,19 @@ class _OrdersContentState extends State<OrdersContent> {
           Icon(
             Icons.receipt_long_outlined,
             size: 80,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
-            ordersProvider.isInitialized ? 'No orders yet' : 'Loading orders...',
+            ordersProvider.isInitialized
+                ? 'No orders yet'
+                : 'Loading orders...',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 8),
@@ -973,7 +1114,9 @@ class _OrdersContentState extends State<OrdersContent> {
                 ? 'Your order history will appear here'
                 : 'Please wait while we load your orders',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             textAlign: TextAlign.center,
           ),
@@ -982,7 +1125,8 @@ class _OrdersContentState extends State<OrdersContent> {
             ElevatedButton.icon(
               onPressed: () {
                 // Switch to home tab
-                final homeScreenState = context.findAncestorStateOfType<_HomeScreenState>();
+                final homeScreenState = context
+                    .findAncestorStateOfType<_HomeScreenState>();
                 homeScreenState?.setState(() {
                   homeScreenState._selectedIndex = 0;
                 });
@@ -992,7 +1136,10 @@ class _OrdersContentState extends State<OrdersContent> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ] else ...[
@@ -1015,9 +1162,9 @@ class _OrdersContentState extends State<OrdersContent> {
             children: [
               Text(
                 'Your Orders',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               IconButton(
                 onPressed: () async {
@@ -1059,12 +1206,14 @@ class _OrdersContentState extends State<OrdersContent> {
                           children: [
                             Text(
                               'Order #${order.orderNumber}',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: order.status.color.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
@@ -1083,9 +1232,12 @@ class _OrdersContentState extends State<OrdersContent> {
                         const SizedBox(height: 8),
                         Text(
                           '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
+                              ),
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -1093,16 +1245,22 @@ class _OrdersContentState extends State<OrdersContent> {
                           children: [
                             Text(
                               'Total: Rp ${order.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
                             ),
                             Text(
                               order.createdAt.toString().split(' ')[0],
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface.withOpacity(0.6),
+                                  ),
                             ),
                           ],
                         ),
@@ -1113,7 +1271,7 @@ class _OrdersContentState extends State<OrdersContent> {
               );
             },
           ),
-        )
+        ),
       ],
     );
   }
@@ -1150,8 +1308,12 @@ class _ProfileContentState extends State<ProfileContent> {
     final profile = authProvider.userProfile;
 
     _nameController = TextEditingController(text: profile?['full_name'] ?? '');
-    _phoneController = TextEditingController(text: profile?['phone_number'] ?? '');
-    _addressController = TextEditingController(text: profile?['full_address'] ?? '');
+    _phoneController = TextEditingController(
+      text: profile?['phone_number'] ?? '',
+    );
+    _addressController = TextEditingController(
+      text: profile?['full_address'] ?? '',
+    );
   }
 
   @override
@@ -1212,17 +1374,15 @@ class _ProfileContentState extends State<ProfileContent> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                      color: Theme.of(
+                        context,
+                      ).primaryColor.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Icon(
-                  Icons.person,
-                  size: 50,
-                  color: Colors.white,
-                ),
+                child: Icon(Icons.person, size: 50, color: Colors.white),
               ),
             ),
 
@@ -1233,7 +1393,9 @@ class _ProfileContentState extends State<ProfileContent> {
               child: Text(
                 authProvider.userProfile!['email'] ?? '',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ),
@@ -1243,7 +1405,10 @@ class _ProfileContentState extends State<ProfileContent> {
             // User Role Badge
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: authProvider.isAdmin
                       ? Colors.purple.withValues(alpha: 0.2)
@@ -1278,9 +1443,9 @@ class _ProfileContentState extends State<ProfileContent> {
             // Quick Stats
             Text(
               'Quick Stats',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 16),
@@ -1393,14 +1558,20 @@ class _ProfileContentState extends State<ProfileContent> {
           children: [
             Text(
               'Personal Information',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildProfileItem('Name', authProvider.userProfile!['full_name']),
-            _buildProfileItem('Phone', authProvider.userProfile!['phone_number']),
-            _buildProfileItem('Address', authProvider.userProfile!['full_address']),
+            _buildProfileItem(
+              'Phone',
+              authProvider.userProfile!['phone_number'],
+            ),
+            _buildProfileItem(
+              'Address',
+              authProvider.userProfile!['full_address'],
+            ),
           ],
         ),
       ),
@@ -1418,9 +1589,9 @@ class _ProfileContentState extends State<ProfileContent> {
             children: [
               Text(
                 'Edit Profile',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
 
@@ -1520,7 +1691,9 @@ class _ProfileContentState extends State<ProfileContent> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text('Save Changes'),
@@ -1545,16 +1718,16 @@ class _ProfileContentState extends State<ProfileContent> {
               '$label:',
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ),
           Expanded(
             child: Text(
               value ?? 'Not provided',
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -1562,7 +1735,13 @@ class _ProfileContentState extends State<ProfileContent> {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String value, String label, IconData icon, Color color) {
+  Widget _buildStatCard(
+    BuildContext context,
+    String value,
+    String label,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -1591,7 +1770,9 @@ class _ProfileContentState extends State<ProfileContent> {
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),

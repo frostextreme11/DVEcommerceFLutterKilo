@@ -22,7 +22,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
 
     // Load orders when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+      final ordersProvider = Provider.of<OrdersProvider>(
+        context,
+        listen: false,
+      );
       ordersProvider.loadUserOrders();
     });
   }
@@ -37,50 +40,54 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
   Widget build(BuildContext context) {
     final ordersProvider = Provider.of<OrdersProvider>(context);
 
-    return WillPopScope(
-      onWillPop: () async {
-        // Navigate to home screen instead of going back
-        context.go('/home');
-        return false; // Prevent default back behavior
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Navigate back to cart screen when cart is empty
+          context.go('/home');
+        }
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Order History'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home'),
+        appBar: AppBar(
+          title: const Text('Order History'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/home'),
+          ),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'All'),
+              Tab(text: 'Pending'),
+              Tab(text: 'Processing'),
+              Tab(text: 'Completed'),
+            ],
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+            indicatorColor: Colors.white,
+          ),
         ),
-        bottom: TabBar(
+        body: TabBarView(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'All'),
-            Tab(text: 'Pending'),
-            Tab(text: 'Processing'),
-            Tab(text: 'Completed'),
+          children: [
+            _buildOrderList(ordersProvider.orders),
+            _buildOrderList(
+              ordersProvider.getOrdersByStatus(OrderStatus.notPaid),
+            ),
+            _buildOrderList([
+              ...ordersProvider.getOrdersByStatus(OrderStatus.paid),
+              ...ordersProvider.getOrdersByStatus(OrderStatus.processing),
+              ...ordersProvider.getOrdersByStatus(OrderStatus.shipped),
+            ]),
+            _buildOrderList([
+              ...ordersProvider.getOrdersByStatus(OrderStatus.delivered),
+            ]),
           ],
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
-          indicatorColor: Colors.white,
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildOrderList(ordersProvider.orders),
-          _buildOrderList(ordersProvider.getOrdersByStatus(OrderStatus.notPaid)),
-          _buildOrderList([
-            ...ordersProvider.getOrdersByStatus(OrderStatus.paid),
-            ...ordersProvider.getOrdersByStatus(OrderStatus.processing),
-            ...ordersProvider.getOrdersByStatus(OrderStatus.shipped),
-          ]),
-          _buildOrderList([
-            ...ordersProvider.getOrdersByStatus(OrderStatus.delivered),
-          ]),
-        ],
-      ),
-      )
     );
   }
 
@@ -88,9 +95,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
     final ordersProvider = Provider.of<OrdersProvider>(context);
 
     if (ordersProvider.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (orders.isEmpty) {
@@ -101,20 +106,26 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
             Icon(
               Icons.receipt_long_outlined,
               size: 80,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               'No orders found',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Your order history will appear here',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
               textAlign: TextAlign.center,
             ),
@@ -160,14 +171,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: order.status.color.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: order.status.color,
-                        width: 1,
-                      ),
+                      border: Border.all(color: order.status.color, width: 1),
                     ),
                     child: Text(
                       order.status.displayName,
@@ -187,7 +198,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
               Text(
                 'Ordered on ${_formatDate(order.createdAt)}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
 
@@ -213,14 +226,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                                 errorBuilder: (context, error, stackTrace) {
                                   return Icon(
                                     Icons.inventory_2,
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.5),
                                   );
                                 },
                               ),
                             )
                           : Icon(
                               Icons.inventory_2,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                     ),
                     const SizedBox(width: 12),
@@ -232,17 +250,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                             order.items.length == 1
                                 ? order.items.first.productName
                                 : '${order.items.first.productName} and ${order.items.length - 1} more item${order.items.length > 2 ? 's' : ''}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w500),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                ),
                           ),
                         ],
                       ),
@@ -338,14 +357,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
 
               // Order status
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: order.status.color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: order.status.color,
-                    width: 1,
-                  ),
+                  border: Border.all(color: order.status.color, width: 1),
                 ),
                 child: Text(
                   order.status.displayName,
@@ -363,9 +382,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                 child: ListView(
                   controller: scrollController,
                   children: [
-                    _buildDetailSection('Order Date', _formatDate(order.createdAt)),
-                    _buildDetailSection('Payment Method', order.paymentMethod ?? 'Not specified'),
-                    _buildDetailSection('Payment Status', order.paymentStatus.displayName),
+                    _buildDetailSection(
+                      'Order Date',
+                      _formatDate(order.createdAt),
+                    ),
+                    _buildDetailSection(
+                      'Payment Method',
+                      order.paymentMethod ?? 'Not specified',
+                    ),
+                    _buildDetailSection(
+                      'Payment Status',
+                      order.paymentStatus.displayName,
+                    ),
                     if (order.courierInfo != null)
                       _buildDetailSection('Courier Info', order.courierInfo!),
                     if (order.notes != null)
@@ -404,74 +432,93 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                     ),
                     const SizedBox(height: 12),
 
-                    ...order.items.map((item) => Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).dividerColor,
+                    ...order.items.map(
+                      (item) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Theme.of(
+                                  context,
+                                ).scaffoldBackgroundColor,
+                              ),
+                              child: item.productImageUrl != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        item.productImageUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Icon(
+                                                Icons.inventory_2,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.5),
+                                              );
+                                            },
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.inventory_2,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.5),
+                                    ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.productName,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    '${item.quantity}x Rp ${item.unitPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.7),
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              'Rp ${item.totalPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                            ),
-                            child: item.productImageUrl != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      item.productImageUrl!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Icon(
-                                          Icons.inventory_2,
-                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.inventory_2,
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                                  ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.productName,
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  '${item.quantity}x Rp ${item.unitPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            'Rp ${item.totalPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -479,7 +526,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                        color: Theme.of(
+                          context,
+                        ).primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -493,9 +542,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                               ),
                               Text(
                                 'Rp ${order.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
@@ -524,16 +572,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
               '$label:',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
         ],

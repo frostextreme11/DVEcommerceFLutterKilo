@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/admin_orders_provider.dart';
+import '../../providers/customer_notification_provider.dart';
 import '../../models/order.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/print_service.dart';
+import '../../services/notification_service.dart';
 import 'order_details_screen.dart';
 
 class OrdersAdminScreen extends StatefulWidget {
@@ -28,6 +31,13 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
     // Load orders when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AdminOrdersProvider>().loadAllOrders();
+
+      // Set up notification service context provider
+      final notificationService = Provider.of<NotificationService>(
+        context,
+        listen: false,
+      );
+      notificationService.setContextProvider(() => context);
     });
   }
 
@@ -100,6 +110,8 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                       _buildPrintButton(),
                       const SizedBox(width: 8),
                       _buildPdfButton(),
+                      const SizedBox(width: 8),
+                      _buildBulkNotifyButton(),
                     ],
                   ),
                 ),
@@ -490,6 +502,17 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                   label: const Text('View'),
                 ),
                 const SizedBox(width: 8),
+                if (order.paymentStatus == PaymentStatus.pending) ...[
+                  TextButton.icon(
+                    onPressed: () {
+                      _showNotifyCustomerDialog(context, order);
+                    },
+                    icon: const Icon(Icons.notifications),
+                    label: const Text('Notify'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     _handleOrderAction(value, order);
@@ -804,6 +827,248 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         SnackBar(
           content: Text('Print failed: $e'),
           backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _buildBulkNotifyButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final unpaidOrders = provider.filteredOrders
+            .where((order) => order.paymentStatus == PaymentStatus.pending)
+            .toList();
+        final hasUnpaidOrders = unpaidOrders.isNotEmpty;
+
+        return ElevatedButton.icon(
+          onPressed: hasUnpaidOrders
+              ? () => _showBulkNotifyDialog(context)
+              : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: hasUnpaidOrders
+                ? Colors.orange
+                : Colors.orange.withOpacity(0.3),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          icon: const Icon(Icons.notifications_active, size: 16),
+          label: Text('Notify Unpaid (${unpaidOrders.length})'),
+        );
+      },
+    );
+  }
+
+  void _showNotifyCustomerDialog(BuildContext context, Order order) {
+    final messageController = TextEditingController(
+      text:
+          'Reminder: Please complete your payment for order ${order.orderNumber}. Total amount: Rp ${order.totalAmount.toStringAsFixed(0)}',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Notify Customer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Order: ${order.orderNumber}'),
+            Text('Customer: ${order.receiverName ?? 'N/A'}'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: messageController,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                hintText: 'Enter notification message...',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final message = messageController.text.trim();
+              if (message.isNotEmpty) {
+                await _sendNotificationToCustomer(
+                  context,
+                  order.userId,
+                  order.id,
+                  'Payment Reminder',
+                  message,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBulkNotifyDialog(BuildContext context) {
+    final provider = context.read<AdminOrdersProvider>();
+    final unpaidOrders = provider.filteredOrders
+        .where((order) => order.paymentStatus == PaymentStatus.pending)
+        .toList();
+
+    final messageController = TextEditingController(
+      text:
+          'Reminder: You have ${unpaidOrders.length} unpaid order(s). Please complete your payment to proceed.',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bulk Notify Unpaid Customers'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'This will send notifications to ${unpaidOrders.length} customers with unpaid orders.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: messageController,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                hintText: 'Enter notification message...',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final message = messageController.text.trim();
+              if (message.isNotEmpty) {
+                await _sendBulkNotifications(context, unpaidOrders, message);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Send to All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendNotificationToCustomer(
+    BuildContext context,
+    String userId,
+    String orderId,
+    String title,
+    String message,
+  ) async {
+    try {
+      // Get customer FCM token
+      final supabase = Supabase.instance.client;
+      final tokenResponse = await supabase
+          .from('kl_customer_fcm_tokens')
+          .select('fcm_token')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (tokenResponse == null ||
+          tokenResponse['fcm_token'] == null ||
+          tokenResponse['fcm_token'].toString().trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Customer FCM token not found for user $userId. Customer needs to login to receive notifications.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      final customerToken = tokenResponse['fcm_token'];
+
+      // Send notification via notification service
+      final notificationService = NotificationService();
+      await notificationService.sendOrderNotificationToCustomer(
+        customerToken: customerToken,
+        title: title,
+        body: message,
+        orderId: orderId,
+      );
+
+      // Add notification to customer notifications table via database
+      try {
+        await supabase.from('kl_customer_notifications').insert({
+          'user_id': userId,
+          'order_id': orderId,
+          'title': title,
+          'message': message,
+          'is_read': false,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        print('Customer notification added to database successfully');
+      } catch (e) {
+        print('Could not add notification to database: $e');
+        // Continue without adding to database if it fails
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notification sent to customer successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send notification: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _sendBulkNotifications(
+    BuildContext context,
+    List<Order> unpaidOrders,
+    String message,
+  ) async {
+    int successCount = 0;
+    int failCount = 0;
+
+    for (final order in unpaidOrders) {
+      try {
+        await _sendNotificationToCustomer(
+          context,
+          order.userId,
+          order.id,
+          'Payment Reminder',
+          message,
+        );
+        successCount++;
+      } catch (e) {
+        failCount++;
+        print('Failed to send notification to order ${order.id}: $e');
+      }
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Bulk notification completed: $successCount sent successfully, $failCount failed',
+          ),
+          backgroundColor: failCount == 0 ? Colors.green : Colors.orange,
         ),
       );
     }

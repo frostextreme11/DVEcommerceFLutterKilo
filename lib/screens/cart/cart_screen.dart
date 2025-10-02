@@ -18,52 +18,63 @@ class _CartScreenState extends State<CartScreen> {
     final cartProvider = Provider.of<CartProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shopping Cart'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        actions: [
-          if (cartProvider.itemCount > 0)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep),
-              onPressed: () async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Clear Cart'),
-                    content: const Text('Are you sure you want to remove all items from your cart?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('Cancel'),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Navigate back to cart screen when cart is empty
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Shopping Cart'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          actions: [
+            if (cartProvider.itemCount > 0)
+              IconButton(
+                icon: const Icon(Icons.delete_sweep),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Clear Cart'),
+                      content: const Text(
+                        'Are you sure you want to remove all items from your cart?',
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
                         ),
-                        child: const Text('Clear'),
-                      ),
-                    ],
-                  ),
-                );
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
+                          child: const Text('Clear'),
+                        ),
+                      ],
+                    ),
+                  );
 
-                if (confirmed == true) {
-                  await cartProvider.clearCart();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cart cleared')),
-                    );
+                  if (confirmed == true) {
+                    await cartProvider.clearCart();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Cart cleared')),
+                      );
+                    }
                   }
-                }
-              },
-            ),
-        ],
+                },
+              ),
+          ],
+        ),
+        body: cartProvider.items.isEmpty
+            ? _buildEmptyCart()
+            : _buildCartContent(cartProvider),
       ),
-      body: cartProvider.items.isEmpty
-          ? _buildEmptyCart()
-          : _buildCartContent(cartProvider),
     );
   }
 
@@ -75,20 +86,26 @@ class _CartScreenState extends State<CartScreen> {
           Icon(
             Icons.shopping_cart_outlined,
             size: 80,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
             'Your cart is empty',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Add some products to get started',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 24),
@@ -140,14 +157,19 @@ class _CartScreenState extends State<CartScreen> {
                                   errorBuilder: (context, error, stackTrace) {
                                     return Icon(
                                       Icons.inventory_2,
-                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.5),
                                     );
                                   },
                                 ),
                               )
                             : Icon(
                                 Icons.inventory_2,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
                               ),
                       ),
 
@@ -160,19 +182,21 @@ class _CartScreenState extends State<CartScreen> {
                           children: [
                             Text(
                               item.name,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Rp ${item.currentPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
                           ],
                         ),
@@ -188,14 +212,19 @@ class _CartScreenState extends State<CartScreen> {
                               IconButton(
                                 onPressed: item.quantity > 1
                                     ? () async {
-                                        await cartProvider.decrementQuantity(item.productId);
+                                        await cartProvider.decrementQuantity(
+                                          item.productId,
+                                        );
                                       }
                                     : null,
                                 icon: const Icon(Icons.remove),
                                 iconSize: 20,
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: Theme.of(context).dividerColor,
@@ -204,14 +233,15 @@ class _CartScreenState extends State<CartScreen> {
                                 ),
                                 child: Text(
                                   item.quantity.toString(),
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                               ),
                               IconButton(
                                 onPressed: () async {
-                                  await cartProvider.incrementQuantity(item.productId);
+                                  await cartProvider.incrementQuantity(
+                                    item.productId,
+                                  );
                                 },
                                 icon: const Icon(Icons.add),
                                 iconSize: 20,
@@ -224,7 +254,9 @@ class _CartScreenState extends State<CartScreen> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('${item.name} removed from cart'),
+                                    content: Text(
+                                      '${item.name} removed from cart',
+                                    ),
                                     duration: const Duration(seconds: 2),
                                   ),
                                 );
@@ -283,9 +315,9 @@ class _CartScreenState extends State<CartScreen> {
                   children: [
                     Text(
                       'Discount:',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.green,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: Colors.green),
                     ),
                     Text(
                       '-Rp ${cartProvider.totalDiscount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
@@ -336,10 +368,7 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                   child: const Text(
                     'Proceed to Checkout',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

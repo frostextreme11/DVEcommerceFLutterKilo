@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/admin_orders_provider.dart';
 import '../../models/order.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/print_service.dart';
+import '../../services/notification_service.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final Order? order;
   final String? orderId;
 
-  const OrderDetailsScreen({Key? key, this.order, this.orderId}) : super(key: key);
+  const OrderDetailsScreen({Key? key, this.order, this.orderId})
+    : super(key: key);
 
   @override
   State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
@@ -39,10 +42,19 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     try {
       final adminOrdersProvider = context.read<AdminOrdersProvider>();
       _order = await adminOrdersProvider.getOrderById(orderId);
+
+      if (_order == null) {
+        setState(() {
+          _error =
+              'Order not found - The order may have been deleted or the ID is incorrect';
+        });
+      }
     } catch (e) {
       setState(() {
-        _error = 'Failed to load order: ${e.toString()}';
+        _error =
+            'Failed to load order details. Please check your connection and try again.';
       });
+      print('Error loading order $orderId: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -59,9 +71,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           backgroundColor: Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -73,16 +83,54 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           foregroundColor: Colors.white,
         ),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(_error!),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Go Back'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                const SizedBox(height: 16),
+                Text(
+                  'Unable to Load Order',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _error!,
+                  style: TextStyle(color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        if (widget.orderId != null) {
+                          _loadOrderById(widget.orderId!);
+                        }
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Go Back'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -95,9 +143,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           backgroundColor: Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
         ),
-        body: const Center(
-          child: Text('Order not found'),
-        ),
+        body: const Center(child: Text('Order not found')),
       );
     }
 
@@ -175,8 +221,9 @@ class _OrderDetailsContent extends StatelessWidget {
                     const SizedBox(height: 16),
                     _buildInfoRow('Name', order.receiverName ?? 'N/A'),
                     _buildInfoRow('Phone', order.receiverPhone ?? 'N/A'),
-                    _buildInfoRow('Address', order.shippingAddress),
-                    if (order.notes != null) _buildInfoRow('Notes', order.notes!),
+                    _buildAddressRow(context, 'Address', order.shippingAddress),
+                    if (order.notes != null)
+                      _buildInfoRow('Notes', order.notes!),
 
                     // Dropship Information
                     if (order.isDropship) ...[
@@ -193,7 +240,11 @@ class _OrderDetailsContent extends StatelessWidget {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.local_shipping, color: Colors.orange, size: 20),
+                                Icon(
+                                  Icons.local_shipping,
+                                  color: Colors.orange,
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Dropship Order',
@@ -206,8 +257,14 @@ class _OrderDetailsContent extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            _buildInfoRow('Sender Name', order.senderName ?? 'N/A'),
-                            _buildInfoRow('Sender Phone', order.senderPhone ?? 'N/A'),
+                            _buildInfoRow(
+                              'Sender Name',
+                              order.senderName ?? 'N/A',
+                            ),
+                            _buildInfoRow(
+                              'Sender Phone',
+                              order.senderPhone ?? 'N/A',
+                            ),
                           ],
                         ),
                       ),
@@ -234,14 +291,33 @@ class _OrderDetailsContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildInfoRow('Courier Info', order.courierInfo ?? 'Not set'),
-                    _buildInfoRow('Payment Method', order.paymentMethod ?? 'N/A'),
-                    _buildInfoRow('Subtotal', 'Rp ${order.totalAmount.toStringAsFixed(0)}'),
-                    if (order.additionalCosts != null && order.additionalCosts! > 0) ...[
-                      _buildInfoRow('Additional Costs', 'Rp ${order.additionalCosts!.toStringAsFixed(0)}'),
-                      _buildInfoRow('Total Amount', 'Rp ${(order.totalAmount + order.additionalCosts!).toStringAsFixed(0)}'),
+                    _buildInfoRow(
+                      'Courier Info',
+                      order.courierInfo ?? 'Not set',
+                    ),
+                    _buildInfoRow(
+                      'Payment Method',
+                      order.paymentMethod ?? 'N/A',
+                    ),
+                    _buildInfoRow(
+                      'Subtotal',
+                      'Rp ${order.totalAmount.toStringAsFixed(0)}',
+                    ),
+                    if (order.additionalCosts != null &&
+                        order.additionalCosts! > 0) ...[
+                      _buildInfoRow(
+                        'Additional Costs',
+                        'Rp ${order.additionalCosts!.toStringAsFixed(0)}',
+                      ),
+                      _buildInfoRow(
+                        'Total Amount',
+                        'Rp ${(order.totalAmount + order.additionalCosts!).toStringAsFixed(0)}',
+                      ),
                     ] else
-                      _buildInfoRow('Total Amount', 'Rp ${order.totalAmount.toStringAsFixed(0)}'),
+                      _buildInfoRow(
+                        'Total Amount',
+                        'Rp ${order.totalAmount.toStringAsFixed(0)}',
+                      ),
                   ],
                 ),
               ),
@@ -264,10 +340,15 @@ class _OrderDetailsContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildInfoRow('Additional Costs', order.additionalCosts != null && order.additionalCosts! > 0
-                        ? 'Rp ${order.additionalCosts!.toStringAsFixed(0)}'
-                        : 'No additional costs'),
-                    if (order.additionalCostsNotes != null && order.additionalCostsNotes!.isNotEmpty)
+                    _buildInfoRow(
+                      'Additional Costs',
+                      order.additionalCosts != null &&
+                              order.additionalCosts! > 0
+                          ? 'Rp ${order.additionalCosts!.toStringAsFixed(0)}'
+                          : 'No additional costs',
+                    ),
+                    if (order.additionalCostsNotes != null &&
+                        order.additionalCostsNotes!.isNotEmpty)
                       _buildInfoRow('Notes', order.additionalCostsNotes!),
                     const SizedBox(height: 16),
                     Consumer<AdminOrdersProvider>(
@@ -363,6 +444,22 @@ class _OrderDetailsContent extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    if (order.paymentStatus == PaymentStatus.pending) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CustomButton(
+                              text: 'Notify Customer',
+                              onPressed: () {
+                                _showNotifyCustomerDialog(context);
+                              },
+                              backgroundColor: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 );
               },
@@ -427,9 +524,41 @@ class _OrderDetailsContent extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Text(value),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Row(
+              children: [
+                Text(
+                  '$label:',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () {
+                    _showEditAddressDialog(context);
+                  },
+                  icon: const Icon(Icons.edit, size: 16),
+                  tooltip: 'Edit Address',
+                ),
+              ],
+            ),
           ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -460,11 +589,7 @@ class _OrderDetailsContent extends StatelessWidget {
                   : null,
             ),
             child: item.productImageUrl == null
-                ? Icon(
-                    Icons.image,
-                    color: Colors.grey[400],
-                    size: 24,
-                  )
+                ? Icon(Icons.image, color: Colors.grey[400], size: 24)
                 : null,
           ),
           const SizedBox(width: 12),
@@ -476,26 +601,18 @@ class _OrderDetailsContent extends StatelessWidget {
               children: [
                 Text(
                   item.productName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Qty: ${item.quantity} × Rp ${item.unitPrice.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
                 if (item.discountPrice != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     'Discount: Rp ${item.discountPrice!.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: Colors.green[600],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.green[600], fontSize: 12),
                   ),
                 ],
               ],
@@ -505,9 +622,7 @@ class _OrderDetailsContent extends StatelessWidget {
           // Total Price
           Text(
             'Rp ${item.totalPrice.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -524,19 +639,23 @@ class _OrderDetailsContent extends StatelessWidget {
           children: OrderStatus.values.map((status) {
             return ListTile(
               title: Text(status.displayName),
-              leading: Icon(
-                Icons.circle,
-                color: status.color,
-              ),
+              leading: Icon(Icons.circle, color: status.color),
               onTap: () {
-                context.read<AdminOrdersProvider>().updateOrderStatus(order.id, status);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Order status updated to ${status.displayName}'),
-                    backgroundColor: Colors.green,
-                  ),
+                context.read<AdminOrdersProvider>().updateOrderStatus(
+                  order.id,
+                  status,
                 );
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Order status updated to ${status.displayName}',
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               },
             );
           }).toList(),
@@ -616,14 +735,19 @@ class _OrderDetailsContent extends StatelessWidget {
           TextButton(
             onPressed: () {
               if (selectedCourier != null && selectedCourier!.isNotEmpty) {
-                context.read<AdminOrdersProvider>().updateCourierInfo(order.id, selectedCourier!);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Courier info updated to $selectedCourier'),
-                    backgroundColor: Colors.green,
-                  ),
+                context.read<AdminOrdersProvider>().updateCourierInfo(
+                  order.id,
+                  selectedCourier!,
                 );
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Courier info updated to $selectedCourier'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Update'),
@@ -635,10 +759,10 @@ class _OrderDetailsContent extends StatelessWidget {
 
   void _showAdditionalCostsDialog(BuildContext context) {
     final costController = TextEditingController(
-      text: order.additionalCosts?.toString() ?? '0'
+      text: order.additionalCosts?.toString() ?? '0',
     );
     final notesController = TextEditingController(
-      text: order.additionalCostsNotes ?? ''
+      text: order.additionalCostsNotes ?? '',
     );
 
     showDialog(
@@ -675,16 +799,24 @@ class _OrderDetailsContent extends StatelessWidget {
           TextButton(
             onPressed: () {
               final cost = double.tryParse(costController.text) ?? 0;
-              final notes = notesController.text.trim().isEmpty ? null : notesController.text.trim();
+              final notes = notesController.text.trim().isEmpty
+                  ? null
+                  : notesController.text.trim();
 
-              context.read<AdminOrdersProvider>().updateAdditionalCosts(order.id, cost, notes);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Additional costs updated successfully'),
-                  backgroundColor: Colors.green,
-                ),
+              context.read<AdminOrdersProvider>().updateAdditionalCosts(
+                order.id,
+                cost,
+                notes,
               );
+              Navigator.pop(context);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Additional costs updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             },
             child: const Text('Update'),
           ),
@@ -728,6 +860,180 @@ class _OrderDetailsContent extends StatelessWidget {
           ),
         );
       }
+    }
+  }
+
+  void _showEditAddressDialog(BuildContext context) {
+    final addressController = TextEditingController(
+      text: order.shippingAddress,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Shipping Address'),
+        content: TextField(
+          controller: addressController,
+          decoration: const InputDecoration(
+            labelText: 'Shipping Address',
+            hintText: 'Enter complete shipping address...',
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newAddress = addressController.text.trim();
+              if (newAddress.isNotEmpty) {
+                context.read<AdminOrdersProvider>().updateShippingAddress(
+                  order.id,
+                  newAddress,
+                );
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Shipping address updated successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotifyCustomerDialog(BuildContext context) {
+    final messageController = TextEditingController(
+      text:
+          'Reminder: Please complete your payment for order ${order.orderNumber}. Total amount: Rp ${order.totalAmount.toStringAsFixed(0)}',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Notify Customer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Order: ${order.orderNumber}'),
+            Text('Customer: ${order.receiverName ?? 'N/A'}'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: messageController,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                hintText: 'Enter notification message...',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final message = messageController.text.trim();
+              if (message.isNotEmpty) {
+                await _sendNotificationToCustomer(
+                  context,
+                  order.userId,
+                  order.id,
+                  'Payment Reminder',
+                  message,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendNotificationToCustomer(
+    BuildContext context,
+    String userId,
+    String orderId,
+    String title,
+    String message,
+  ) async {
+    try {
+      // Get customer FCM token
+      final supabase = Supabase.instance.client;
+      final tokenResponse = await supabase
+          .from('kl_customer_fcm_tokens')
+          .select('fcm_token')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (tokenResponse == null ||
+          tokenResponse['fcm_token'] == null ||
+          tokenResponse['fcm_token'].toString().trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Customer FCM token not found for user $userId. Customer needs to login to receive notifications.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      final customerToken = tokenResponse['fcm_token'];
+
+      // Send notification via notification service
+      final notificationService = NotificationService();
+      await notificationService.sendOrderNotificationToCustomer(
+        customerToken: customerToken,
+        title: title,
+        body: message,
+        orderId: orderId,
+      );
+
+      // Add notification to customer notifications table via database
+      try {
+        await supabase.from('kl_customer_notifications').insert({
+          'user_id': userId,
+          'order_id': orderId,
+          'title': title,
+          'message': message,
+          'is_read': false,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        print('Customer notification added to database successfully');
+      } catch (e) {
+        print('Could not add notification to database: $e');
+        // Continue without adding to database if it fails
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notification sent to customer successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send notification: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

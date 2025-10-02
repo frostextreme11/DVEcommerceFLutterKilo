@@ -2,37 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import '../services/notification_service.dart';
-import '../models/order.dart';
 
-class AdminNotification {
+class CustomerNotification {
   final String id;
+  final String userId;
   final String orderId;
-  final String customerName;
-  final int quantity;
-  final double totalPrice;
-  final DateTime orderDate;
+  final String title;
+  final String message;
   final bool isRead;
   final DateTime createdAt;
 
-  AdminNotification({
+  CustomerNotification({
     required this.id,
+    required this.userId,
     required this.orderId,
-    required this.customerName,
-    required this.quantity,
-    required this.totalPrice,
-    required this.orderDate,
+    required this.title,
+    required this.message,
     this.isRead = false,
     required this.createdAt,
   });
 
-  factory AdminNotification.fromJson(Map<String, dynamic> json) {
-    return AdminNotification(
+  factory CustomerNotification.fromJson(Map<String, dynamic> json) {
+    return CustomerNotification(
       id: json['id'],
-      orderId: json['order_id'],
-      customerName: json['customer_name'],
-      quantity: json['quantity'],
-      totalPrice: (json['total_price'] as num).toDouble(),
-      orderDate: DateTime.parse(json['order_date']),
+      userId: json['user_id'],
+      orderId: json['order_id'] ?? '',
+      title: json['title'],
+      message: json['message'],
       isRead: json['is_read'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
     );
@@ -41,98 +37,95 @@ class AdminNotification {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'user_id': userId,
       'order_id': orderId,
-      'customer_name': customerName,
-      'quantity': quantity,
-      'total_price': totalPrice,
-      'order_date': orderDate.toIso8601String(),
+      'title': title,
+      'message': message,
       'is_read': isRead,
       'created_at': createdAt.toIso8601String(),
     };
   }
 
-  AdminNotification copyWith({
+  CustomerNotification copyWith({
     String? id,
+    String? userId,
     String? orderId,
-    String? customerName,
-    int? quantity,
-    double? totalPrice,
-    DateTime? orderDate,
+    String? title,
+    String? message,
     bool? isRead,
     DateTime? createdAt,
   }) {
-    return AdminNotification(
+    return CustomerNotification(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       orderId: orderId ?? this.orderId,
-      customerName: customerName ?? this.customerName,
-      quantity: quantity ?? this.quantity,
-      totalPrice: totalPrice ?? this.totalPrice,
-      orderDate: orderDate ?? this.orderDate,
+      title: title ?? this.title,
+      message: message ?? this.message,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 }
 
-class AdminNotificationProvider extends ChangeNotifier {
+class CustomerNotificationProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
   late final NotificationService _notificationService;
 
-  List<AdminNotification> _notifications = [];
+  List<CustomerNotification> _notifications = [];
   bool _isLoading = false;
   String? _error;
-  String? _adminFcmToken;
+  String? _customerFcmToken;
 
-  List<AdminNotification> get notifications => _notifications;
+  List<CustomerNotification> get notifications => _notifications;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  String? get adminFcmToken => _adminFcmToken;
+  String? get customerFcmToken => _customerFcmToken;
 
   // Get unread notifications count
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
   // Get recent notifications (last 10)
-  List<AdminNotification> get recentNotifications =>
+  List<CustomerNotification> get recentNotifications =>
       _notifications.take(10).toList();
-
-  AdminNotificationProvider() {
-    // Initialize asynchronously to avoid blocking provider creation
-    Future.microtask(() => _initializeAdminNotifications());
-  }
 
   StreamSubscription<List<dynamic>>? _notificationsSubscription;
 
-  Future<void> _initializeAdminNotifications() async {
+  CustomerNotificationProvider() {
+    // Initialize asynchronously to avoid blocking provider creation
+    Future.microtask(() => _initializeCustomerNotifications());
+  }
+
+  Future<void> _initializeCustomerNotifications() async {
     // Listen for auth state changes
     _supabase.auth.onAuthStateChange.listen((event) async {
-      print('AdminNotificationProvider: Auth state changed: ${event.event}');
+      print('CustomerNotificationProvider: Auth state changed: ${event.event}');
 
       if (event.event == AuthChangeEvent.signedIn &&
           event.session?.user != null) {
-        if (await _isUserAdmin()) {
+        if (await _isUserCustomer()) {
           print(
-            'AdminNotificationProvider: Admin signed in, initializing notifications...',
+            'CustomerNotificationProvider: Customer signed in, initializing notifications...',
           );
           await _initializeNotifications();
         }
       } else if (event.event == AuthChangeEvent.signedOut) {
         print(
-          'AdminNotificationProvider: User signed out, clearing notifications...',
+          'CustomerNotificationProvider: User signed out, clearing notifications...',
         );
         _clearNotifications();
       }
     });
 
-    // Check if user is already authenticated and is admin
-    if (await _isUserAdmin()) {
+    // Check if user is already authenticated and is customer
+    if (await _isUserCustomer()) {
       print(
-        'AdminNotificationProvider: Admin already authenticated, initializing notifications...',
+        'CustomerNotificationProvider: Customer already authenticated, initializing notifications...',
       );
       await _initializeNotifications();
     }
   }
 
-  Future<bool> _isUserAdmin() async {
+  Future<bool> _isUserCustomer() async {
     try {
       final currentUser = _supabase.auth.currentUser;
       if (currentUser == null) return false;
@@ -149,7 +142,7 @@ class AdminNotificationProvider extends ChangeNotifier {
       }
 
       final userRole = userResponse['role'];
-      return userRole == 'admin';
+      return userRole == 'customer';
     } catch (e) {
       print('Error checking user role: $e');
       return false;
@@ -157,209 +150,222 @@ class AdminNotificationProvider extends ChangeNotifier {
   }
 
   Future<void> _initializeNotifications() async {
-    if (!await _isUserAdmin()) {
+    if (!await _isUserCustomer()) {
       print(
-        'AdminNotificationProvider: User is not admin, skipping initialization',
+        'CustomerNotificationProvider: User is not customer, skipping initialization',
       );
       return;
     }
 
     try {
-      print('AdminNotificationProvider: Starting initialization...');
+      print('CustomerNotificationProvider: Starting initialization...');
 
       // Initialize notification service lazily
       _notificationService = NotificationService();
       await _notificationService.initialize();
-      print('AdminNotificationProvider: Notification service initialized');
+      print('CustomerNotificationProvider: Notification service initialized');
 
-      await _loadAdminNotifications();
-      print('AdminNotificationProvider: Notifications loaded');
+      await _loadCustomerNotifications();
+      print('CustomerNotificationProvider: Notifications loaded');
 
-      await _getOrCreateAdminFcmToken();
-      print('AdminNotificationProvider: FCM token setup completed');
+      await _getOrCreateCustomerFcmToken();
+      print('CustomerNotificationProvider: FCM token setup completed');
 
       await _setupRealtimeListener();
-      print('AdminNotificationProvider: Real-time listener setup completed');
+      print('CustomerNotificationProvider: Real-time listener setup completed');
 
       print(
-        'AdminNotificationProvider: Notifications initialized successfully',
+        'CustomerNotificationProvider: Notifications initialized successfully',
       );
     } catch (e) {
-      print('Error initializing admin notifications: $e');
+      print('Error initializing customer notifications: $e');
       // Don't rethrow to prevent provider creation failure
     }
   }
 
-  Future<void> _setupRealtimeListener() async {
-    try {
-      // Cancel existing subscription if any
-      await _notificationsSubscription?.cancel();
-
-      print('AdminNotificationProvider: Setting up real-time listener...');
-
-      // Set up real-time listener for new notifications
-      _notificationsSubscription = _supabase
-          .from('kl_admin_notifications')
-          .stream(primaryKey: ['id'])
-          .order('created_at', ascending: false)
-          .listen((List<dynamic> data) {
-            print(
-              'Real-time notification update received: ${data.length} notifications',
-            );
-
-            // Update notifications list
-            _notifications = data
-                .map((json) => AdminNotification.fromJson(json))
-                .toList();
-
-            notifyListeners();
-
-            // Show local notification for new orders if it's a new notification
-            if (data.isNotEmpty) {
-              print(
-                'AdminNotificationProvider: New notifications received: ${data.length}',
-              );
-            }
-          });
-
-      print('Real-time notification listener set up successfully');
-    } catch (e) {
-      print('Error setting up real-time listener: $e');
-    }
-  }
-
-  Future<void> _loadAdminNotifications() async {
+  Future<void> _loadCustomerNotifications() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) return;
+
       try {
         final response = await _supabase
-            .from('kl_admin_notifications')
+            .from('kl_customer_notifications')
             .select()
+            .eq('user_id', currentUser.id)
             .order('created_at', ascending: false);
 
         final notificationsData = response as List;
         _notifications = notificationsData
-            .map((data) => AdminNotification.fromJson(data))
+            .map((data) => CustomerNotification.fromJson(data))
             .toList();
       } catch (e) {
-        print('Failed to load admin notifications: $e');
+        print('Failed to load customer notifications: $e');
         _notifications = []; // Start with empty list if database fails
       }
 
       print(
-        'AdminNotificationProvider: Loaded ${_notifications.length} notifications',
+        'CustomerNotificationProvider: Loaded ${_notifications.length} notifications',
       );
     } catch (e) {
       _error = 'Failed to load notifications: ${e.toString()}';
-      print('Error loading admin notifications: $e');
+      print('Error loading customer notifications: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> _getOrCreateAdminFcmToken() async {
+  Future<void> _getOrCreateCustomerFcmToken() async {
     try {
+      print('CustomerNotificationProvider: Getting FCM token...');
+
       // Get current FCM token
       String? token = _notificationService.fcmToken;
 
       if (token == null || token.isEmpty) {
+        print('CustomerNotificationProvider: FCM token is null, refreshing...');
         // Refresh token if null or empty
         await _notificationService.refreshToken();
         token = _notificationService.fcmToken;
       }
 
       if (token != null && token.isNotEmpty) {
-        _adminFcmToken = token;
+        _customerFcmToken = token;
 
-        // Store/update admin FCM token in database
+        // Store/update customer FCM token in database
         final currentUser = _supabase.auth.currentUser;
         if (currentUser != null) {
           try {
-            await _supabase.from('kl_admin_fcm_tokens').upsert({
+            print(
+              'CustomerNotificationProvider: Storing FCM token for user: ${currentUser.id}',
+            );
+            await _supabase.from('kl_customer_fcm_tokens').upsert({
               'user_id': currentUser.id,
               'fcm_token': token,
               'updated_at': DateTime.now().toIso8601String(),
             }, onConflict: 'user_id');
-            print('Admin FCM token stored successfully: $token');
+            print('✅ Customer FCM token stored successfully: $token');
           } catch (e) {
-            print('Failed to store admin FCM token: $e');
+            print('❌ Failed to store customer FCM token: $e');
             // Continue without storing token
           }
         }
 
-        print('AdminNotificationProvider: Admin FCM token set: $token');
+        print('✅ CustomerNotificationProvider: Customer FCM token set: $token');
       } else {
-        print('AdminNotificationProvider: FCM token is null or empty');
+        print(
+          '❌ CustomerNotificationProvider: FCM token is still null or empty after refresh',
+        );
       }
     } catch (e) {
-      print('Error getting/creating admin FCM token: $e');
+      print('❌ Error getting/creating customer FCM token: $e');
+    }
+  }
+
+  Future<void> _setupRealtimeListener() async {
+    try {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) return;
+
+      // Cancel existing subscription if any
+      await _notificationsSubscription?.cancel();
+
+      // Set up real-time listener for new notifications
+      _notificationsSubscription = _supabase
+          .from('kl_customer_notifications')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', currentUser.id)
+          .order('created_at', ascending: false)
+          .listen((List<dynamic> data) {
+            print(
+              'Real-time customer notification update received: ${data.length} notifications',
+            );
+
+            // Update notifications list
+            _notifications = data
+                .map((json) => CustomerNotification.fromJson(json))
+                .toList();
+
+            notifyListeners();
+          });
+
+      print('Real-time customer notification listener set up successfully');
+    } catch (e) {
+      print('Error setting up real-time listener: $e');
     }
   }
 
   Future<void> addNotification({
+    required String userId,
     required String orderId,
-    required String customerName,
-    required int quantity,
-    required double totalPrice,
-    required DateTime orderDate,
+    required String title,
+    required String message,
   }) async {
     try {
       final notificationData = {
+        'user_id': userId,
         'order_id': orderId,
-        'customer_name': customerName,
-        'quantity': quantity,
-        'total_price': totalPrice,
-        'order_date': orderDate.toIso8601String(),
+        'title': title,
+        'message': message,
         'is_read': false,
         'created_at': DateTime.now().toIso8601String(),
       };
 
       try {
         final response = await _supabase
-            .from('kl_admin_notifications')
+            .from('kl_customer_notifications')
             .insert(notificationData)
             .select()
             .single();
 
-        final newNotification = AdminNotification.fromJson(response);
+        final newNotification = CustomerNotification.fromJson(response);
 
         // Add to local list
         _notifications.insert(0, newNotification);
       } catch (e) {
-        print('Failed to add admin notification to database: $e');
-        // Continue without adding to database
+        print('Failed to add customer notification to database: $e');
+        // Create notification locally without database
+        final newNotification = CustomerNotification(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          userId: userId,
+          orderId: orderId,
+          title: title,
+          message: message,
+          isRead: false,
+          createdAt: DateTime.now(),
+        );
+        _notifications.insert(0, newNotification);
       }
 
-      // Send push notification to admin
-      if (_adminFcmToken != null && _adminFcmToken!.isNotEmpty) {
+      // Send push notification to customer
+      if (_customerFcmToken != null && _customerFcmToken!.isNotEmpty) {
         print(
-          'AdminNotificationProvider: Sending push notification to admin: $_adminFcmToken',
+          'CustomerNotificationProvider: Sending push notification to customer: $_customerFcmToken',
         );
-        await _notificationService.sendOrderNotificationToAdmin(
-          adminToken: _adminFcmToken!,
-          customerName: customerName,
-          quantity: quantity,
-          totalPrice: totalPrice,
+        await _notificationService.sendOrderNotificationToCustomer(
+          customerToken: _customerFcmToken!,
+          title: title,
+          body: message,
           orderId: orderId,
-          orderDate: orderDate,
         );
       } else {
         print(
-          'AdminNotificationProvider: Admin FCM token is null or empty, cannot send push notification',
+          'CustomerNotificationProvider: Customer FCM token is null or empty, cannot send push notification',
         );
       }
 
       notifyListeners();
       print(
-        'AdminNotificationProvider: New notification added for order: $orderId',
+        'CustomerNotificationProvider: New notification added for order: $orderId',
       );
     } catch (e) {
       _error = 'Failed to add notification: ${e.toString()}';
-      print('Error adding admin notification: $e');
+      print('Error adding customer notification: $e');
       notifyListeners();
     }
   }
@@ -367,7 +373,7 @@ class AdminNotificationProvider extends ChangeNotifier {
   Future<void> markAsRead(String notificationId) async {
     try {
       await _supabase
-          .from('kl_admin_notifications')
+          .from('kl_customer_notifications')
           .update({'is_read': true})
           .eq('id', notificationId);
 
@@ -382,7 +388,7 @@ class AdminNotificationProvider extends ChangeNotifier {
       }
 
       print(
-        'AdminNotificationProvider: Notification marked as read: $notificationId',
+        'CustomerNotificationProvider: Notification marked as read: $notificationId',
       );
     } catch (e) {
       print('Error marking notification as read (updating locally): $e');
@@ -400,6 +406,9 @@ class AdminNotificationProvider extends ChangeNotifier {
 
   Future<void> markAllAsRead() async {
     try {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) return;
+
       final unreadIds = _notifications
           .where((n) => !n.isRead)
           .map((n) => n.id)
@@ -407,8 +416,9 @@ class AdminNotificationProvider extends ChangeNotifier {
 
       if (unreadIds.isNotEmpty) {
         await _supabase
-            .from('kl_admin_notifications')
+            .from('kl_customer_notifications')
             .update({'is_read': true})
+            .eq('user_id', currentUser.id)
             .inFilter('id', unreadIds);
 
         // Update local notifications
@@ -417,7 +427,7 @@ class AdminNotificationProvider extends ChangeNotifier {
             .toList();
         notifyListeners();
 
-        print('AdminNotificationProvider: All notifications marked as read');
+        print('CustomerNotificationProvider: All notifications marked as read');
       }
     } catch (e) {
       print('Error marking all notifications as read (updating locally): $e');
@@ -432,7 +442,7 @@ class AdminNotificationProvider extends ChangeNotifier {
   Future<void> deleteNotification(String notificationId) async {
     try {
       await _supabase
-          .from('kl_admin_notifications')
+          .from('kl_customer_notifications')
           .delete()
           .eq('id', notificationId);
 
@@ -440,26 +450,30 @@ class AdminNotificationProvider extends ChangeNotifier {
       _notifications.removeWhere((n) => n.id == notificationId);
       notifyListeners();
 
-      print('AdminNotificationProvider: Notification deleted: $notificationId');
+      print(
+        'CustomerNotificationProvider: Notification deleted: $notificationId',
+      );
     } catch (e) {
-      print('Error deleting notification (removing locally): $e');
-      // Remove locally even if database deletion fails
-      _notifications.removeWhere((n) => n.id == notificationId);
+      _error = 'Failed to delete notification: ${e.toString()}';
+      print('Error deleting notification: $e');
       notifyListeners();
     }
   }
 
   Future<void> clearAllNotifications() async {
     try {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) return;
+
       await _supabase
-          .from('kl_admin_notifications')
+          .from('kl_customer_notifications')
           .delete()
-          .neq('id', ''); // Delete all
+          .eq('user_id', currentUser.id);
 
       _notifications.clear();
       notifyListeners();
 
-      print('AdminNotificationProvider: All notifications cleared');
+      print('CustomerNotificationProvider: All notifications cleared');
     } catch (e) {
       print('Error clearing notifications (clearing locally): $e');
       // Clear locally even if database deletion fails
@@ -470,7 +484,7 @@ class AdminNotificationProvider extends ChangeNotifier {
 
   void _clearNotifications() {
     _notifications.clear();
-    _adminFcmToken = null;
+    _customerFcmToken = null;
     _error = null;
     _notificationsSubscription?.cancel();
     _notificationsSubscription = null;
@@ -483,6 +497,6 @@ class AdminNotificationProvider extends ChangeNotifier {
   }
 
   Future<void> refreshNotifications() async {
-    await _loadAdminNotifications();
+    await _loadCustomerNotifications();
   }
 }

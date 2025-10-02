@@ -1,239 +1,252 @@
-// import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-// const corsHeaders = {
-//   'Access-Control-Allow-Origin': '*',
-//   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-// }
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
-// interface NotificationRequest {
-//   adminToken: string
-//   customerName: string
-//   quantity: number
-//   totalPrice: number
-//   orderId: string
-//   orderDate: string
-// }
+interface NotificationRequest {
+  adminToken: string
+  customerName: string
+  quantity: number
+  totalPrice: number
+  orderId: string
+  orderDate: string
+}
 
-// serve(async (req: Request) => {
-//   // Handle CORS preflight requests
-//   if (req.method === 'OPTIONS') {
-//     return new Response('ok', { headers: corsHeaders })
-//   }
+serve(async (req: Request) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
-//   try {
-//     const { adminToken, customerName, quantity, totalPrice, orderId, orderDate }: NotificationRequest = await req.json()
+  try {
+    const { token, title, body, data }: { token: string; title: string; body: string; data: any } = await req.json()
 
-//     // Get service account from environment variables
-//     const serviceAccountJson = Deno.env.get('FCM_SERVICE_ACCOUNT_JSON')
-//     const projectId = Deno.env.get('FCM_PROJECT_ID')
+    console.log('=== SUPABASE EDGE FUNCTION DEBUG ===')
+    console.log('Received request:', {
+      token: token ? token.substring(0, 20) + '...' : 'null',
+      title,
+      body,
+      data
+    })
 
-//     if (!serviceAccountJson || !projectId) {
-//       throw new Error('Missing FCM configuration')
-//     }
+    // Get service account from environment variables
+    const serviceAccountJson = Deno.env.get('FCM_SERVICE_ACCOUNT_JSON')
+    const projectId = Deno.env.get('FCM_PROJECT_ID')
 
-//     const serviceAccount = JSON.parse(serviceAccountJson)
+    if (!serviceAccountJson || !projectId) {
+      console.error('Missing FCM configuration')
+      throw new Error('Missing FCM configuration')
+    }
 
-//     // Create JWT token
-//     const jwt = await createJWT(serviceAccount, projectId)
+    const serviceAccount = JSON.parse(serviceAccountJson)
+    console.log('Service account loaded for project:', projectId)
 
-//     // Get access token from Google OAuth2
-//     const accessToken = await getAccessToken(jwt)
+    // Create JWT token
+    const jwt = await createJWT(serviceAccount, projectId)
+    console.log('JWT token created')
 
-//     // Send FCM notification
-//     const fcmResult = await sendFCMNotification(
-//       accessToken,
-//       adminToken,
-//       customerName,
-//       quantity,
-//       totalPrice,
-//       orderId,
-//       orderDate,
-//       projectId
-//     )
+    // Get access token from Google OAuth2
+    const accessToken = await getAccessToken(jwt)
+    console.log('Access token obtained')
 
-//     return new Response(
-//       JSON.stringify({
-//         success: true,
-//         message: 'Notification sent successfully',
-//         data: fcmResult
-//       }),
-//       {
-//         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-//         status: 200,
-//       },
-//     )
-//   } catch (error) {
-//     console.error('Error sending notification:', error)
-//     return new Response(
-//       JSON.stringify({
-//         success: false,
-//         error: error instanceof Error ? error.message : 'Unknown error'
-//       }),
-//       {
-//         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-//         status: 500,
-//       },
-//     )
-//   }
-// })
+    // Send FCM notification
+    const fcmResult = await sendFCMNotification(
+      accessToken,
+      token,
+      title,
+      body,
+      data,
+      projectId
+    )
 
-// async function createJWT(serviceAccount: any, projectId: string): Promise<string> {
-//   const header = {
-//     alg: 'RS256',
-//     typ: 'JWT'
-//   }
+    console.log('FCM result:', fcmResult)
 
-//   const now = Math.floor(Date.now() / 1000)
-//   const payload = {
-//     iss: serviceAccount.client_email,
-//     scope: 'https://www.googleapis.com/auth/firebase.messaging',
-//     aud: 'https://oauth2.googleapis.com/token',
-//     exp: now + 3600,
-//     iat: now,
-//   }
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Notification sent successfully',
+        data: fcmResult
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      },
+    )
+  } catch (error) {
+    console.error('Error sending notification:', error)
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      },
+    )
+  }
+})
 
-//   const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-//   const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+async function createJWT(serviceAccount: any, projectId: string): Promise<string> {
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT'
+  }
 
-//   const message = `${encodedHeader}.${encodedPayload}`
+  const now = Math.floor(Date.now() / 1000)
+  const payload = {
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  }
 
-//   // Create RSA signature using service account private key
-//   const privateKeyPem = serviceAccount.private_key
-//   const signature = await signJWT(message, privateKeyPem)
+  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
 
-//   const encodedSignature = btoa(String.fromCharCode(...signature))
-//     .replace(/=/g, '')
-//     .replace(/\+/g, '-')
-//     .replace(/\//g, '_')
+  const message = `${encodedHeader}.${encodedPayload}`
 
-//   return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
-// }
+  // Create RSA signature using service account private key
+  const privateKeyPem = serviceAccount.private_key
+  const signature = await signJWT(message, privateKeyPem)
 
-// async function signJWT(message: string, privateKeyPem: string): Promise<Uint8Array> {
-//   // For Deno environment, we'll use a simpler approach
-//   // In a real implementation, you would use proper RSA signing
+  const encodedSignature = btoa(String.fromCharCode(...signature))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
 
-//   // Remove PEM header and footer and decode
-//   const pemContents = privateKeyPem
-//     .replace('-----BEGIN PRIVATE KEY-----', '')
-//     .replace('-----END PRIVATE KEY-----', '')
-//     .replace(/\n/g, '')
+  return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
+}
 
-//   const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0))
+async function signJWT(message: string, privateKeyPem: string): Promise<Uint8Array> {
+  // Remove PEM header and footer and decode base64
+  const pemContents = privateKeyPem
+    .replace('-----BEGIN PRIVATE KEY-----', '')
+    .replace('-----END PRIVATE KEY-----', '')
+    .replace(/\n/g, '')
 
-//   // Create a signature using the private key content
-//   // This is a simplified approach - in production you should use proper RSA
-//   const encoder = new TextEncoder()
-//   const messageBytes = encoder.encode(message)
-//   const keyBytes = binaryDer.slice(0, 32) // Use part of private key
+  // Convert base64 to binary DER format
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0))
 
-//   // Create HMAC signature
-//   const cryptoKey = await crypto.subtle.importKey(
-//     'raw',
-//     keyBytes,
-//     { name: 'HMAC', hash: 'SHA-256' },
-//     false,
-//     ['sign']
-//   )
+  // Import the private key for RSA signing
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign']
+  )
 
-//   const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageBytes)
-//   return new Uint8Array(signature)
-// }
+  // Create the signature
+  const encoder = new TextEncoder()
+  const messageBytes = encoder.encode(message)
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    privateKey,
+    messageBytes
+  )
 
-// async function getAccessToken(jwt: string): Promise<string> {
-//   const response = await fetch('https://oauth2.googleapis.com/token', {
-//     method: 'POST',
-//     headers: {
-//       'Content-Type': 'application/x-www-form-urlencoded',
-//     },
-//     body: new URLSearchParams({
-//       grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-//       assertion: jwt,
-//     }),
-//   })
+  return new Uint8Array(signature)
+}
 
-//   if (!response.ok) {
-//     const error = await response.text()
-//     throw new Error(`Failed to get access token: ${response.status} ${error}`)
-//   }
+async function getAccessToken(jwt: string): Promise<string> {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  })
 
-//   const data = await response.json()
-//   return data.access_token
-// }
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Failed to get access token: ${response.status} ${error}`)
+  }
 
-// async function sendFCMNotification(
-//   accessToken: string,
-//   adminToken: string,
-//   customerName: string,
-//   quantity: number,
-//   totalPrice: number,
-//   orderId: string,
-//   orderDate: string,
-//   projectId: string
-// ) {
-//   const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
+  const data = await response.json()
+  return data.access_token
+}
 
-//   // Format price
-//   const formattedPrice = `Rp ${totalPrice.toLocaleString('id-ID')}`
+async function sendFCMNotification(
+  accessToken: string,
+  token: string,
+  title: string,
+  body: string,
+  data: any,
+  projectId: string
+) {
+  const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
 
-//   // Format date
-//   const date = new Date(orderDate)
-//   const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`
+  console.log('Sending FCM notification to:', token.substring(0, 20) + '...')
+  console.log('Title:', title)
+  console.log('Body:', body)
 
-//   const payload = {
-//     message: {
-//       token: adminToken,
-//       notification: {
-//         title: 'New Order Received!',
-//         body: `Customer: ${customerName}\nItems: ${quantity}\nTotal: ${formattedPrice}\nTime: ${formattedDate}`,
-//       },
-//       data: {
-//         type: 'new_order',
-//         order_id: orderId,
-//         customer_name: customerName,
-//         quantity: quantity.toString(),
-//         total_price: totalPrice.toString(),
-//         order_date: orderDate,
-//         click_action: 'FLUTTER_NOTIFICATION_CLICK',
-//       },
-//       android: {
-//         priority: 'high',
-//         notification: {
-//           channel_id: 'orders',
-//           default_sound: true,
-//           default_vibrate_timings: true,
-//           notification_priority: 'PRIORITY_HIGH',
-//           icon: 'ic_launcher',
-//         },
-//       },
-//       apns: {
-//         payload: {
-//           aps: {
-//             alert: {
-//               title: 'New Order Received!',
-//               body: `Customer: ${customerName}\nItems: ${quantity}\nTotal: ${formattedPrice}\nTime: ${formattedDate}`,
-//             },
-//             sound: 'default',
-//             badge: 1,
-//           },
-//         },
-//       },
-//     },
-//   }
+  const payload = {
+    message: {
+      token: token,
+      notification: {
+        title: title,
+        body: body,
+      },
+      data: data,
+      android: {
+        priority: 'high',
+        notification: {
+          channel_id: 'orders',
+          default_sound: true,
+          default_vibrate_timings: true,
+          notification_priority: 'PRIORITY_HIGH',
+          icon: 'ic_launcher',
+          color: '#FF0000',
+        },
+      },
+      apns: {
+        headers: {
+          'apns-priority': '10',
+        },
+        payload: {
+          aps: {
+            alert: {
+              title: title,
+              body: body,
+            },
+            sound: 'default',
+            badge: 1,
+          },
+        },
+      },
+    },
+  }
 
-//   const response = await fetch(fcmUrl, {
-//     method: 'POST',
-//     headers: {
-//       'Content-Type': 'application/json',
-//       'Authorization': `Bearer ${accessToken}`,
-//     },
-//     body: JSON.stringify(payload),
-//   })
+  console.log('FCM Payload:', JSON.stringify(payload, null, 2))
 
-//   if (!response.ok) {
-//     const error = await response.text()
-//     throw new Error(`FCM request failed: ${response.status} ${error}`)
-//   }
+  const response = await fetch(fcmUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  })
 
-//   return await response.json()
-// }
+  console.log('FCM Response status:', response.status)
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('FCM request failed:', error)
+    throw new Error(`FCM request failed: ${response.status} ${error}`)
+  }
+
+  const result = await response.json()
+  console.log('FCM result:', result)
+  return result
+}

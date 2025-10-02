@@ -37,7 +37,8 @@ class OrdersProvider extends ChangeNotifier {
     _supabase.auth.onAuthStateChange.listen((event) async {
       print('OrdersProvider: Auth state changed: ${event.event}');
 
-      if (event.event == AuthChangeEvent.signedIn && event.session?.user != null) {
+      if (event.event == AuthChangeEvent.signedIn &&
+          event.session?.user != null) {
         if (shouldLoadOrders()) {
           print('OrdersProvider: User signed in, loading orders...');
           await loadUserOrders();
@@ -182,23 +183,25 @@ class OrdersProvider extends ChangeNotifier {
         };
       }).toList();
 
-      await _supabase
-          .from('kl_order_items')
-          .insert(orderItems);
+      await _supabase.from('kl_order_items').insert(orderItems);
 
       // Create order object
-      final orderItemsObjects = orderItems.map((item) => OrderItem(
-        id: '', // Will be set by database
-        orderId: orderId,
-        productId: item['product_id'],
-        productName: item['product_name'],
-        productImageUrl: item['product_image_url'],
-        quantity: item['quantity'],
-        unitPrice: item['unit_price'],
-        discountPrice: item['discount_price'],
-        totalPrice: item['total_price'],
-        createdAt: DateTime.now(),
-      )).toList();
+      final orderItemsObjects = orderItems
+          .map(
+            (item) => OrderItem(
+              id: '', // Will be set by database
+              orderId: orderId,
+              productId: item['product_id'],
+              productName: item['product_name'],
+              productImageUrl: item['product_image_url'],
+              quantity: item['quantity'],
+              unitPrice: item['unit_price'],
+              discountPrice: item['discount_price'],
+              totalPrice: item['total_price'],
+              createdAt: DateTime.now(),
+            ),
+          )
+          .toList();
 
       final order = Order(
         id: orderId,
@@ -267,7 +270,10 @@ class OrdersProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updatePaymentStatus(String orderId, PaymentStatus newStatus) async {
+  Future<bool> updatePaymentStatus(
+    String orderId,
+    PaymentStatus newStatus,
+  ) async {
     try {
       await _supabase
           .from('kl_orders')
@@ -280,7 +286,9 @@ class OrdersProvider extends ChangeNotifier {
       // Update local order
       final orderIndex = _orders.indexWhere((order) => order.id == orderId);
       if (orderIndex >= 0) {
-        _orders[orderIndex] = _orders[orderIndex].copyWith(paymentStatus: newStatus);
+        _orders[orderIndex] = _orders[orderIndex].copyWith(
+          paymentStatus: newStatus,
+        );
         notifyListeners();
       }
 
@@ -349,7 +357,9 @@ class OrdersProvider extends ChangeNotifier {
       if (orderIndex >= 0) {
         _orders[orderIndex] = updatedOrder;
         notifyListeners();
-        print('OrdersProvider: Order updated successfully: ${updatedOrder.orderNumber}');
+        print(
+          'OrdersProvider: Order updated successfully: ${updatedOrder.orderNumber}',
+        );
       } else {
         print('OrdersProvider: Order not found in local list: $orderId');
       }
@@ -364,14 +374,22 @@ class OrdersProvider extends ChangeNotifier {
     return currentUser != null && !_isInitialized && !_isLoading;
   }
 
-  Future<void> _sendNotificationToAdmin(Order order, List<CartItem> cartItems) async {
+  Future<void> _sendNotificationToAdmin(
+    Order order,
+    List<CartItem> cartItems,
+  ) async {
     try {
       // Get customer information
       final customerResponse = await _supabase
           .from('kl_users')
           .select('full_name')
           .eq('id', order.userId)
-          .single();
+          .maybeSingle();
+
+      if (customerResponse == null) {
+        print('Customer not found for order ${order.id}');
+        return;
+      }
 
       final customerName = customerResponse['full_name'] ?? 'Unknown Customer';
 
@@ -381,7 +399,29 @@ class OrdersProvider extends ChangeNotifier {
         (sum, item) => sum + item.quantity,
       );
 
-      // Get admin FCM tokens
+      // Insert notification directly into admin notifications table
+      // The AdminNotificationProvider will pick this up via real-time listener
+      final notificationData = {
+        'order_id': order.id,
+        'customer_name': customerName,
+        'quantity': totalQuantity,
+        'total_price': order.totalAmount,
+        'order_date': order.createdAt.toIso8601String(),
+        'is_read': false,
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      final insertResponse = await _supabase
+          .from('kl_admin_notifications')
+          .insert(notificationData)
+          .select()
+          .single();
+
+      print(
+        'Admin notification inserted successfully: ${insertResponse['id']}',
+      );
+
+      // Get admin FCM tokens and send push notifications
       final adminTokensResponse = await _supabase
           .from('kl_admin_fcm_tokens')
           .select('fcm_token');
@@ -402,22 +442,14 @@ class OrdersProvider extends ChangeNotifier {
             orderId: order.id,
             orderDate: order.createdAt,
           );
-
-          // Also add to admin notifications table
-          final adminNotificationProvider = AdminNotificationProvider();
-          await adminNotificationProvider.addNotification(
-            orderId: order.id,
-            customerName: customerName,
-            quantity: totalQuantity,
-            totalPrice: order.totalAmount,
-            orderDate: order.createdAt,
-          );
         } catch (e) {
           print('Error sending notification to admin $adminToken: $e');
         }
       }
 
-      print('OrdersProvider: Notifications sent to ${adminTokens.length} admin(s)');
+      print(
+        'OrdersProvider: Notifications sent to ${adminTokens.length} admin(s)',
+      );
     } catch (e) {
       print('Error sending notifications to admin: $e');
       // Don't throw error here as order creation should still succeed

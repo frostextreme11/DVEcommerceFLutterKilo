@@ -13,6 +13,7 @@ import 'providers/admin_orders_provider.dart';
 import 'providers/admin_users_provider.dart';
 import 'providers/admin_categories_provider.dart';
 import 'providers/admin_notification_provider.dart';
+import 'providers/customer_notification_provider.dart';
 import 'services/notification_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
@@ -29,6 +30,7 @@ import 'screens/admin/order_details_screen.dart';
 import 'screens/admin/user_form_screen.dart';
 import 'screens/admin/category_form_screen.dart';
 import 'screens/admin/admin_notifications_screen.dart';
+import 'screens/customer/customer_notifications_screen.dart';
 import 'screens/checkout/checkout_screen.dart';
 import 'screens/orders/order_history_screen.dart';
 import 'screens/splash_screen.dart';
@@ -40,6 +42,10 @@ void main() async {
     url: SupabaseConfig.supabaseUrl,
     anonKey: SupabaseConfig.supabaseAnonKey,
   );
+
+  // Initialize notification service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
 
   runApp(
     MultiProvider(
@@ -54,6 +60,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AdminUsersProvider()),
         ChangeNotifierProvider(create: (_) => AdminCategoriesProvider()),
         ChangeNotifierProvider(create: (_) => AdminNotificationProvider()),
+        ChangeNotifierProvider(create: (_) => CustomerNotificationProvider()),
+        Provider<NotificationService>.value(value: notificationService),
       ],
       child: const DalanovaEcommerceApp(),
     ),
@@ -164,6 +172,10 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/admin/notifications',
       builder: (context, state) => const AdminNotificationsScreen(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const CustomerNotificationsScreen(),
     ),
   ],
   redirect: (context, state) {

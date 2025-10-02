@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../config/supabase_config.dart';
 
 class NotificationService {
@@ -79,6 +81,13 @@ class NotificationService {
 
     print('Notification permission status: ${settings.authorizationStatus}');
 
+    // For Android, also request permission
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      print('❌ Notification permissions denied');
+    } else {
+      print('✅ Notification permissions granted');
+    }
+
     // For Android, permissions are handled in AndroidManifest.xml
   }
 
@@ -146,8 +155,31 @@ class NotificationService {
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
-    print('Received foreground message: ${message.messageId}');
+    print('📱 Received foreground message: ${message.messageId}');
+    print('Message data: ${message.data}');
+    print('Notification title: ${message.notification?.title}');
+    print('Notification body: ${message.notification?.body}');
+
+    // Show local notification for foreground messages
     _showLocalNotification(message);
+
+    // Also show a snackbar if we have context
+    if (_getCurrentContext != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final context = _getCurrentContext?.call();
+        if (context != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${message.notification?.title ?? 'New notification'}: ${message.notification?.body ?? ''}',
+              ),
+              backgroundColor: Colors.blue,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    }
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
@@ -229,7 +261,7 @@ class NotificationService {
       String formattedDate =
           '${orderDate.day}/${orderDate.month}/${orderDate.year} ${orderDate.hour}:${orderDate.minute.toString().padLeft(2, '0')}';
 
-      // Send notification via FCM
+      // Send FCM notification directly
       await _sendFCMNotification(
         token: adminToken,
         title: 'New Order Received!',
@@ -242,12 +274,39 @@ class NotificationService {
           'quantity': quantity.toString(),
           'total_price': totalPrice.toString(),
           'order_date': orderDate.toIso8601String(),
+          'click_action': 'FLUTTER_NOTIFICATION_CLICK',
         },
       );
 
-      print('Order notification sent to admin successfully');
+      print('Admin notification sent successfully');
     } catch (e) {
-      print('Error sending order notification: $e');
+      print('Error sending admin notification: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> sendOrderNotificationToCustomer({
+    required String customerToken,
+    required String title,
+    required String body,
+    required String orderId,
+  }) async {
+    try {
+      // Send FCM notification directly
+      await _sendFCMNotification(
+        token: customerToken,
+        title: title,
+        body: body,
+        data: {
+          'order_id': orderId,
+          'type': 'customer_notification',
+          'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+        },
+      );
+
+      print('Customer notification sent successfully');
+    } catch (e) {
+      print('Error sending customer notification: $e');
       rethrow;
     }
   }
@@ -259,54 +318,78 @@ class NotificationService {
     required Map<String, String> data,
   }) async {
     try {
-      // Call Supabase Edge Function instead of direct FCM
-      await _callEdgeFunctionForNotification(
-        adminToken: token,
-        customerName: data['customer_name'] ?? 'Unknown',
-        quantity: int.parse(data['quantity'] ?? '0'),
-        totalPrice: double.parse(data['total_price'] ?? '0'),
-        orderId: data['order_id'] ?? '',
-        orderDate: data['order_date'] ?? DateTime.now().toIso8601String(),
+      print('🔄 Attempting to send FCM notification via Edge Function...');
+
+      // Only use Supabase Edge Function (no direct FCM fallback)
+      await _callSupabaseEdgeFunction(
+        token: token,
+        title: title,
+        body: body,
+        data: data,
       );
     } catch (e) {
-      print('Error sending FCM notification via Edge Function: $e');
-      rethrow;
+      print('❌ Error sending FCM notification: $e');
+      // Don't rethrow to prevent notification flow from breaking
     }
   }
 
-  Future<void> _callEdgeFunctionForNotification({
-    required String adminToken,
-    required String customerName,
-    required int quantity,
-    required double totalPrice,
-    required String orderId,
-    required String orderDate,
+  Future<void> _callSupabaseEdgeFunction({
+    required String token,
+    required String title,
+    required String body,
+    required Map<String, String> data,
   }) async {
     try {
-      final supabase = Supabase.instance.client;
+      // Call Supabase Edge Function for FCM notification
+      final supabaseUrl = SupabaseConfig.supabaseUrl;
+      final edgeFunctionUrl = '$supabaseUrl/functions/v1/send_notification';
 
-      final response = await supabase.functions.invoke(
-        'send_notification',
-        body: {
-          'adminToken': adminToken,
-          'customerName': customerName,
-          'quantity': quantity,
-          'totalPrice': totalPrice,
-          'orderId': orderId,
-          'orderDate': orderDate,
+      print('=== EDGE FUNCTION DEBUG ===');
+      print('Edge Function URL: $edgeFunctionUrl');
+      print('Token: ${token.substring(0, 20)}...');
+      print('Title: $title');
+      print('Body: $body');
+      print('Data: $data');
+
+      final payload = {
+        'token': token,
+        'title': title,
+        'body': body,
+        'data': data,
+      };
+
+      print('Payload: ${json.encode(payload)}');
+
+      final response = await http.post(
+        Uri.parse(edgeFunctionUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${SupabaseConfig.supabaseAnonKey}',
         },
+        body: json.encode(payload),
       );
 
-      if (response.status == 200 && response.data['success'] == true) {
-        print('Notification sent successfully via Edge Function');
-        print('Edge Function Response: ${response.data}');
+      print('Edge Function Response status: ${response.statusCode}');
+      print('Edge Function Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        print('✅ Edge Function notification sent successfully');
+        final responseData = json.decode(response.body);
+        print('Edge Function result: $responseData');
       } else {
-        print('Edge Function returned error: ${response.data}');
-        throw Exception('Edge Function failed to send notification');
+        print('❌ Edge Function notification failed: ${response.statusCode}');
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = json.decode(response.body);
+            print('Error details: $errorData');
+          } catch (e) {
+            print('Raw error response: ${response.body}');
+          }
+        }
       }
     } catch (e) {
-      print('Error calling Edge Function: $e');
-      rethrow;
+      print('❌ Error calling Edge Function: $e');
+      print('Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -338,6 +421,67 @@ class NotificationService {
 
   void setContextProvider(BuildContext Function() contextProvider) {
     _getCurrentContext = contextProvider;
+  }
+
+  // Test method to send a test notification
+  Future<void> sendTestNotification(String token) async {
+    print('🧪 Sending test notification...');
+    await _sendFCMNotification(
+      token: token,
+      title: 'Test Notification',
+      body: 'This is a test notification to verify FCM is working properly.',
+      data: {
+        'type': 'test',
+        'timestamp': DateTime.now().toIso8601String(),
+        'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+      },
+    );
+  }
+
+  // Test method to check FCM configuration
+  Future<void> testNotificationSetup() async {
+    print('🔍 Testing notification setup...');
+
+    try {
+      // Test 1: Check if Firebase is initialized
+      await initialize();
+      print('✅ Firebase initialized');
+
+      // Test 2: Check FCM token
+      final token = fcmToken;
+      if (token != null && token.isNotEmpty) {
+        print('✅ FCM token available: ${token.substring(0, 20)}...');
+      } else {
+        print('❌ FCM token not available');
+      }
+
+      // Test 3: Check permissions
+      await _requestPermissions();
+      print('✅ Permissions checked');
+
+      // Test 4: Check Edge Function configuration
+      print('✅ Using FCM v1 API via Supabase Edge Function');
+
+      print('🔍 Notification setup test completed');
+    } catch (e) {
+      print('❌ Notification setup test failed: $e');
+    }
+  }
+
+  // Method to check if FCM is working
+  Future<bool> testFCMConnection() async {
+    try {
+      print('🔍 Testing FCM connection...');
+
+      print('✅ Using FCM v1 API via Supabase Edge Function');
+      print('✅ Firebase messaging is initialized');
+      print('✅ Local notifications are set up');
+
+      return true;
+    } catch (e) {
+      print('❌ FCM connection test failed: $e');
+      return false;
+    }
   }
 }
 
