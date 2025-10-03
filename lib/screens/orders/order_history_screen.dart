@@ -60,10 +60,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
           bottom: TabBar(
             controller: _tabController,
             tabs: const [
-              Tab(text: 'All'),
-              Tab(text: 'Pending'),
-              Tab(text: 'Processing'),
-              Tab(text: 'Completed'),
+              Tab(text: 'Semua'),
+              Tab(text: 'Menunggu Ongkir'),
+              Tab(text: 'Menunggu Pembayaran'),
+              Tab(text: 'Selesai'),
             ],
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
@@ -75,15 +75,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
           children: [
             _buildOrderList(ordersProvider.orders),
             _buildOrderList(
-              ordersProvider.getOrdersByStatus(OrderStatus.notPaid),
+              ordersProvider.getOrdersByStatus(OrderStatus.menungguOngkir),
             ),
             _buildOrderList([
-              ...ordersProvider.getOrdersByStatus(OrderStatus.paid),
-              ...ordersProvider.getOrdersByStatus(OrderStatus.processing),
-              ...ordersProvider.getOrdersByStatus(OrderStatus.shipped),
+              ...ordersProvider.getOrdersByStatus(
+                OrderStatus.menungguPembayaran,
+              ),
+              ...ordersProvider.getOrdersByStatus(
+                OrderStatus.pembayaranPartial,
+              ),
             ]),
             _buildOrderList([
-              ...ordersProvider.getOrdersByStatus(OrderStatus.delivered),
+              ...ordersProvider.getOrdersByStatus(OrderStatus.lunas),
+              ...ordersProvider.getOrdersByStatus(OrderStatus.barangDikirim),
             ]),
           ],
         ),

@@ -759,10 +759,12 @@ class _OrderDetailsContent extends StatelessWidget {
 
   void _showAdditionalCostsDialog(BuildContext context) {
     final costController = TextEditingController(
-      text: order.additionalCosts?.toString() ?? '0',
+      text: order.additionalCosts?.toString() ?? '',
     );
     final notesController = TextEditingController(
-      text: order.additionalCostsNotes ?? '',
+      text:
+          order.additionalCostsNotes ??
+          (order.status == OrderStatus.menungguOngkir ? 'Ongkir' : ''),
     );
 
     showDialog(
@@ -797,23 +799,76 @@ class _OrderDetailsContent extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              final cost = double.tryParse(costController.text) ?? 0;
+            onPressed: () async {
+              final costText = costController.text.trim();
+              if (costText.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter additional costs amount'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              final cost = double.tryParse(costText);
+              if (cost == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a valid cost amount'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
               final notes = notesController.text.trim().isEmpty
                   ? null
                   : notesController.text.trim();
 
-              context.read<AdminOrdersProvider>().updateAdditionalCosts(
-                order.id,
-                cost,
-                notes,
+              // Update additional costs first
+              print(
+                'OrderDetailsScreen: Calling updateAdditionalCosts with orderId: ${order.id}, cost: $cost, notes: $notes',
               );
+              final success = await context
+                  .read<AdminOrdersProvider>()
+                  .updateAdditionalCosts(order.id, cost, notes);
+              print(
+                'OrderDetailsScreen: updateAdditionalCosts returned: $success',
+              );
+
+              // Send notification to customer if update was successful and additional costs were added
+              if (success && cost > 0) {
+                try {
+                  await _sendNotificationToCustomer(
+                    context,
+                    order.userId,
+                    order.id,
+                    'Order Price Updated',
+                    'Your order ${order.orderNumber} price has been updated. Additional costs: Rp ${cost.toStringAsFixed(0)}. Total amount: Rp ${(order.totalAmount + cost).toStringAsFixed(0)}. Please complete your payment.',
+                  );
+                } catch (e) {
+                  print('Failed to send notification: $e');
+                  // Continue even if notification fails
+                }
+              }
+
+              // Close the dialog
               Navigator.pop(context);
-              if (context.mounted) {
+
+              // Show success/error message after dialog is closed to avoid context issues
+              if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Additional costs updated successfully'),
                     backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to update additional costs'),
+                    backgroundColor: Colors.red,
                   ),
                 );
               }

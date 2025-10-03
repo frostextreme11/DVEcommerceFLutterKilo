@@ -180,7 +180,7 @@ class AdminOrdersProvider extends ChangeNotifier {
       await _supabase
           .from('kl_orders')
           .update({
-            'status': newStatus.toString().split('.').last,
+            'status': newStatus.databaseValue,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', orderId);
@@ -287,14 +287,49 @@ class AdminOrdersProvider extends ChangeNotifier {
     String? additionalCostsNotes,
   ) async {
     try {
-      await _supabase
+      print(
+        'AdminOrdersProvider: Starting additional costs update for order $orderId',
+      );
+      print(
+        'AdminOrdersProvider: New additional costs: $additionalCosts, notes: $additionalCostsNotes',
+      );
+
+      // Get current order to check its status
+      final currentOrder = _orders.firstWhere((order) => order.id == orderId);
+      print(
+        'AdminOrdersProvider: Current order status: ${currentOrder.status.displayName}',
+      );
+      OrderStatus? newStatus;
+
+      // If additional costs are being added and current status is "Menunggu Ongkir",
+      // automatically transition to "Menunggu Pembayaran"
+      if (additionalCosts > 0 &&
+          currentOrder.status == OrderStatus.menungguOngkir) {
+        newStatus = OrderStatus.menungguPembayaran;
+        print(
+          'AdminOrdersProvider: Status will change to: ${newStatus.displayName}',
+        );
+      }
+
+      final updateData = {
+        'additional_costs': additionalCosts,
+        'additional_costs_notes': additionalCostsNotes,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (newStatus != null) {
+        updateData['status'] = newStatus.databaseValue;
+      }
+
+      print('AdminOrdersProvider: Update data: $updateData');
+
+      final response = await _supabase
           .from('kl_orders')
-          .update({
-            'additional_costs': additionalCosts,
-            'additional_costs_notes': additionalCostsNotes,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', orderId);
+          .update(updateData)
+          .eq('id', orderId)
+          .select();
+
+      print('AdminOrdersProvider: Database response: $response');
 
       // Update local order
       final orderIndex = _orders.indexWhere((order) => order.id == orderId);
@@ -302,24 +337,41 @@ class AdminOrdersProvider extends ChangeNotifier {
         _orders[orderIndex] = _orders[orderIndex].copyWith(
           additionalCosts: additionalCosts,
           additionalCostsNotes: additionalCostsNotes,
+          status: newStatus ?? currentOrder.status,
         );
         notifyListeners();
+        print(
+          'AdminOrdersProvider: Local order updated and listeners notified',
+        );
       }
 
       print(
-        'AdminOrdersProvider: Additional costs updated successfully: $orderId',
+        'AdminOrdersProvider: Additional costs updated successfully: $orderId${newStatus != null ? ' (status changed to ${newStatus.displayName})' : ''}',
       );
       return true;
     } catch (e) {
       print('Error updating additional costs (continuing locally): $e');
+      print('Stack trace: ${StackTrace.current}');
       // Update locally even if database update fails
       final orderIndex = _orders.indexWhere((order) => order.id == orderId);
       if (orderIndex >= 0) {
+        final currentOrder = _orders[orderIndex];
+        OrderStatus? newStatus;
+
+        // If additional costs are being added and current status is "Menunggu Ongkir",
+        // automatically transition to "Menunggu Pembayaran"
+        if (additionalCosts > 0 &&
+            currentOrder.status == OrderStatus.menungguOngkir) {
+          newStatus = OrderStatus.menungguPembayaran;
+        }
+
         _orders[orderIndex] = _orders[orderIndex].copyWith(
           additionalCosts: additionalCosts,
           additionalCostsNotes: additionalCostsNotes,
+          status: newStatus ?? currentOrder.status,
         );
         notifyListeners();
+        print('AdminOrdersProvider: Updated locally after database error');
       }
       return true;
     }
@@ -489,8 +541,10 @@ class AdminOrdersProvider extends ChangeNotifier {
           (order) =>
               order.createdAt.isAfter(startOfMonth) &&
               order.createdAt.isBefore(endOfMonth) &&
-              (order.status == OrderStatus.paid ||
-                  order.status == OrderStatus.delivered),
+              (order.status == OrderStatus.menungguPembayaran ||
+                  order.status == OrderStatus.pembayaranPartial ||
+                  order.status == OrderStatus.lunas ||
+                  order.status == OrderStatus.barangDikirim),
         )
         .fold(0.0, (sum, order) => sum + order.totalAmount);
   }
@@ -506,8 +560,8 @@ class AdminOrdersProvider extends ChangeNotifier {
           (order) =>
               order.createdAt.isAfter(startOfYear) &&
               order.createdAt.isBefore(endOfYear) &&
-              (order.status == OrderStatus.paid ||
-                  order.status == OrderStatus.delivered),
+              (order.status == OrderStatus.lunas ||
+                  order.status == OrderStatus.barangDikirim),
         )
         .fold(0.0, (sum, order) => sum + order.totalAmount);
   }
@@ -517,8 +571,8 @@ class AdminOrdersProvider extends ChangeNotifier {
     return _orders
         .where(
           (order) =>
-              order.status == OrderStatus.paid ||
-              order.status == OrderStatus.delivered,
+              order.status == OrderStatus.lunas ||
+              order.status == OrderStatus.barangDikirim,
         )
         .fold(0.0, (sum, order) => sum + order.totalAmount);
   }

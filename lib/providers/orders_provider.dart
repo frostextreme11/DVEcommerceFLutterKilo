@@ -146,7 +146,7 @@ class OrdersProvider extends ChangeNotifier {
       final orderData = {
         'user_id': userId,
         'order_number': orderNumber,
-        'status': 'not_paid',
+        'status': 'menunggu_ongkir',
         'total_amount': totalAmount,
         'shipping_address': shippingAddress,
         'payment_method': paymentMethod,
@@ -207,7 +207,7 @@ class OrdersProvider extends ChangeNotifier {
         id: orderId,
         userId: userId,
         orderNumber: orderNumber,
-        status: OrderStatus.notPaid,
+        status: OrderStatus.menungguOngkir,
         totalAmount: totalAmount,
         shippingAddress: shippingAddress,
         paymentMethod: paymentMethod,
@@ -250,7 +250,7 @@ class OrdersProvider extends ChangeNotifier {
       await _supabase
           .from('kl_orders')
           .update({
-            'status': newStatus.toString().split('.').last,
+            'status': newStatus.databaseValue,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', orderId);

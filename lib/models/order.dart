@@ -51,15 +51,21 @@ class Order {
       id: json['id'],
       userId: json['user_id'],
       orderNumber: json['order_number'],
-      status: OrderStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == json['status'],
-        orElse: () => OrderStatus.notPaid,
-      ),
+      status: OrderStatus.values.firstWhere((e) {
+        final statusStr = json['status'] as String?;
+        if (statusStr == null) return false;
+
+        // Check both camelCase and snake_case values for backward compatibility
+        return e.toString().split('.').last == statusStr ||
+            e.databaseValue == statusStr;
+      }, orElse: () => OrderStatus.menungguOngkir),
       totalAmount: (json['total_amount'] as num).toDouble(),
       shippingAddress: json['shipping_address'],
       paymentMethod: json['payment_method'],
       paymentStatus: PaymentStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == (json['payment_status'] ?? 'pending'),
+        (e) =>
+            e.toString().split('.').last ==
+            (json['payment_status'] ?? 'pending'),
         orElse: () => PaymentStatus.pending,
       ),
       courierInfo: json['courier_info'],
@@ -82,7 +88,7 @@ class Order {
       'id': id,
       'user_id': userId,
       'order_number': orderNumber,
-      'status': status.toString().split('.').last,
+      'status': status.databaseValue,
       'total_amount': totalAmount,
       'shipping_address': shippingAddress,
       'payment_method': paymentMethod,
@@ -103,7 +109,9 @@ class Order {
 
   static String generateOrderNumber() {
     final uuid = Uuid();
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toString().substring(8);
+    final timestamp = DateTime.now().millisecondsSinceEpoch
+        .toString()
+        .substring(8);
     return 'ORD-${timestamp}-${uuid.v4().substring(0, 4).toUpperCase()}';
   }
 
@@ -188,7 +196,9 @@ class OrderItem {
       productImageUrl: json['product_image_url'],
       quantity: json['quantity'],
       unitPrice: (json['unit_price'] as num).toDouble(),
-      discountPrice: json['discount_price'] != null ? (json['discount_price'] as num).toDouble() : null,
+      discountPrice: json['discount_price'] != null
+          ? (json['discount_price'] as num).toDouble()
+          : null,
       totalPrice: (json['total_price'] as num).toDouble(),
       createdAt: DateTime.parse(json['created_at']),
     );
@@ -211,51 +221,63 @@ class OrderItem {
 }
 
 enum OrderStatus {
-  notPaid,
-  paid,
-  processing,
-  shipped,
-  delivered,
+  menungguOngkir,
+  menungguPembayaran,
+  pembayaranPartial,
+  lunas,
+  barangDikirim,
   cancelled,
 }
 
-enum PaymentStatus {
-  pending,
-  paid,
-  failed,
-  refunded,
-}
+enum PaymentStatus { pending, paid, failed, refunded }
 
 extension OrderStatusExtension on OrderStatus {
   String get displayName {
     switch (this) {
-      case OrderStatus.notPaid:
-        return 'Not Paid';
-      case OrderStatus.paid:
-        return 'Paid';
-      case OrderStatus.processing:
-        return 'Processing';
-      case OrderStatus.shipped:
-        return 'Shipped';
-      case OrderStatus.delivered:
-        return 'Delivered';
+      case OrderStatus.menungguOngkir:
+        return 'Menunggu Ongkir';
+      case OrderStatus.menungguPembayaran:
+        return 'Menunggu Pembayaran';
+      case OrderStatus.pembayaranPartial:
+        return 'Pembayaran Partial';
+      case OrderStatus.lunas:
+        return 'Lunas';
+      case OrderStatus.barangDikirim:
+        return 'Barang Dikirim';
       case OrderStatus.cancelled:
-        return 'Cancelled';
+        return 'Dibatalkan';
+    }
+  }
+
+  String get databaseValue {
+    switch (this) {
+      case OrderStatus.menungguOngkir:
+        return 'menunggu_ongkir';
+      case OrderStatus.menungguPembayaran:
+        return 'menunggu_pembayaran';
+      case OrderStatus.pembayaranPartial:
+        return 'pembayaran_partial';
+      case OrderStatus.lunas:
+        return 'lunas';
+      case OrderStatus.barangDikirim:
+        return 'barang_dikirim';
+      case OrderStatus.cancelled:
+        return 'cancelled';
     }
   }
 
   Color get color {
     switch (this) {
-      case OrderStatus.notPaid:
-        return const Color(0xFFEF4444); // Red
-      case OrderStatus.paid:
-        return const Color(0xFF10B981); // Green
-      case OrderStatus.processing:
+      case OrderStatus.menungguOngkir:
         return const Color(0xFFF97316); // Orange
-      case OrderStatus.shipped:
-        return const Color(0xFF3B82F6); // Blue
-      case OrderStatus.delivered:
+      case OrderStatus.menungguPembayaran:
+        return const Color(0xFFEF4444); // Red
+      case OrderStatus.pembayaranPartial:
+        return const Color(0xFFF97316); // Orange
+      case OrderStatus.lunas:
         return const Color(0xFF10B981); // Green
+      case OrderStatus.barangDikirim:
+        return const Color(0xFF3B82F6); // Blue
       case OrderStatus.cancelled:
         return const Color(0xFF6B7280); // Grey
     }

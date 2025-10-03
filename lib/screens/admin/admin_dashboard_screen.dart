@@ -346,12 +346,21 @@ class DashboardOverviewScreen extends StatelessWidget {
 
                   final pendingOrders =
                       ordersProvider
-                          .getOrdersByStatus(OrderStatus.notPaid)
+                          .getOrdersByStatus(OrderStatus.menungguOngkir)
                           .length +
-                      ordersProvider.getOrdersByStatus(OrderStatus.paid).length;
-                  final completedOrders = ordersProvider
-                      .getOrdersByStatus(OrderStatus.delivered)
-                      .length;
+                      ordersProvider
+                          .getOrdersByStatus(OrderStatus.menungguPembayaran)
+                          .length +
+                      ordersProvider
+                          .getOrdersByStatus(OrderStatus.pembayaranPartial)
+                          .length;
+                  final completedOrders =
+                      ordersProvider
+                          .getOrdersByStatus(OrderStatus.lunas)
+                          .length +
+                      ordersProvider
+                          .getOrdersByStatus(OrderStatus.barangDikirim)
+                          .length;
                   final activeProducts = productsProvider.products
                       .where((p) => p.isActive)
                       .length;

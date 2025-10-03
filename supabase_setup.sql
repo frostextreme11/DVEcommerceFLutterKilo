@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS public.kl_orders (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
     order_number TEXT NOT NULL UNIQUE,
-    status TEXT NOT NULL DEFAULT 'not_paid' CHECK (status IN ('not_paid', 'paid', 'processing', 'shipped', 'delivered', 'cancelled')),
+    status TEXT NOT NULL DEFAULT 'menunggu_ongkir' CHECK (status IN ('menunggu_ongkir', 'menunggu_pembayaran', 'pembayaran_partial', 'lunas', 'barang_dikirim', 'cancelled')),
     total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
     shipping_address TEXT NOT NULL,
     payment_method TEXT,
