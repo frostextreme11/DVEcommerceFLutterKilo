@@ -625,17 +625,60 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
   }
 
   void _showCourierUpdateDialog(Order order) {
-    final controller = TextEditingController(text: order.courierInfo ?? '');
+    final courierOptions = [
+      'Jne REG',
+      'JNT REG',
+      'Indah Cargo',
+      'SPX',
+      'Lion REG',
+      'Lion Jago',
+      'JTR',
+      'Sentral Cargo',
+      'Baraka',
+      'SPX Resi Otomatis',
+      'JNT Resi Otomatis',
+    ];
+
+    String? selectedCourier = order.courierInfo;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Update Courier Info'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Courier Information',
-            hintText: 'Enter courier details...',
+        content: Container(
+          width: double.maxFinite,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonFormField<String>(
+            value: selectedCourier,
+            decoration: const InputDecoration(
+              labelText: 'Select Courier',
+              border: InputBorder.none,
+            ),
+            items: [
+              const DropdownMenuItem<String>(
+                value: null,
+                child: Text('Select Courier'),
+              ),
+              ...courierOptions.map((courier) {
+                return DropdownMenuItem<String>(
+                  value: courier,
+                  child: Text(courier),
+                );
+              }),
+            ],
+            onChanged: (value) {
+              selectedCourier = value;
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please select a courier';
+              }
+              return null;
+            },
           ),
         ),
         actions: [
@@ -645,11 +688,21 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<AdminOrdersProvider>().updateCourierInfo(
-                order.id,
-                controller.text,
-              );
-              Navigator.pop(context);
+              if (selectedCourier != null && selectedCourier!.isNotEmpty) {
+                context.read<AdminOrdersProvider>().updateCourierInfo(
+                  order.id,
+                  selectedCourier!,
+                );
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Courier info updated to $selectedCourier'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Update'),
           ),

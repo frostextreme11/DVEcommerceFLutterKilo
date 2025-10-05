@@ -6,6 +6,7 @@ import '../../providers/orders_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../models/order.dart';
+import '../payment/payment_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -55,8 +56,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.initState();
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     _receiverNameController.text = authProvider.userProfile?['full_name'] ?? '';
-    _receiverPhoneController.text = authProvider.userProfile?['phone_number'] ?? '';
-    _receiverAddressController.text = authProvider.userProfile?['full_address'] ?? '';
+    _receiverPhoneController.text =
+        authProvider.userProfile?['phone_number'] ?? '';
+    _receiverAddressController.text =
+        authProvider.userProfile?['full_address'] ?? '';
   }
 
   @override
@@ -95,9 +98,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               onPressed: () => context.go('/cart'),
             ),
           ),
-          body: const Center(
-            child: Text('Your cart is empty'),
-          ),
+          body: const Center(child: Text('Your cart is empty')),
         ),
       );
     }
@@ -120,72 +121,80 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             onPressed: () => _handleBackPress(context),
           ),
         ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Order Summary
-              _buildSectionTitle('Order Summary'),
-              _buildOrderSummary(cartProvider),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Order Summary
+                _buildSectionTitle('Order Summary'),
+                _buildOrderSummary(cartProvider),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Shipping Information
-              _buildSectionTitle('Shipping Information'),
-              _buildShippingForm(),
+                // Shipping Information
+                _buildSectionTitle('Shipping Information'),
+                _buildShippingForm(),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Payment Method
-              _buildSectionTitle('Payment Method'),
-              _buildPaymentMethodSelector(),
+                // Payment Method
+                _buildSectionTitle('Payment Method'),
+                _buildPaymentMethodSelector(),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Order Total
-              _buildOrderTotal(cartProvider),
+                // Order Total
+                _buildOrderTotal(cartProvider),
 
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-              // Place Order Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isProcessing ? null : () => _placeOrder(context, cartProvider, ordersProvider),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                // Place Order Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => _placeOrder(
+                            context,
+                            cartProvider,
+                            ordersProvider,
+                          ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
+                    child: _isProcessing
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            'Place Order - Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
-                  child: _isProcessing
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          'Place Order - Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-      )
     );
   }
 
@@ -234,14 +243,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   errorBuilder: (context, error, stackTrace) {
                                     return Icon(
                                       Icons.inventory_2,
-                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.5),
                                     );
                                   },
                                 ),
                               )
                             : Icon(
                                 Icons.inventory_2,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
                               ),
                       ),
                       const SizedBox(width: 12),
@@ -251,27 +265,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           children: [
                             Text(
                               item.name,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               '${item.quantity}x Rp ${item.currentPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                  ),
                             ),
                           ],
                         ),
                       ),
                       Text(
                         'Rp ${item.totalPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                       ),
                     ],
                   ),
@@ -288,9 +306,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 Text(
                   'Rp ${cartProvider.subtotal.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -385,7 +403,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               controller: _receiverAddressController,
               decoration: InputDecoration(
                 labelText: 'Complete Shipping Address',
-                hintText: 'Street address, district, city, province, postal code',
+                hintText:
+                    'Street address, district, city, province, postal code',
                 prefixIcon: const Icon(Icons.location_on),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -465,9 +484,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor,
-                ),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Row(
                 children: [
@@ -555,7 +572,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   if (_isDropship && (value == null || value.trim().isEmpty)) {
                     return 'Please enter sender\'s phone number';
                   }
-                  if (_isDropship && value != null && value.trim().length < 10) {
+                  if (_isDropship &&
+                      value != null &&
+                      value.trim().length < 10) {
                     return 'Please enter a valid phone number';
                   }
                   return null;
@@ -601,7 +620,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ? _receiverAddressController.text
                         : 'Complete address will appear here...',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.8),
                       height: 1.4,
                     ),
                   ),
@@ -647,10 +668,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Subtotal:',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                Text('Subtotal:', style: Theme.of(context).textTheme.bodyLarge),
                 Text(
                   'Rp ${cartProvider.subtotal.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                   style: Theme.of(context).textTheme.bodyLarge,
@@ -664,9 +682,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 children: [
                   Text(
                     'Discount:',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.green,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(color: Colors.green),
                   ),
                   Text(
                     '-Rp ${cartProvider.totalDiscount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
@@ -684,9 +702,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               children: [
                 Text(
                   'Total:',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
                   'Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
@@ -705,27 +723,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<bool> _showExitConfirmationDialog(BuildContext context) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Leave Checkout?'),
-          content: const Text('Are you sure you want to leave? Your checkout progress will be lost.'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Leave Checkout?'),
+              content: const Text(
+                'Are you sure you want to leave? Your checkout progress will be lost.',
               ),
-              child: const Text('Leave'),
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Leave'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
   }
 
   void _handleBackPress(BuildContext context) async {
@@ -735,7 +754,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Future<void> _placeOrder(BuildContext context, CartProvider cartProvider, OrdersProvider ordersProvider) async {
+  Future<void> _placeOrder(
+    BuildContext context,
+    CartProvider cartProvider,
+    OrdersProvider ordersProvider,
+  ) async {
     // Check authentication first
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
@@ -772,7 +795,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (_senderPhoneController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter sender phone number for dropship order'),
+            content: Text(
+              'Please enter sender phone number for dropship order',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -788,13 +813,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       print('CheckoutScreen: Placing order...');
       print('CheckoutScreen: Cart items: ${cartProvider.items.length}');
       print('CheckoutScreen: Total amount: ${cartProvider.total}');
-      print('CheckoutScreen: User authenticated: ${authProvider.isAuthenticated}');
+      print(
+        'CheckoutScreen: User authenticated: ${authProvider.isAuthenticated}',
+      );
 
       final order = await ordersProvider.createOrder(
         cartItems: cartProvider.items,
         shippingAddress: _receiverAddressController.text.trim(),
         paymentMethod: _selectedPaymentMethod,
-        notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+        notes: _notesController.text.trim().isNotEmpty
+            ? _notesController.text.trim()
+            : null,
         receiverName: _receiverNameController.text.trim(),
         receiverPhone: _receiverPhoneController.text.trim(),
         courierInfo: _selectedCourier ?? '',
@@ -804,7 +833,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
 
       if (order != null && mounted) {
-        print('CheckoutScreen: Order created successfully: ${order.orderNumber}');
+        print(
+          'CheckoutScreen: Order created successfully: ${order.orderNumber}',
+        );
 
         // Clear cart
         await cartProvider.clearCart();
@@ -812,20 +843,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // Show success message and navigate
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Order placed successfully! Order #${order.orderNumber}'),
+            content: Text(
+              'Order placed successfully! Order #${order.orderNumber}',
+            ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
           ),
         );
 
-        // Navigate to order details or home
-        context.go('/home');
+        // Show Pay Now option for payment
+        _showPaymentOptions(context, order);
       } else {
         print('CheckoutScreen: Order creation failed');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(ordersProvider.error ?? 'Failed to place order. Please try again.'),
+              content: Text(
+                ordersProvider.error ??
+                    'Failed to place order. Please try again.',
+              ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -850,5 +886,55 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         });
       }
     }
+  }
+
+  void _showPaymentOptions(BuildContext context, Order order) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Order Placed Successfully!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Order #${order.orderNumber}'),
+              const SizedBox(height: 8),
+              Text(
+                'Total: Rp ${(order.totalAmount + (order.additionalCosts ?? 0)).toStringAsFixed(0)}',
+              ),
+              const SizedBox(height: 16),
+              const Text('What would you like to do next?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                context.go('/home'); // Go to home
+              },
+              child: const Text('Later'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                // Navigate to payment screen
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PaymentScreen(order: order),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Pay Now'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

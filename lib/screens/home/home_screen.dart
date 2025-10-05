@@ -1205,7 +1205,7 @@ class _OrdersContentState extends State<OrdersContent> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Order #${order.orderNumber}',
+                              '${order.orderNumber}',
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.bold),
                             ),

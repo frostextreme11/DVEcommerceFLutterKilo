@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase/supabase.dart';
 import '../../providers/admin_orders_provider.dart';
-import '../../models/order.dart';
+import '../../models/order.dart' as order_model;
+import '../../models/payment.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/print_service.dart';
 import '../../services/notification_service.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
-  final Order? order;
+  final order_model.Order? order;
   final String? orderId;
 
   const OrderDetailsScreen({Key? key, this.order, this.orderId})
@@ -19,7 +21,7 @@ class OrderDetailsScreen extends StatefulWidget {
 }
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
-  Order? _order;
+  order_model.Order? _order;
   bool _isLoading = false;
   String? _error;
 
@@ -152,7 +154,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 }
 
 class _OrderDetailsContent extends StatelessWidget {
-  final Order order;
+  final order_model.Order order;
 
   const _OrderDetailsContent({required this.order});
 
@@ -194,7 +196,7 @@ class _OrderDetailsContent extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Payment Status:'),
-                        _buildPaymentStatusBadge(order.paymentStatus),
+                        _buildPaymentStatusBadgeFromOrder(order.paymentStatus),
                       ],
                     ),
                   ],
@@ -392,6 +394,12 @@ class _OrderDetailsContent extends StatelessWidget {
 
             const SizedBox(height: 16),
 
+            // Payment History Section (if payments exist)
+            if (order.paymentStatus != order_model.PaymentStatus.paid) ...[
+              _buildPaymentHistorySection(),
+              const SizedBox(height: 16),
+            ],
+
             // Action Buttons
             Consumer<AdminOrdersProvider>(
               builder: (context, provider, child) {
@@ -445,7 +453,8 @@ class _OrderDetailsContent extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    if (order.paymentStatus == PaymentStatus.pending) ...[
+                    if (order.paymentStatus ==
+                        order_model.PaymentStatus.pending) ...[
                       Row(
                         children: [
                           Expanded(
@@ -455,6 +464,20 @@ class _OrderDetailsContent extends StatelessWidget {
                                 _showNotifyCustomerDialog(context);
                               },
                               backgroundColor: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CustomButton(
+                              text: 'Send Payment Notification',
+                              onPressed: () {
+                                _showPaymentNotificationDialog(context);
+                              },
+                              backgroundColor: Colors.purple,
                             ),
                           ),
                         ],
@@ -470,7 +493,7 @@ class _OrderDetailsContent extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(OrderStatus status) {
+  Widget _buildStatusBadge(order_model.OrderStatus status) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -501,6 +524,51 @@ class _OrderDetailsContent extends StatelessWidget {
         status.displayName,
         style: TextStyle(
           color: status.color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentStatusBadgeFromOrder(order_model.PaymentStatus status) {
+    Color getStatusColor(order_model.PaymentStatus status) {
+      switch (status) {
+        case order_model.PaymentStatus.pending:
+          return const Color(0xFFF97316); // Orange
+        case order_model.PaymentStatus.paid:
+          return const Color(0xFF10B981); // Green
+        case order_model.PaymentStatus.failed:
+          return const Color(0xFFEF4444); // Red
+        case order_model.PaymentStatus.refunded:
+          return const Color(0xFF3B82F6); // Blue
+      }
+    }
+
+    String getStatusDisplayName(order_model.PaymentStatus status) {
+      switch (status) {
+        case order_model.PaymentStatus.pending:
+          return 'Pending';
+        case order_model.PaymentStatus.paid:
+          return 'Paid';
+        case order_model.PaymentStatus.failed:
+          return 'Failed';
+        case order_model.PaymentStatus.refunded:
+          return 'Refunded';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: getStatusColor(status).withOpacity(0.1),
+        border: Border.all(color: getStatusColor(status)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        getStatusDisplayName(status),
+        style: TextStyle(
+          color: getStatusColor(status),
           fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
@@ -564,7 +632,7 @@ class _OrderDetailsContent extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderItemCard(OrderItem item) {
+  Widget _buildOrderItemCard(order_model.OrderItem item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -629,6 +697,721 @@ class _OrderDetailsContent extends StatelessWidget {
     );
   }
 
+  Widget _buildPaymentHistorySection() {
+    return FutureBuilder<List<Payment>>(
+      future: _loadPaymentsForOrder(),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        // Error state
+        if (snapshot.hasError) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Icon(Icons.error, color: Colors.red),
+                  const SizedBox(height: 8),
+                  Text('Error loading payments: ${snapshot.error}'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please check your connection and try refreshing the page.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Success state
+        final payments = snapshot.data ?? [];
+        final totalAmount = order.totalAmount + (order.additionalCosts ?? 0);
+        final totalPaid = payments
+            .where((payment) => payment.status == PaymentStatus.completed)
+            .fold<double>(0.0, (sum, payment) => sum + payment.amount);
+        final progress = totalAmount > 0
+            ? (totalPaid / totalAmount) * 100
+            : 0.0;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.payment, color: Theme.of(context).primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Payment History',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Payment Summary
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Amount:'),
+                          Text(
+                            'Rp ${totalAmount.toStringAsFixed(0)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Paid:'),
+                          Text(
+                            'Rp ${totalPaid.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: totalPaid >= totalAmount
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Payment Progress:'),
+                          Text(
+                            '${progress.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: totalPaid >= totalAmount
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: progress / 100,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          totalPaid >= totalAmount
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Payment List or Empty State
+                if (payments.isEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.orange,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No Payments Yet',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Customer has not submitted any payments for this order yet.',
+                          style: TextStyle(color: Colors.grey.shade700),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  ...payments.map(
+                    (payment) => _buildPaymentCard(context, payment),
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+
+                // Payment Actions - Individual verify buttons for each pending payment
+                if (payments
+                    .where((p) => p.status == PaymentStatus.pending)
+                    .isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Pending Payments:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...payments
+                      .where(
+                        (payment) => payment.status == PaymentStatus.pending,
+                      )
+                      .map(
+                        (payment) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Payment #${payment.id.substring(0, 8)} - Rp ${payment.amount.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 100,
+                                height: 36,
+                                child: ElevatedButton(
+                                  onPressed: () =>
+                                      _verifyPayment(context, payment),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 8,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Verify',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Payment>> _loadPaymentsForOrder() async {
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Add timeout and better error handling
+      final response = await supabase
+          .from('kl_payments')
+          .select()
+          .eq('order_id', order.id)
+          .order('created_at', ascending: false);
+
+      if (response == null) {
+        print('No payment data found for order ${order.id}');
+        return [];
+      }
+
+      final payments = (response as List<dynamic>)
+          .map((json) {
+            try {
+              return Payment.fromJson(json);
+            } catch (e) {
+              print('Error parsing payment JSON: $e');
+              print('Problematic JSON: $json');
+              return null;
+            }
+          })
+          .where((payment) => payment != null)
+          .cast<Payment>()
+          .toList();
+
+      print('Loaded ${payments.length} payments for order ${order.id}');
+      return payments;
+    } catch (e) {
+      print('Error loading payments for order ${order.id}: $e');
+      // Return empty list instead of throwing to prevent infinite loading
+      return [];
+    }
+  }
+
+  Widget _buildPaymentCard(BuildContext context, Payment payment) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Payment #${payment.id.substring(0, 8)}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              _buildPaymentStatusBadge(payment.status),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Amount: Rp ${payment.amount.toStringAsFixed(0)}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                _formatPaymentDate(payment.createdAt),
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
+
+          if (payment.paymentMethod != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Method: ${payment.paymentMethod}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+
+          if (payment.paymentProofUrl != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.image, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Payment proof uploaded',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _showPaymentProofDialog(
+                    context,
+                    payment.paymentProofUrl!,
+                  ),
+                  child: const Text('View'),
+                ),
+              ],
+            ),
+          ],
+
+          if (payment.notes != null && payment.notes!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Notes: ${payment.notes}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _verifyPayment(BuildContext context, Payment payment) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Verify Payment'),
+        content: const Text(
+          'Mark this payment as completed? This will update the order payment status.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await _updatePaymentStatus(payment.id, PaymentStatus.completed);
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Payment verified successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to verify payment: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updatePaymentStatus(
+    String paymentId,
+    PaymentStatus status,
+  ) async {
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Update payment status
+      await supabase
+          .from('kl_payments')
+          .update({
+            'status': status.toString().split('.').last,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', paymentId);
+
+      // If payment is completed, send admin notification
+      if (status == PaymentStatus.completed) {
+        try {
+          // Get payment details with proper order information
+          final paymentResponse = await supabase
+              .from('kl_payments')
+              .select(
+                'amount, order_id, kl_orders(order_number, kl_users(full_name))',
+              )
+              .eq('id', paymentId)
+              .single();
+
+          if (paymentResponse != null) {
+            final paymentData = paymentResponse as Map<String, dynamic>;
+            final orderId = paymentData['order_id'] as String?;
+            final orderData = paymentData['kl_orders'] as Map<String, dynamic>?;
+            final userData = orderData?['kl_users'] as Map<String, dynamic>?;
+
+            final orderNumber = orderData?['order_number'] ?? 'Unknown';
+            final customerName = userData?['full_name'] ?? 'Customer';
+            final amount = paymentData['amount'] ?? 0;
+
+            // Ensure customer_name is never null or empty for database insertion
+            final finalCustomerName = customerName.isNotEmpty
+                ? customerName
+                : 'Customer';
+
+            // Find admin user
+            final adminResponse = await supabase
+                .from('kl_users')
+                .select('id')
+                .eq('role', 'Admin')
+                .limit(1)
+                .maybeSingle();
+
+            if (adminResponse != null) {
+              final adminId = adminResponse['id'];
+
+              // Calculate total quantity from order items
+              final totalQuantity = order.items.fold<int>(
+                0,
+                (sum, item) => sum + item.quantity,
+              );
+
+              // Insert admin notification
+              await supabase.from('kl_admin_notifications').insert({
+                'user_id': adminId,
+                'customer_name': finalCustomerName,
+                'order_id': orderId,
+                'quantity': totalQuantity,
+                'title': 'Payment Received',
+                'message':
+                    'Payment of Rp ${amount.toStringAsFixed(0)} received for order $orderNumber from $finalCustomerName. Please verify the payment.',
+                'type': 'payment',
+                'is_read': false,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              });
+
+              print('Admin notification sent successfully');
+            }
+          }
+        } catch (notificationError) {
+          print('Error sending admin notification: $notificationError');
+          // Continue even if notification fails
+        }
+      }
+
+      // Refresh the order details
+      // Since this is a StatelessWidget, we need to trigger a rebuild
+      // For now, we'll just complete the operation
+    } catch (e) {
+      print('Error updating payment status: $e');
+      throw e;
+    }
+  }
+
+  void _showPaymentProofDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.8,
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Payment Proof',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Image
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.contain,
+                        headers: const {'Cache-Control': 'no-cache'},
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          print('Error loading payment proof image: $error');
+                          print('Image URL: $imageUrl');
+                          print('Stack trace: $stackTrace');
+
+                          String errorMessage = 'Failed to load image';
+                          String suggestion =
+                              'URL may be expired or inaccessible';
+
+                          // Handle different types of errors
+                          if (error.toString().contains('400')) {
+                            errorMessage = 'Image not accessible';
+                            suggestion =
+                                'Payment proof may not exist or bucket not configured';
+                          } else if (error.toString().contains('404')) {
+                            errorMessage = 'Image not found';
+                            suggestion =
+                                'Payment proof file may have been deleted';
+                          } else if (error.toString().contains('403')) {
+                            errorMessage = 'Access denied';
+                            suggestion =
+                                'Storage permissions not properly configured';
+                          }
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.broken_image,
+                                  size: 48,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  errorMessage,
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  suggestion,
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    // Try to reload the image
+                                    Navigator.of(context).pop();
+                                    _showPaymentProofDialog(context, imageUrl);
+                                  },
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Retry'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Footer with action buttons
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Close'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          // TODO: Implement download functionality if needed
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Download functionality coming soon',
+                              ),
+                              backgroundColor: Colors.blue,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.download),
+                        label: const Text('Download'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _ensureStorageBucketExists() async {
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.storage.createBucket(
+        'payment-proofs',
+        const BucketOptions(
+          public: true,
+          fileSizeLimit: '5242880',
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+        ),
+      );
+      print('Storage bucket created or already exists');
+    } catch (e) {
+      print('Storage bucket creation result: $e');
+      // Bucket might already exist, which is fine
+    }
+  }
+
+  String _formatPaymentDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
   void _showStatusUpdateDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -636,7 +1419,7 @@ class _OrderDetailsContent extends StatelessWidget {
         title: const Text('Update Order Status'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: OrderStatus.values.map((status) {
+          children: order_model.OrderStatus.values.map((status) {
             return ListTile(
               title: Text(status.displayName),
               leading: Icon(Icons.circle, color: status.color),
@@ -764,7 +1547,9 @@ class _OrderDetailsContent extends StatelessWidget {
     final notesController = TextEditingController(
       text:
           order.additionalCostsNotes ??
-          (order.status == OrderStatus.menungguOngkir ? 'Ongkir' : ''),
+          (order.status == order_model.OrderStatus.menungguOngkir
+              ? 'Ongkir'
+              : ''),
     );
 
     showDialog(
@@ -1014,6 +1799,129 @@ class _OrderDetailsContent extends StatelessWidget {
             child: const Text('Send'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showPaymentNotificationDialog(BuildContext context) {
+    // Calculate payment information
+    final totalAmount = order.totalAmount + (order.additionalCosts ?? 0);
+
+    showDialog(
+      context: context,
+      builder: (context) => FutureBuilder<List<Payment>>(
+        future: _loadPaymentsForOrder(),
+        builder: (context, snapshot) {
+          final payments = snapshot.data ?? [];
+          final totalPaid = payments
+              .where((payment) => payment.status == PaymentStatus.completed)
+              .fold<double>(0.0, (sum, payment) => sum + payment.amount);
+          final remainingAmount = totalAmount - totalPaid;
+
+          final messageController = TextEditingController(
+            text: remainingAmount > 0
+                ? 'Payment reminder for order ${order.orderNumber}. Total: Rp ${totalAmount.toStringAsFixed(0)}, Paid: Rp ${totalPaid.toStringAsFixed(0)}, Remaining: Rp ${remainingAmount.toStringAsFixed(0)}. Please complete your payment.'
+                : 'Payment reminder for order ${order.orderNumber}. Total amount: Rp ${totalAmount.toStringAsFixed(0)}. Thank you for your payment!',
+          );
+
+          return AlertDialog(
+            title: const Text('Send Payment Notification'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Order: ${order.orderNumber}'),
+                Text('Customer: ${order.receiverName ?? 'N/A'}'),
+                const SizedBox(height: 16),
+
+                // Payment Summary Card
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Amount:'),
+                          Text(
+                            'Rp ${totalAmount.toStringAsFixed(0)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Paid:'),
+                          Text(
+                            'Rp ${totalPaid.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: totalPaid > 0 ? Colors.green : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Remaining:'),
+                          Text(
+                            'Rp ${remainingAmount.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: remainingAmount > 0
+                                  ? Colors.orange
+                                  : Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                TextField(
+                  controller: messageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Notification Message',
+                    hintText: 'Enter payment notification message...',
+                  ),
+                  maxLines: 4,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final message = messageController.text.trim();
+                  if (message.isNotEmpty) {
+                    await _sendNotificationToCustomer(
+                      context,
+                      order.userId,
+                      order.id,
+                      'Payment Required',
+                      message,
+                    );
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('Send Notification'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

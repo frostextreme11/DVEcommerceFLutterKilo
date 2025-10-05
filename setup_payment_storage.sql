@@ -1,0 +1,42 @@
+-- ====================================================================
+-- SUPABASE STORAGE SETUP INSTRUCTIONS
+-- ====================================================================
+--
+-- STEP 1: Create Storage Bucket via Supabase Dashboard
+-- ---------------------------------------------------
+-- 1. Go to your Supabase Dashboard
+-- 2. Navigate to Storage
+-- 3. Click "New Bucket"
+-- 4. Create a bucket with these settings:
+--    - Name: payment-proofs
+--    - Public bucket: true
+--    - File size limit: 5MB
+--    - Allowed MIME types: image/jpeg, image/png, image/jpg
+--
+-- STEP 2: Run Database Tables Setup
+-- ----------------------------------
+-- After creating the storage bucket, run this SQL script:
+-- \i create_customer_notifications_tables.sql
+--
+-- ====================================================================
+-- ALTERNATIVE: Programmatic Setup
+-- ====================================================================
+--
+-- If you prefer to create the bucket programmatically in your app:
+--
+-- ```dart
+-- Future<void> setupStorageBucket() async {
+--   try {
+--     final supabase = Supabase.instance.client;
+--     await supabase.storage.createBucket('payment-proofs', {
+--       'public': true,
+--       'fileSizeLimit': 5242880,
+--       'allowedMimeTypes': ['image/jpeg', 'image/png', 'image/jpg']
+--     });
+--     print('Storage bucket created successfully');
+--   } catch (e) {
+--     print('Error creating storage bucket: $e');
+--     // Bucket might already exist, which is fine
+--   }
+-- }
+-- ```

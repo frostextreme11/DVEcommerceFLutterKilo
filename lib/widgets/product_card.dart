@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/product.dart';
@@ -26,10 +27,10 @@ class ProductCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      shadowColor: themeProvider.currentTheme.shadowColor?.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+      shadowColor: themeProvider.currentTheme.shadowColor?.withValues(
+        alpha: 0.1,
       ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
@@ -42,7 +43,9 @@ class ProductCard extends StatelessWidget {
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(8),
+                    ),
                     child: SizedBox(
                       height: 140,
                       width: double.infinity,
@@ -60,7 +63,8 @@ class ProductCard extends StatelessWidget {
                                 color: Theme.of(context).cardColor,
                                 child: Icon(
                                   Icons.image_not_supported,
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
                                   size: 24,
                                 ),
                               ),
@@ -69,7 +73,9 @@ class ProductCard extends StatelessWidget {
                               color: Theme.of(context).cardColor,
                               child: Icon(
                                 Icons.inventory_2,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
                                 size: 24,
                               ),
                             ),
@@ -86,10 +92,12 @@ class ProductCard extends StatelessWidget {
                       children: [
                         if (product.isBestSeller)
                           _buildBadge('Best', Colors.orange),
-                        if (product.isFeatured)
-                          _buildBadge('New', Colors.blue),
+                        if (product.isFeatured) _buildBadge('New', Colors.blue),
                         if (product.hasDiscount)
-                          _buildBadge('${product.discountPercentage?.toInt() ?? ((product.price - product.discountPrice!) / product.price * 100).round()}%', Colors.red),
+                          _buildBadge(
+                            '${product.discountPercentage?.toInt() ?? ((product.price - product.discountPrice!) / product.price * 100).round()}%',
+                            Colors.red,
+                          ),
                       ],
                     ),
                   ),
@@ -100,9 +108,14 @@ class ProductCard extends StatelessWidget {
                       top: 4,
                       right: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: product.stockQuantity == 0 ? Colors.red : Colors.orange,
+                          color: product.stockQuantity == 0
+                              ? Colors.red
+                              : Colors.orange,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -156,10 +169,11 @@ class ProductCard extends StatelessWidget {
                         children: [
                           Text(
                             'Rp ${product.currentPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                           ),
 
                           if (product.hasDiscount) ...[
@@ -167,10 +181,14 @@ class ProductCard extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 'Rp ${product.price.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  decoration: TextDecoration.lineThrough,
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      decoration: TextDecoration.lineThrough,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -191,7 +209,11 @@ class ProductCard extends StatelessWidget {
                                 : () async {
                                     if (isInCart) {
                                       // Show quantity selector
-                                      _showQuantityDialog(context, product, cartProvider);
+                                      _showQuantityDialog(
+                                        context,
+                                        product,
+                                        cartProvider,
+                                      );
                                     } else {
                                       await cartProvider.addItem(
                                         productId: product.id,
@@ -202,15 +224,23 @@ class ProductCard extends StatelessWidget {
                                       );
 
                                       if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text('${product.name} added to cart'),
-                                            duration: const Duration(seconds: 2),
+                                            content: Text(
+                                              '${product.name} added to cart',
+                                            ),
+                                            duration: const Duration(
+                                              seconds: 2,
+                                            ),
                                             action: SnackBarAction(
                                               label: 'View Cart',
                                               onPressed: () {
                                                 // Navigate to cart screen
-                                                Navigator.of(context).pushNamed('/cart');
+                                                GoRouter.of(
+                                                  context,
+                                                ).push('/cart');
                                               },
                                             ),
                                           ),
@@ -267,7 +297,11 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  void _showQuantityDialog(BuildContext context, Product product, CartProvider cartProvider) {
+  void _showQuantityDialog(
+    BuildContext context,
+    Product product,
+    CartProvider cartProvider,
+  ) {
     final cartItem = cartProvider.getCartItem(product.id);
     int quantity = cartItem?.quantity ?? 1;
 
@@ -289,7 +323,10 @@ class ProductCard extends StatelessWidget {
                     icon: const Icon(Icons.remove),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: Theme.of(context).dividerColor),
                       borderRadius: BorderRadius.circular(8),
@@ -310,9 +347,9 @@ class ProductCard extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Total: Rp ${(product.currentPrice * quantity).toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
