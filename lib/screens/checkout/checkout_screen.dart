@@ -852,7 +852,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
 
         // Show Pay Now option for payment
-        _showPaymentOptions(context, order);
+        // _showPaymentOptions(context, order);
       } else {
         print('CheckoutScreen: Order creation failed');
         if (mounted) {

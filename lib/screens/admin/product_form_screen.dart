@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../providers/admin_products_provider.dart';
 import '../../providers/admin_categories_provider.dart';
 import '../../models/product.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../services/storage_service.dart';
 
 class ProductFormScreen extends StatefulWidget {
   final Product? product;
@@ -30,6 +33,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   bool _isFeatured = false;
   bool _isBestSeller = false;
   bool _isLoading = false;
+  bool _isUploadingImage = false;
+
+  File? _selectedImageFile;
+  String? _currentImageUrl;
+  final ImagePicker _imagePicker = ImagePicker();
+  final StorageService _storageService = StorageService();
 
   @override
   void initState() {
@@ -54,6 +63,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _discountPriceController.text = product.discountPrice?.toString() ?? '';
     _stockController.text = product.stockQuantity.toString();
     _imageUrlController.text = product.imageUrl ?? '';
+    _currentImageUrl = product.imageUrl;
     _selectedCategory = product.category;
     _isActive = product.isActive;
     _isFeatured = product.isFeatured;
@@ -69,6 +79,173 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _stockController.dispose();
     _imageUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImageFile = File(pickedFile.path);
+          _imageUrlController.clear(); // Clear URL when file is selected
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImageFile = File(pickedFile.path);
+          _imageUrlController.clear(); // Clear URL when file is selected
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error taking photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_selectedImageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select an image first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isUploadingImage = true);
+
+    try {
+      // Generate a temporary product ID for new products
+      final productId =
+          widget.product?.id ?? 'temp_${DateTime.now().millisecondsSinceEpoch}';
+
+      final uploadedUrl = await _storageService.uploadProductImage(
+        _selectedImageFile!,
+        productId,
+      );
+
+      if (uploadedUrl != null) {
+        setState(() {
+          _currentImageUrl = uploadedUrl;
+          _imageUrlController.text = uploadedUrl;
+          _selectedImageFile = null;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image uploaded successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to upload image'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isUploadingImage = false);
+    }
+  }
+
+  Future<void> _deleteCurrentImage() async {
+    if (_currentImageUrl == null || _currentImageUrl!.isEmpty) return;
+
+    try {
+      final success = await _storageService.deleteProductImage(
+        _currentImageUrl!,
+      );
+
+      if (success) {
+        setState(() {
+          _currentImageUrl = null;
+          _imageUrlController.clear();
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete image'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _useImageUrl() {
+    setState(() {
+      _currentImageUrl = _imageUrlController.text.trim();
+      _selectedImageFile = null;
+    });
   }
 
   Future<void> _saveProduct() async {
@@ -156,10 +333,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               // Basic Information
               const Text(
                 'Basic Information',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
 
@@ -234,10 +408,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               // Pricing
               const Text(
                 'Pricing',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
 
@@ -275,8 +446,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                             return 'Discount price must be a positive number';
                           }
 
-                          final regularPrice = double.tryParse(_priceController.text);
-                          if (regularPrice != null && discountPrice > regularPrice) {
+                          final regularPrice = double.tryParse(
+                            _priceController.text,
+                          );
+                          if (regularPrice != null &&
+                              discountPrice > regularPrice) {
                             return 'Discount price cannot be higher than regular price';
                           }
                         }
@@ -292,10 +466,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               // Stock
               const Text(
                 'Stock & Status',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
 
@@ -318,11 +489,191 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
               const SizedBox(height: 16),
 
-              CustomTextField(
-                controller: _imageUrlController,
-                labelText: 'Image URL (Optional)',
-                hintText: 'https://example.com/image.jpg',
+              // Image Management Section
+              const Text(
+                'Product Image',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 16),
+
+              // Image Preview
+              if (_currentImageUrl != null && _currentImageUrl!.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      _currentImageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.broken_image,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Selected file preview
+              if (_selectedImageFile != null) ...[
+                Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(_selectedImageFile!, fit: BoxFit.cover),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Upload Options
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUploadingImage ? null : _pickImage,
+                      icon: const Icon(Icons.photo_library),
+                      label: const Text('Gallery'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUploadingImage ? null : _takePhoto,
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Camera'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Upload/Delete buttons for selected file
+              if (_selectedImageFile != null) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isUploadingImage ? null : _uploadImage,
+                        icon: _isUploadingImage
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.cloud_upload),
+                        label: Text(
+                          _isUploadingImage ? 'Uploading...' : 'Upload Image',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _selectedImageFile = null;
+                          });
+                        },
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancel'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // URL Input Option
+              const Text(
+                'Or use image URL:',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      controller: _imageUrlController,
+                      labelText: 'Image URL',
+                      hintText: 'https://example.com/image.jpg',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _useImageUrl,
+                    child: const Text('Use URL'),
+                  ),
+                ],
+              ),
+
+              // Delete current image button
+              if (_currentImageUrl != null && _currentImageUrl!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _deleteCurrentImage,
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    label: const Text(
+                      'Delete Current Image',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 16),
 
@@ -368,7 +719,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 child: CustomButton(
                   text: _isLoading
                       ? 'Saving...'
-                      : (widget.product == null ? 'Create Product' : 'Update Product'),
+                      : (widget.product == null
+                            ? 'Create Product'
+                            : 'Update Product'),
                   onPressed: _isLoading ? null : _saveProduct,
                   isLoading: _isLoading,
                 ),

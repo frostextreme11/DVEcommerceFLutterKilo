@@ -87,6 +87,12 @@ dependencies:
   asn1lib: ^1.5.2
   pointycastle: ^3.9.1
 
+  # File path operations
+  path: ^1.9.0
+
+  # UUID generation
+  uuid: ^4.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

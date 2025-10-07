@@ -403,9 +403,13 @@ class OrdersProvider extends ChangeNotifier {
       // The AdminNotificationProvider will pick this up via real-time listener
       final notificationData = {
         'order_id': order.id,
+        'user_id': order.userId,
         'customer_name': customerName,
         'quantity': totalQuantity,
         'total_price': order.totalAmount,
+        'title': 'New Order Received',
+        'message':
+            'New order from $customerName: $totalQuantity item(s), Total: \$${order.totalAmount.toStringAsFixed(2)}',
         'order_date': order.createdAt.toIso8601String(),
         'is_read': false,
         'created_at': DateTime.now().toIso8601String(),

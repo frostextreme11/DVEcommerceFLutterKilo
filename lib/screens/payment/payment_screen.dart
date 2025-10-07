@@ -715,8 +715,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'user_id': adminId,
           'order_id': order.id,
           'quantity': totalQuantity,
+          'customer_name': order.isDropship
+              ? order.senderName
+              : order.receiverName,
           'title':
-              'Payment from: ${order.receiverName ?? 'Customer'} - ${order.orderNumber} - Rp ${paymentAmount.toStringAsFixed(0)}',
+              'Payment from: ${order.isDropship ? order.senderName : order.receiverName} - ${order.orderNumber} - Rp ${paymentAmount.toStringAsFixed(0)}',
           'message':
               'Payment of Rp ${paymentAmount.toStringAsFixed(0)} received for order ${order.orderNumber}. Please verify the payment proof.',
           'type': 'payment',

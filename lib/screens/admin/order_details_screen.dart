@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:supabase/supabase.dart';
+import 'dart:async';
 import '../../providers/admin_orders_provider.dart';
 import '../../models/order.dart' as order_model;
 import '../../models/payment.dart';
@@ -153,13 +154,83 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 }
 
-class _OrderDetailsContent extends StatelessWidget {
+class _OrderDetailsContent extends StatefulWidget {
   final order_model.Order order;
 
   const _OrderDetailsContent({required this.order});
 
   @override
+  State<_OrderDetailsContent> createState() => _OrderDetailsContentState();
+}
+
+class _OrderDetailsContentState extends State<_OrderDetailsContent> {
+  order_model.Order? _currentOrder;
+  StreamSubscription? _ordersSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentOrder = widget.order;
+
+    // Listen for changes in AdminOrdersProvider
+    _setupOrdersListener();
+  }
+
+  @override
+  void didUpdateWidget(_OrderDetailsContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update current order if widget order changes
+    if (oldWidget.order.id != widget.order.id) {
+      setState(() {
+        _currentOrder = widget.order;
+      });
+      _setupOrdersListener();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ordersSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupOrdersListener() {
+    // Cancel existing subscription
+    _ordersSubscription?.cancel();
+
+    // Listen for changes in AdminOrdersProvider
+    final adminOrdersProvider = context.read<AdminOrdersProvider>();
+    _ordersSubscription = adminOrdersProvider.ordersStream.listen((orders) {
+      // Find updated order in the orders list
+      final updatedOrder = orders.firstWhere(
+        (order) => order.id == widget.order.id,
+        orElse: () => widget.order, // Fallback to current order if not found
+      );
+
+      // If order data has changed, update the UI
+      if (_hasOrderChanged(updatedOrder)) {
+        setState(() {
+          _currentOrder = updatedOrder;
+        });
+      }
+    });
+  }
+
+  bool _hasOrderChanged(order_model.Order newOrder) {
+    if (_currentOrder == null) return true;
+
+    return _currentOrder!.status != newOrder.status ||
+        _currentOrder!.paymentStatus != newOrder.paymentStatus ||
+        _currentOrder!.courierInfo != newOrder.courierInfo ||
+        _currentOrder!.shippingAddress != newOrder.shippingAddress ||
+        _currentOrder!.additionalCosts != newOrder.additionalCosts ||
+        _currentOrder!.additionalCostsNotes != newOrder.additionalCostsNotes;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final order = _currentOrder!;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Order ${order.orderNumber}'),
@@ -735,7 +806,8 @@ class _OrderDetailsContent extends StatelessWidget {
 
         // Success state
         final payments = snapshot.data ?? [];
-        final totalAmount = order.totalAmount + (order.additionalCosts ?? 0);
+        final totalAmount =
+            _currentOrder!.totalAmount + (_currentOrder!.additionalCosts ?? 0);
         final totalPaid = payments
             .where((payment) => payment.status == PaymentStatus.completed)
             .fold<double>(0.0, (sum, payment) => sum + payment.amount);
@@ -955,11 +1027,11 @@ class _OrderDetailsContent extends StatelessWidget {
       final response = await supabase
           .from('kl_payments')
           .select()
-          .eq('order_id', order.id)
+          .eq('order_id', _currentOrder!.id)
           .order('created_at', ascending: false);
 
       if (response == null) {
-        print('No payment data found for order ${order.id}');
+        print('No payment data found for order ${_currentOrder!.id}');
         return [];
       }
 
@@ -977,10 +1049,12 @@ class _OrderDetailsContent extends StatelessWidget {
           .cast<Payment>()
           .toList();
 
-      print('Loaded ${payments.length} payments for order ${order.id}');
+      print(
+        'Loaded ${payments.length} payments for order ${_currentOrder!.id}',
+      );
       return payments;
     } catch (e) {
-      print('Error loading payments for order ${order.id}: $e');
+      print('Error loading payments for order ${_currentOrder!.id}: $e');
       // Return empty list instead of throwing to prevent infinite loading
       return [];
     }
@@ -1171,7 +1245,7 @@ class _OrderDetailsContent extends StatelessWidget {
               final adminId = adminResponse['id'];
 
               // Calculate total quantity from order items
-              final totalQuantity = order.items.fold<int>(
+              final totalQuantity = _currentOrder!.items.fold<int>(
                 0,
                 (sum, item) => sum + item.quantity,
               );
@@ -1425,7 +1499,7 @@ class _OrderDetailsContent extends StatelessWidget {
               leading: Icon(Icons.circle, color: status.color),
               onTap: () {
                 context.read<AdminOrdersProvider>().updateOrderStatus(
-                  order.id,
+                  _currentOrder!.id,
                   status,
                 );
                 Navigator.pop(context);
@@ -1468,7 +1542,7 @@ class _OrderDetailsContent extends StatelessWidget {
       'JNT Resi Otomatis',
     ];
 
-    String? selectedCourier = order.courierInfo;
+    String? selectedCourier = _currentOrder!.courierInfo;
 
     showDialog(
       context: context,
@@ -1519,7 +1593,7 @@ class _OrderDetailsContent extends StatelessWidget {
             onPressed: () {
               if (selectedCourier != null && selectedCourier!.isNotEmpty) {
                 context.read<AdminOrdersProvider>().updateCourierInfo(
-                  order.id,
+                  _currentOrder!.id,
                   selectedCourier!,
                 );
                 Navigator.pop(context);
@@ -1542,12 +1616,12 @@ class _OrderDetailsContent extends StatelessWidget {
 
   void _showAdditionalCostsDialog(BuildContext context) {
     final costController = TextEditingController(
-      text: order.additionalCosts?.toString() ?? '',
+      text: _currentOrder!.additionalCosts?.toString() ?? '',
     );
     final notesController = TextEditingController(
       text:
-          order.additionalCostsNotes ??
-          (order.status == order_model.OrderStatus.menungguOngkir
+          _currentOrder!.additionalCostsNotes ??
+          (_currentOrder!.status == order_model.OrderStatus.menungguOngkir
               ? 'Ongkir'
               : ''),
     );
@@ -1613,11 +1687,11 @@ class _OrderDetailsContent extends StatelessWidget {
 
               // Update additional costs first
               print(
-                'OrderDetailsScreen: Calling updateAdditionalCosts with orderId: ${order.id}, cost: $cost, notes: $notes',
+                'OrderDetailsScreen: Calling updateAdditionalCosts with orderId: ${_currentOrder!.id}, cost: $cost, notes: $notes',
               );
               final success = await context
                   .read<AdminOrdersProvider>()
-                  .updateAdditionalCosts(order.id, cost, notes);
+                  .updateAdditionalCosts(_currentOrder!.id, cost, notes);
               print(
                 'OrderDetailsScreen: updateAdditionalCosts returned: $success',
               );
@@ -1627,10 +1701,10 @@ class _OrderDetailsContent extends StatelessWidget {
                 try {
                   await _sendNotificationToCustomer(
                     context,
-                    order.userId,
-                    order.id,
+                    _currentOrder!.userId,
+                    _currentOrder!.id,
                     'Order Price Updated',
-                    'Your order ${order.orderNumber} price has been updated. Additional costs: Rp ${cost.toStringAsFixed(0)}. Total amount: Rp ${(order.totalAmount + cost).toStringAsFixed(0)}. Please complete your payment.',
+                    'Your order ${_currentOrder!.orderNumber} price has been updated. Additional costs: Rp ${cost.toStringAsFixed(0)}. Total amount: Rp {(${_currentOrder!.totalAmount} + cost).toStringAsFixed(0)}. Please complete your payment.',
                   );
                 } catch (e) {
                   print('Failed to send notification: $e');
@@ -1667,7 +1741,7 @@ class _OrderDetailsContent extends StatelessWidget {
 
   void _printDeliveryAddress(BuildContext context) async {
     try {
-      await PrintService.printDeliveryAddressesNew([order]);
+      await PrintService.printDeliveryAddressesNew([_currentOrder!]);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1690,7 +1764,7 @@ class _OrderDetailsContent extends StatelessWidget {
 
   void _showPrintPreview(BuildContext context) async {
     try {
-      await PrintService.showPrintPreviewNew(context, [order]);
+      await PrintService.showPrintPreviewNew(context, [_currentOrder!]);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1705,7 +1779,7 @@ class _OrderDetailsContent extends StatelessWidget {
 
   void _showEditAddressDialog(BuildContext context) {
     final addressController = TextEditingController(
-      text: order.shippingAddress,
+      text: _currentOrder!.shippingAddress,
     );
 
     showDialog(
@@ -1730,7 +1804,7 @@ class _OrderDetailsContent extends StatelessWidget {
               final newAddress = addressController.text.trim();
               if (newAddress.isNotEmpty) {
                 context.read<AdminOrdersProvider>().updateShippingAddress(
-                  order.id,
+                  _currentOrder!.id,
                   newAddress,
                 );
                 Navigator.pop(context);
@@ -1754,7 +1828,7 @@ class _OrderDetailsContent extends StatelessWidget {
   void _showNotifyCustomerDialog(BuildContext context) {
     final messageController = TextEditingController(
       text:
-          'Reminder: Please complete your payment for order ${order.orderNumber}. Total amount: Rp ${order.totalAmount.toStringAsFixed(0)}',
+          'Reminder: Please complete your payment for order ${_currentOrder!.orderNumber}. Total amount: Rp ${_currentOrder!.totalAmount.toStringAsFixed(0)}',
     );
 
     showDialog(
@@ -1764,8 +1838,8 @@ class _OrderDetailsContent extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Order: ${order.orderNumber}'),
-            Text('Customer: ${order.receiverName ?? 'N/A'}'),
+            Text('Order: ${_currentOrder!.orderNumber}'),
+            Text('Customer: ${_currentOrder!.receiverName ?? 'N/A'}'),
             const SizedBox(height: 16),
             TextField(
               controller: messageController,
@@ -1788,8 +1862,8 @@ class _OrderDetailsContent extends StatelessWidget {
               if (message.isNotEmpty) {
                 await _sendNotificationToCustomer(
                   context,
-                  order.userId,
-                  order.id,
+                  _currentOrder!.userId,
+                  _currentOrder!.id,
                   'Payment Reminder',
                   message,
                 );
@@ -1805,7 +1879,8 @@ class _OrderDetailsContent extends StatelessWidget {
 
   void _showPaymentNotificationDialog(BuildContext context) {
     // Calculate payment information
-    final totalAmount = order.totalAmount + (order.additionalCosts ?? 0);
+    final totalAmount =
+        _currentOrder!.totalAmount + (_currentOrder!.additionalCosts ?? 0);
 
     showDialog(
       context: context,
@@ -1820,8 +1895,8 @@ class _OrderDetailsContent extends StatelessWidget {
 
           final messageController = TextEditingController(
             text: remainingAmount > 0
-                ? 'Payment reminder for order ${order.orderNumber}. Total: Rp ${totalAmount.toStringAsFixed(0)}, Paid: Rp ${totalPaid.toStringAsFixed(0)}, Remaining: Rp ${remainingAmount.toStringAsFixed(0)}. Please complete your payment.'
-                : 'Payment reminder for order ${order.orderNumber}. Total amount: Rp ${totalAmount.toStringAsFixed(0)}. Thank you for your payment!',
+                ? 'Payment reminder for order ${_currentOrder!.orderNumber}. Total: Rp ${totalAmount.toStringAsFixed(0)}, Paid: Rp ${totalPaid.toStringAsFixed(0)}, Remaining: Rp ${remainingAmount.toStringAsFixed(0)}. Please complete your payment.'
+                : 'Payment reminder for order ${_currentOrder!.orderNumber}. Total amount: Rp ${totalAmount.toStringAsFixed(0)}. Thank you for your payment!',
           );
 
           return AlertDialog(
@@ -1829,8 +1904,8 @@ class _OrderDetailsContent extends StatelessWidget {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Order: ${order.orderNumber}'),
-                Text('Customer: ${order.receiverName ?? 'N/A'}'),
+                Text('Order: ${_currentOrder!.orderNumber}'),
+                Text('Customer: ${_currentOrder!.receiverName ?? 'N/A'}'),
                 const SizedBox(height: 16),
 
                 // Payment Summary Card
@@ -1909,8 +1984,8 @@ class _OrderDetailsContent extends StatelessWidget {
                   if (message.isNotEmpty) {
                     await _sendNotificationToCustomer(
                       context,
-                      order.userId,
-                      order.id,
+                      _currentOrder!.userId,
+                      _currentOrder!.id,
                       'Payment Required',
                       message,
                     );

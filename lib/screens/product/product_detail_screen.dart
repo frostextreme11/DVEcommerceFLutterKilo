@@ -10,10 +10,7 @@ import '../../widgets/custom_button.dart';
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
 
-  const ProductDetailScreen({
-    super.key,
-    required this.product,
-  });
+  const ProductDetailScreen({super.key, required this.product});
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -60,7 +57,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               color: Theme.of(context).cardColor,
                               child: Icon(
                                 Icons.image_not_supported,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
                                 size: 64,
                               ),
                             ),
@@ -69,7 +68,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             color: Theme.of(context).cardColor,
                             child: Icon(
                               Icons.inventory_2,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
                               size: 64,
                             ),
                           ),
@@ -101,7 +102,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           if (widget.product.isFeatured)
                             _buildBadge('Featured', Colors.blue),
                           if (widget.product.hasDiscount)
-                            _buildBadge('${widget.product.discountPercentage?.toInt() ?? ((widget.product.price - widget.product.discountPrice!) / widget.product.price * 100).round()}% OFF', Colors.red),
+                            _buildBadge(
+                              '${widget.product.discountPercentage?.toInt() ?? ((widget.product.price - widget.product.discountPrice!) / widget.product.price * 100).round()}% OFF',
+                              Colors.red,
+                            ),
                         ],
                       ),
                     ),
@@ -112,13 +116,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         top: 100,
                         right: 16,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: widget.product.stockQuantity == 0 ? Colors.red : Colors.orange,
+                            color: widget.product.stockQuantity == 0
+                                ? Colors.red
+                                : Colors.orange,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            widget.product.stockQuantity == 0 ? 'Out of Stock' : 'Low Stock',
+                            widget.product.stockQuantity == 0
+                                ? 'Out of Stock'
+                                : 'Low Stock',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -136,7 +147,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   onPressed: () {
                     // Share product
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Share functionality coming soon!')),
+                      const SnackBar(
+                        content: Text('Share functionality coming soon!'),
+                      ),
                     );
                   },
                 ),
@@ -153,9 +166,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     // Category
                     if (widget.product.category != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
@@ -173,9 +191,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     // Product Name
                     Text(
                       widget.product.name,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
 
                     const SizedBox(height: 16),
@@ -185,24 +202,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       children: [
                         Text(
                           'Rp ${widget.product.currentPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                         ),
 
                         if (widget.product.hasDiscount) ...[
                           const SizedBox(width: 12),
                           Text(
                             'Rp ${widget.product.price.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              decoration: TextDecoration.lineThrough,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  decoration: TextDecoration.lineThrough,
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                ),
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
@@ -228,13 +251,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         Icon(
                           Icons.inventory,
                           size: 16,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${widget.product.stockQuantity} items available',
+                          'Items available',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
                             fontSize: 14,
                           ),
                         ),
@@ -259,7 +286,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           : 'No description available for this product.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         height: 1.6,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
                     ),
 
@@ -272,9 +301,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           Text(
                             'Quantity',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
 
                           const SizedBox(height: 12),
@@ -287,33 +315,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     : null,
                                 icon: const Icon(Icons.remove),
                                 style: IconButton.styleFrom(
-                                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.1),
                                 ),
                               ),
 
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   border: Border.all(
-                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                                    color: Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.3),
                                   ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
                                   _quantity.toString(),
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ),
 
                               IconButton(
-                                onPressed: _quantity < widget.product.stockQuantity
+                                onPressed:
+                                    _quantity < widget.product.stockQuantity
                                     ? () => setState(() => _quantity++)
                                     : null,
                                 icon: const Icon(Icons.add),
                                 style: IconButton.styleFrom(
-                                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.1),
                                 ),
                               ),
 
@@ -321,10 +357,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                               Text(
                                 'Total: Rp ${(widget.product.currentPrice * _quantity).toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                               ),
                             ],
                           ),
@@ -359,12 +398,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   IconButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Favorite functionality coming soon!')),
+                        const SnackBar(
+                          content: Text('Favorite functionality coming soon!'),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.favorite_border),
                     style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
                     ),
                   ),
 
@@ -376,11 +419,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       onPressed: () async {
                         if (isInCart) {
                           // Update quantity
-                          await cartProvider.updateQuantity(widget.product.id, _quantity);
+                          await cartProvider.updateQuantity(
+                            widget.product.id,
+                            _quantity,
+                          );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Updated cart: ${widget.product.name} x$_quantity'),
+                                content: Text(
+                                  'Updated cart: ${widget.product.name} x$_quantity',
+                                ),
                                 duration: const Duration(seconds: 2),
                               ),
                             );
@@ -398,7 +446,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('${widget.product.name} added to cart'),
+                                content: Text(
+                                  '${widget.product.name} added to cart',
+                                ),
                                 duration: const Duration(seconds: 2),
                                 action: SnackBarAction(
                                   label: 'View Cart',
@@ -413,7 +463,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         }
                       },
                       icon: Icon(
-                        isInCart ? Icons.shopping_cart : Icons.add_shopping_cart,
+                        isInCart
+                            ? Icons.shopping_cart
+                            : Icons.add_shopping_cart,
                       ),
                       label: Text(
                         isInCart

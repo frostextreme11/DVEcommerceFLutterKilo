@@ -72,21 +72,30 @@ class CustomerNotificationProvider extends ChangeNotifier {
   late final NotificationService _notificationService;
 
   List<CustomerNotification> _notifications = [];
+  List<CustomerNotification> _displayedNotifications = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
   String? _customerFcmToken;
+  int _currentPage = 0;
+  static const int _pageSize = 10;
+  bool _hasMoreNotifications = true;
 
   List<CustomerNotification> get notifications => _notifications;
+  List<CustomerNotification> get displayedNotifications =>
+      _displayedNotifications;
   bool get isLoading => _isLoading;
+  bool get isLoadingMore => _isLoadingMore;
   String? get error => _error;
   String? get customerFcmToken => _customerFcmToken;
+  bool get hasMoreNotifications => _hasMoreNotifications;
 
   // Get unread notifications count
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
-  // Get recent notifications (last 10)
+  // Get recent notifications (last 10) - for backward compatibility
   List<CustomerNotification> get recentNotifications =>
-      _notifications.take(10).toList();
+      _displayedNotifications.take(10).toList();
 
   StreamSubscription<List<dynamic>>? _notificationsSubscription;
 
@@ -186,6 +195,8 @@ class CustomerNotificationProvider extends ChangeNotifier {
   Future<void> _loadCustomerNotifications() async {
     _isLoading = true;
     _error = null;
+    _currentPage = 0;
+    _hasMoreNotifications = true;
     notifyListeners();
 
     try {
@@ -197,15 +208,21 @@ class CustomerNotificationProvider extends ChangeNotifier {
             .from('kl_customer_notifications')
             .select()
             .eq('user_id', currentUser.id)
-            .order('created_at', ascending: false);
+            .order('created_at', ascending: false)
+            .limit(_pageSize);
 
         final notificationsData = response as List;
         _notifications = notificationsData
             .map((data) => CustomerNotification.fromJson(data))
             .toList();
+
+        _displayedNotifications = List.from(_notifications);
+        _hasMoreNotifications = _notifications.length == _pageSize;
       } catch (e) {
         print('Failed to load customer notifications: $e');
         _notifications = []; // Start with empty list if database fails
+        _displayedNotifications = [];
+        _hasMoreNotifications = false;
       }
 
       print(
@@ -216,6 +233,51 @@ class CustomerNotificationProvider extends ChangeNotifier {
       print('Error loading customer notifications: $e');
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreNotifications() async {
+    if (!_hasMoreNotifications || _isLoadingMore) return;
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) return;
+
+      final nextPage = _currentPage + 1;
+      final offset = nextPage * _pageSize;
+
+      final response = await _supabase
+          .from('kl_customer_notifications')
+          .select()
+          .eq('user_id', currentUser.id)
+          .order('created_at', ascending: false)
+          .range(offset, offset + _pageSize - 1);
+
+      final notificationsData = response as List;
+      final newNotifications = notificationsData
+          .map((data) => CustomerNotification.fromJson(data))
+          .toList();
+
+      if (newNotifications.isNotEmpty) {
+        _notifications.addAll(newNotifications);
+        _displayedNotifications.addAll(newNotifications);
+        _currentPage = nextPage;
+        _hasMoreNotifications = newNotifications.length == _pageSize;
+      } else {
+        _hasMoreNotifications = false;
+      }
+
+      print(
+        'CustomerNotificationProvider: Loaded ${newNotifications.length} more notifications',
+      );
+    } catch (e) {
+      print('Error loading more customer notifications: $e');
+    } finally {
+      _isLoadingMore = false;
       notifyListeners();
     }
   }
@@ -290,6 +352,11 @@ class CustomerNotificationProvider extends ChangeNotifier {
             _notifications = data
                 .map((json) => CustomerNotification.fromJson(json))
                 .toList();
+
+            // Update displayed notifications to show latest 10
+            _displayedNotifications = _notifications.take(_pageSize).toList();
+            _currentPage = 0;
+            _hasMoreNotifications = _notifications.length > _pageSize;
 
             notifyListeners();
           });
@@ -484,8 +551,11 @@ class CustomerNotificationProvider extends ChangeNotifier {
 
   void _clearNotifications() {
     _notifications.clear();
+    _displayedNotifications.clear();
     _customerFcmToken = null;
     _error = null;
+    _currentPage = 0;
+    _hasMoreNotifications = true;
     _notificationsSubscription?.cancel();
     _notificationsSubscription = null;
     notifyListeners();

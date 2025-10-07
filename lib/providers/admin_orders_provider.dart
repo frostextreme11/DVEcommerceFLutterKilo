@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/order.dart';
+import 'dart:async';
 
 class AdminOrdersProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -12,6 +13,7 @@ class AdminOrdersProvider extends ChangeNotifier {
   OrderStatus? _selectedStatus;
   String? _courierFilter; // 'all', 'resi_otomatis', or null
   DateTimeRange? _dateRange;
+  String? _dateFilter; // 'today', 'month', 'all_time', or null for custom range
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
@@ -20,6 +22,10 @@ class AdminOrdersProvider extends ChangeNotifier {
   OrderStatus? get selectedStatus => _selectedStatus;
   String? get courierFilter => _courierFilter;
   DateTimeRange? get dateRange => _dateRange;
+  String? get dateFilter => _dateFilter;
+
+  // Stream for listening to orders changes
+  Stream<List<Order>> get ordersStream => Stream.value(_orders);
 
   // Filtered orders based on search, status, courier filter, and date range
   List<Order> get filteredOrders {
@@ -47,15 +53,67 @@ class AdminOrdersProvider extends ChangeNotifier {
               order.courierInfo?.toLowerCase().contains('resi otomatis') ==
                   true);
 
-      final matchesDate =
-          _dateRange == null ||
-          (order.createdAt.isAfter(_dateRange!.start) &&
-              order.createdAt.isBefore(
-                _dateRange!.end.add(const Duration(days: 1)),
-              ));
+      final matchesDate = _matchesDateFilter(order.createdAt);
 
       return matchesSearch && matchesStatus && matchesCourier && matchesDate;
     }).toList();
+  }
+
+  // Set default "Today" filter
+  void setDefaultTodayFilter() {
+    _dateFilter = 'today';
+    _dateRange = null;
+    notifyListeners();
+  }
+
+  // Set Month filter
+  void setMonthFilter() {
+    _dateFilter = 'month';
+    _dateRange = null;
+    notifyListeners();
+  }
+
+  // Set All Time filter
+  void setAllTimeFilter() {
+    _dateFilter = 'all_time';
+    _dateRange = null;
+    notifyListeners();
+  }
+
+  // Set custom date range filter
+  void setCustomDateRangeFilter(DateTimeRange dateRange) {
+    _dateFilter = null;
+    _dateRange = dateRange;
+    notifyListeners();
+  }
+
+  // Helper method to check if order matches date filter
+  bool _matchesDateFilter(DateTime orderDate) {
+    final now = DateTime.now();
+
+    switch (_dateFilter) {
+      case 'today':
+        final today = DateTime(now.year, now.month, now.day);
+        final tomorrow = today.add(const Duration(days: 1));
+        return orderDate.isAfter(today) && orderDate.isBefore(tomorrow);
+
+      case 'month':
+        final startOfMonth = DateTime(now.year, now.month, 1);
+        final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
+        return orderDate.isAfter(startOfMonth) &&
+            orderDate.isBefore(startOfNextMonth);
+
+      case 'all_time':
+        return true; // Show all orders
+
+      default:
+        // Custom date range
+        if (_dateRange != null) {
+          return orderDate.isAfter(_dateRange!.start) &&
+              orderDate.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+        }
+        return true; // No filter applied
+    }
   }
 
   // Get orders by status
@@ -436,6 +494,95 @@ class AdminOrdersProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> cancelOrder(String orderId) async {
+    try {
+      // Get the order details first to restore quantities
+      final order = await getOrderById(orderId);
+      if (order == null) {
+        print(
+          'AdminOrdersProvider: Order not found for cancellation: $orderId',
+        );
+        return false;
+      }
+
+      // Check if order can be cancelled (not already shipped or cancelled)
+      if (order.status == OrderStatus.barangDikirim) {
+        print(
+          'AdminOrdersProvider: Cannot cancel order that is already shipped',
+        );
+        return false;
+      }
+
+      if (order.status == OrderStatus.cancelled) {
+        print('AdminOrdersProvider: Order is already cancelled');
+        return false;
+      }
+
+      // Start a transaction-like operation
+      // 1. Update order status to cancelled
+      await _supabase
+          .from('kl_orders')
+          .update({
+            'status': OrderStatus.cancelled.databaseValue,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', orderId);
+
+      // 2. Restore product quantities for each order item
+      for (final item in order.items) {
+        if (item.productId.isNotEmpty) {
+          // Get current product stock
+          final productResponse = await _supabase
+              .from('kl_products')
+              .select('stock_quantity')
+              .eq('id', item.productId)
+              .maybeSingle();
+
+          if (productResponse != null) {
+            final currentStock = productResponse['stock_quantity'] as int? ?? 0;
+            final newStock = currentStock + item.quantity;
+
+            // Update product stock
+            await _supabase
+                .from('kl_products')
+                .update({
+                  'stock_quantity': newStock,
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', item.productId);
+
+            print(
+              'AdminOrdersProvider: Restored ${item.quantity} units of product ${item.productId}. New stock: $newStock',
+            );
+          }
+        }
+      }
+
+      // Update local order
+      final orderIndex = _orders.indexWhere((o) => o.id == orderId);
+      if (orderIndex >= 0) {
+        _orders[orderIndex] = _orders[orderIndex].copyWith(
+          status: OrderStatus.cancelled,
+        );
+        notifyListeners();
+      }
+
+      print('AdminOrdersProvider: Order cancelled successfully: $orderId');
+      return true;
+    } catch (e) {
+      print('Error cancelling order (updating locally): $e');
+      // Update locally even if database update fails
+      final orderIndex = _orders.indexWhere((o) => o.id == orderId);
+      if (orderIndex >= 0) {
+        _orders[orderIndex] = _orders[orderIndex].copyWith(
+          status: OrderStatus.cancelled,
+        );
+        notifyListeners();
+      }
+      return true;
+    }
+  }
+
   void setSearchQuery(String query) {
     _searchQuery = query;
     notifyListeners();
@@ -452,14 +599,20 @@ class AdminOrdersProvider extends ChangeNotifier {
   }
 
   void setDateRange(DateTimeRange? dateRange) {
-    _dateRange = dateRange;
-    notifyListeners();
+    if (dateRange != null) {
+      setCustomDateRangeFilter(dateRange);
+    } else {
+      _dateFilter = null;
+      _dateRange = null;
+      notifyListeners();
+    }
   }
 
   void clearFilters() {
     _searchQuery = '';
     _selectedStatus = null;
     _courierFilter = null;
+    _dateFilter = null;
     _dateRange = null;
     notifyListeners();
   }

@@ -13,6 +13,9 @@ class AdminNotification {
   final DateTime orderDate;
   final bool isRead;
   final DateTime createdAt;
+  final String title;
+  final String message;
+  final String type;
 
   AdminNotification({
     required this.id,
@@ -23,6 +26,9 @@ class AdminNotification {
     required this.orderDate,
     this.isRead = false,
     required this.createdAt,
+    required this.title,
+    required this.message,
+    required this.type,
   });
 
   factory AdminNotification.fromJson(Map<String, dynamic> json) {
@@ -35,6 +41,9 @@ class AdminNotification {
       orderDate: DateTime.parse(json['order_date']),
       isRead: json['is_read'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
+      title: json['title'] ?? 'New Order Received!',
+      message: json['message'] ?? 'A new order has been placed.',
+      type: json['type'] ?? 'order',
     );
   }
 
@@ -60,6 +69,9 @@ class AdminNotification {
     DateTime? orderDate,
     bool? isRead,
     DateTime? createdAt,
+    String? title,
+    String? message,
+    String? type,
   }) {
     return AdminNotification(
       id: id ?? this.id,
@@ -70,6 +82,9 @@ class AdminNotification {
       orderDate: orderDate ?? this.orderDate,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
+      title: title ?? this.title,
+      message: message ?? this.message,
+      type: type ?? this.type,
     );
   }
 }
@@ -79,21 +94,29 @@ class AdminNotificationProvider extends ChangeNotifier {
   late final NotificationService _notificationService;
 
   List<AdminNotification> _notifications = [];
+  List<AdminNotification> _displayedNotifications = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
   String? _adminFcmToken;
+  int _currentPage = 0;
+  static const int _pageSize = 10;
+  bool _hasMoreNotifications = true;
 
   List<AdminNotification> get notifications => _notifications;
+  List<AdminNotification> get displayedNotifications => _displayedNotifications;
   bool get isLoading => _isLoading;
+  bool get isLoadingMore => _isLoadingMore;
   String? get error => _error;
   String? get adminFcmToken => _adminFcmToken;
+  bool get hasMoreNotifications => _hasMoreNotifications;
 
   // Get unread notifications count
   int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
-  // Get recent notifications (last 10)
+  // Get recent notifications (last 10) - for backward compatibility
   List<AdminNotification> get recentNotifications =>
-      _notifications.take(10).toList();
+      _displayedNotifications.take(10).toList();
 
   AdminNotificationProvider() {
     // Initialize asynchronously to avoid blocking provider creation
@@ -212,6 +235,11 @@ class AdminNotificationProvider extends ChangeNotifier {
                 .map((json) => AdminNotification.fromJson(json))
                 .toList();
 
+            // Update displayed notifications to show latest 10
+            _displayedNotifications = _notifications.take(_pageSize).toList();
+            _currentPage = 0;
+            _hasMoreNotifications = _notifications.length > _pageSize;
+
             notifyListeners();
 
             // Show local notification for new orders if it's a new notification
@@ -231,6 +259,8 @@ class AdminNotificationProvider extends ChangeNotifier {
   Future<void> _loadAdminNotifications() async {
     _isLoading = true;
     _error = null;
+    _currentPage = 0;
+    _hasMoreNotifications = true;
     notifyListeners();
 
     try {
@@ -238,15 +268,21 @@ class AdminNotificationProvider extends ChangeNotifier {
         final response = await _supabase
             .from('kl_admin_notifications')
             .select()
-            .order('created_at', ascending: false);
+            .order('created_at', ascending: false)
+            .limit(_pageSize);
 
         final notificationsData = response as List;
         _notifications = notificationsData
             .map((data) => AdminNotification.fromJson(data))
             .toList();
+
+        _displayedNotifications = List.from(_notifications);
+        _hasMoreNotifications = _notifications.length == _pageSize;
       } catch (e) {
         print('Failed to load admin notifications: $e');
         _notifications = []; // Start with empty list if database fails
+        _displayedNotifications = [];
+        _hasMoreNotifications = false;
       }
 
       print(
@@ -257,6 +293,47 @@ class AdminNotificationProvider extends ChangeNotifier {
       print('Error loading admin notifications: $e');
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreNotifications() async {
+    if (!_hasMoreNotifications || _isLoadingMore) return;
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      final nextPage = _currentPage + 1;
+      final offset = nextPage * _pageSize;
+
+      final response = await _supabase
+          .from('kl_admin_notifications')
+          .select()
+          .order('created_at', ascending: false)
+          .range(offset, offset + _pageSize - 1);
+
+      final notificationsData = response as List;
+      final newNotifications = notificationsData
+          .map((data) => AdminNotification.fromJson(data))
+          .toList();
+
+      if (newNotifications.isNotEmpty) {
+        _notifications.addAll(newNotifications);
+        _displayedNotifications.addAll(newNotifications);
+        _currentPage = nextPage;
+        _hasMoreNotifications = newNotifications.length == _pageSize;
+      } else {
+        _hasMoreNotifications = false;
+      }
+
+      print(
+        'AdminNotificationProvider: Loaded ${newNotifications.length} more notifications',
+      );
+    } catch (e) {
+      print('Error loading more admin notifications: $e');
+    } finally {
+      _isLoadingMore = false;
       notifyListeners();
     }
   }
@@ -306,6 +383,9 @@ class AdminNotificationProvider extends ChangeNotifier {
     required int quantity,
     required double totalPrice,
     required DateTime orderDate,
+    String? title,
+    String? message,
+    String? type,
   }) async {
     try {
       final notificationData = {
@@ -314,6 +394,9 @@ class AdminNotificationProvider extends ChangeNotifier {
         'quantity': quantity,
         'total_price': totalPrice,
         'order_date': orderDate.toIso8601String(),
+        'title': title ?? 'New Order Received!',
+        'message': message ?? 'A new order has been placed.',
+        'type': type ?? 'order',
         'is_read': false,
         'created_at': DateTime.now().toIso8601String(),
       };
@@ -470,8 +553,11 @@ class AdminNotificationProvider extends ChangeNotifier {
 
   void _clearNotifications() {
     _notifications.clear();
+    _displayedNotifications.clear();
     _adminFcmToken = null;
     _error = null;
+    _currentPage = 0;
+    _hasMoreNotifications = true;
     _notificationsSubscription?.cancel();
     _notificationsSubscription = null;
     notifyListeners();

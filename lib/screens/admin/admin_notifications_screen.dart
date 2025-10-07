@@ -34,7 +34,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
           Consumer<AdminNotificationProvider>(
             builder: (context, notificationProvider, child) {
               return TextButton(
-                onPressed: notificationProvider.notifications.isEmpty
+                onPressed: notificationProvider.displayedNotifications.isEmpty
                     ? null
                     : () {
                         context
@@ -56,7 +56,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final notifications = notificationProvider.notifications;
+          final notifications = notificationProvider.displayedNotifications;
 
           if (notifications.isEmpty) {
             return const Center(
@@ -81,8 +81,26 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
           }
 
           return ListView.builder(
-            itemCount: notifications.length,
+            itemCount:
+                notifications.length +
+                (notificationProvider.hasMoreNotifications ? 1 : 0),
             itemBuilder: (context, index) {
+              // Load more item
+              if (index == notifications.length &&
+                  notificationProvider.hasMoreNotifications) {
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  child: notificationProvider.isLoadingMore
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: () {
+                            notificationProvider.loadMoreNotifications();
+                          },
+                          child: const Text('Load More Notifications'),
+                        ),
+                );
+              }
+
               final notification = notifications[index];
               return Dismissible(
                 key: Key(notification.id),
@@ -122,7 +140,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                       ),
                     ),
                     title: Text(
-                      'New Order Received!',
+                      notification.title,
                       style: TextStyle(
                         fontWeight: notification.isRead
                             ? FontWeight.normal
@@ -133,16 +151,29 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Customer: ${notification.customerName}',
+                          notification.message,
                           style: TextStyle(
                             fontWeight: notification.isRead
                                 ? FontWeight.normal
                                 : FontWeight.w500,
                           ),
                         ),
-                        Text(
-                          'Items: ${notification.quantity} | Total: Rp ${notification.totalPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                        ),
+                        if (notification.type == 'order') ...[
+                          Text(
+                            'Customer: ${notification.customerName}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          Text(
+                            'Items: ${notification.quantity} | Total: Rp ${notification.totalPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                         Text(
                           'Order ID: ${notification.orderId.substring(0, 8)}...',
                           style: TextStyle(

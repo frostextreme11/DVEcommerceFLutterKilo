@@ -30,7 +30,11 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
 
     // Load orders when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdminOrdersProvider>().loadAllOrders();
+      final adminOrdersProvider = context.read<AdminOrdersProvider>();
+      adminOrdersProvider.loadAllOrders();
+
+      // Set default "Today" filter
+      adminOrdersProvider.setDefaultTodayFilter();
 
       // Set up notification service context provider
       final notificationService = Provider.of<NotificationService>(
@@ -105,6 +109,10 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                       const SizedBox(width: 8),
                       _buildDateFilterButton(),
                       const SizedBox(width: 8),
+                      _buildMonthFilterButton(),
+                      const SizedBox(width: 8),
+                      _buildAllTimeFilterButton(),
+                      const SizedBox(width: 8),
                       _buildPrintPreviewButton(),
                       const SizedBox(width: 8),
                       _buildPrintButton(),
@@ -112,6 +120,8 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                       _buildPdfButton(),
                       const SizedBox(width: 8),
                       _buildBulkNotifyButton(),
+                      const SizedBox(width: 8),
+                      _buildClearFiltersButton(),
                     ],
                   ),
                 ),
@@ -262,6 +272,11 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
     return Consumer<AdminOrdersProvider>(
       builder: (context, provider, child) {
         final hasDateFilter = provider.dateRange != null;
+        final isTodayFilter =
+            hasDateFilter &&
+            provider.dateRange!.start.year == DateTime.now().year &&
+            provider.dateRange!.start.month == DateTime.now().month &&
+            provider.dateRange!.start.day == DateTime.now().day;
 
         return ElevatedButton.icon(
           onPressed: () {
@@ -283,10 +298,64 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             size: 16,
           ),
           label: Text(
-            hasDateFilter
+            isTodayFilter
+                ? 'Today'
+                : hasDateFilter
                 ? '${provider.dateRange!.start.toString().substring(5, 10)} - ${provider.dateRange!.end.toString().substring(5, 10)}'
                 : 'Date Filter',
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMonthFilterButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final isSelected = provider.dateFilter == 'month';
+
+        return ElevatedButton(
+          onPressed: () {
+            context.read<AdminOrdersProvider>().setMonthFilter();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isSelected
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: const Text('Month'),
+        );
+      },
+    );
+  }
+
+  Widget _buildAllTimeFilterButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final isSelected = provider.dateFilter == 'all_time';
+
+        return ElevatedButton(
+          onPressed: () {
+            context.read<AdminOrdersProvider>().setAllTimeFilter();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isSelected
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: const Text('All Time'),
         );
       },
     );
@@ -538,6 +607,22 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                         ],
                       ),
                     ),
+                    if (order.status != OrderStatus.cancelled &&
+                        order.status != OrderStatus.barangDikirim) ...[
+                      const PopupMenuItem(
+                        value: 'cancel',
+                        child: Row(
+                          children: [
+                            Icon(Icons.cancel, color: Colors.orange),
+                            SizedBox(width: 8),
+                            Text(
+                              'Cancel Order',
+                              style: TextStyle(color: Colors.orange),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const PopupMenuItem(
                       value: 'delete',
                       child: Row(
@@ -586,6 +671,9 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         break;
       case 'update_courier':
         _showCourierUpdateDialog(order);
+        break;
+      case 'cancel':
+        _showCancelConfirmation(order);
         break;
       case 'delete':
         _showDeleteConfirmation(order);
@@ -711,6 +799,71 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
     );
   }
 
+  void _showCancelConfirmation(Order order) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Order'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to cancel order "${order.orderNumber}"?',
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This will restore the product quantities back to stock.',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Order items:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            ...order.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(left: 8, top: 4),
+                child: Text(
+                  '• ${item.productName} (${item.quantity} units)',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Keep Order'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await context
+                  .read<AdminOrdersProvider>()
+                  .cancelOrder(order.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: success
+                        ? Text(
+                            'Order "${order.orderNumber}" has been cancelled and quantities restored',
+                          )
+                        : Text('Failed to cancel order "${order.orderNumber}"'),
+                    backgroundColor: success ? Colors.green : Colors.red,
+                  ),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Cancel Order'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showDeleteConfirmation(Order order) {
     showDialog(
       context: context,
@@ -748,7 +901,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
     );
 
     if (picked != null) {
-      provider.setDateRange(picked);
+      provider.setCustomDateRangeFilter(picked);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -758,6 +911,38 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
         ),
       );
     }
+  }
+
+  void _showClearFiltersDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear All Filters'),
+        content: const Text(
+          'This will clear all applied filters and show all orders.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<AdminOrdersProvider>().clearFilters();
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('All filters cleared'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handlePrint() async {
@@ -908,6 +1093,36 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
           ),
           icon: const Icon(Icons.notifications_active, size: 16),
           label: Text('Notify Unpaid (${unpaidOrders.length})'),
+        );
+      },
+    );
+  }
+
+  Widget _buildClearFiltersButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final hasActiveFilters =
+            provider.searchQuery.isNotEmpty ||
+            provider.selectedStatus != null ||
+            provider.courierFilter != null ||
+            provider.dateFilter != null ||
+            provider.dateRange != null;
+
+        return ElevatedButton.icon(
+          onPressed: hasActiveFilters
+              ? () => _showClearFiltersDialog(context)
+              : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: hasActiveFilters
+                ? Colors.red
+                : Colors.red.withOpacity(0.3),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          icon: const Icon(Icons.clear, size: 16),
+          label: const Text('Clear Filters'),
         );
       },
     );

@@ -46,7 +46,7 @@ class _CustomerNotificationsScreenState
             Consumer<CustomerNotificationProvider>(
               builder: (context, notificationProvider, child) {
                 return TextButton(
-                  onPressed: notificationProvider.notifications.isEmpty
+                  onPressed: notificationProvider.displayedNotifications.isEmpty
                       ? null
                       : () {
                           context
@@ -68,7 +68,7 @@ class _CustomerNotificationsScreenState
               return const Center(child: CircularProgressIndicator());
             }
 
-            final notifications = notificationProvider.notifications;
+            final notifications = notificationProvider.displayedNotifications;
 
             if (notifications.isEmpty) {
               return const Center(
@@ -97,8 +97,26 @@ class _CustomerNotificationsScreenState
             }
 
             return ListView.builder(
-              itemCount: notifications.length,
+              itemCount:
+                  notifications.length +
+                  (notificationProvider.hasMoreNotifications ? 1 : 0),
               itemBuilder: (context, index) {
+                // Load more item
+                if (index == notifications.length &&
+                    notificationProvider.hasMoreNotifications) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    child: notificationProvider.isLoadingMore
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton(
+                            onPressed: () {
+                              notificationProvider.loadMoreNotifications();
+                            },
+                            child: const Text('Load More Notifications'),
+                          ),
+                  );
+                }
+
                 final notification = notifications[index];
                 return Dismissible(
                   key: Key(notification.id),
