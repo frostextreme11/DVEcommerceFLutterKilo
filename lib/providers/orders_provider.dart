@@ -59,7 +59,13 @@ class OrdersProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadUserOrders() async {
+  Future<void> loadUserOrders({
+    DateTime? startDate,
+    DateTime? endDate,
+    OrderStatus? status,
+    String? searchQuery,
+    bool loadTodayOnly = false,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -73,13 +79,48 @@ class OrdersProvider extends ChangeNotifier {
         return;
       }
 
-      // Load orders
-      final ordersResponse = await _supabase
-          .from('kl_orders')
-          .select()
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
+      // Build the query with filters
+      var query = _supabase.from('kl_orders').select().eq('user_id', userId);
 
+      // Apply date filters
+      if (loadTodayOnly) {
+        final today = DateTime.now();
+        final startOfDay = DateTime(today.year, today.month, today.day);
+        final endOfDay = DateTime(
+          today.year,
+          today.month,
+          today.day,
+          23,
+          59,
+          59,
+        );
+
+        query = query
+            .gte('created_at', startOfDay.toIso8601String())
+            .lte('created_at', endOfDay.toIso8601String());
+      } else {
+        if (startDate != null) {
+          query = query.gte('created_at', startDate.toIso8601String());
+        }
+        if (endDate != null) {
+          query = query.lte('created_at', endDate.toIso8601String());
+        }
+      }
+
+      // Apply status filter
+      if (status != null) {
+        query = query.eq('status', status.databaseValue);
+      }
+
+      // Apply search filter (order number or receiver name)
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        query = query.or(
+          'order_number.ilike.%$searchQuery%,receiver_name.ilike.%$searchQuery%',
+        );
+      }
+
+      // Order by creation date (newest first) and execute query
+      final ordersResponse = await query.order('created_at', ascending: false);
       final ordersData = ordersResponse as List;
 
       // Load order items for each order
@@ -101,7 +142,9 @@ class OrdersProvider extends ChangeNotifier {
 
       _orders = orders;
       _isInitialized = true;
-      print('OrdersProvider: Successfully loaded ${orders.length} orders');
+      print(
+        'OrdersProvider: Successfully loaded ${orders.length} orders with filters - Today: $loadTodayOnly, Status: $status, Search: $searchQuery',
+      );
     } catch (e) {
       _error = 'Failed to load orders: ${e.toString()}';
       print('Error loading orders: $e');
@@ -109,6 +152,34 @@ class OrdersProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Optimized method to load today's orders (for homescreen)
+  Future<void> loadTodayOrders() async {
+    await loadUserOrders(loadTodayOnly: true);
+  }
+
+  // Optimized method to load orders by status
+  Future<void> loadOrdersByStatus(OrderStatus status) async {
+    await loadUserOrders(status: status);
+  }
+
+  // Optimized method to load orders within date range
+  Future<void> loadOrdersByDateRange(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    await loadUserOrders(startDate: startDate, endDate: endDate);
+  }
+
+  // Optimized method to search orders by query
+  Future<void> searchOrders(String query) async {
+    await loadUserOrders(searchQuery: query);
+  }
+
+  // Method to load all orders (legacy support)
+  Future<void> loadAllOrders() async {
+    await loadUserOrders();
   }
 
   Future<Order?> createOrder({

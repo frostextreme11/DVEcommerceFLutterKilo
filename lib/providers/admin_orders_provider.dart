@@ -64,6 +64,8 @@ class AdminOrdersProvider extends ChangeNotifier {
     _dateFilter = 'today';
     _dateRange = null;
     notifyListeners();
+    // Reload orders with the new filter
+    refreshOrders();
   }
 
   // Set Month filter
@@ -71,6 +73,8 @@ class AdminOrdersProvider extends ChangeNotifier {
     _dateFilter = 'month';
     _dateRange = null;
     notifyListeners();
+    // Reload orders with the new filter
+    refreshOrders();
   }
 
   // Set All Time filter
@@ -78,6 +82,8 @@ class AdminOrdersProvider extends ChangeNotifier {
     _dateFilter = 'all_time';
     _dateRange = null;
     notifyListeners();
+    // Reload orders with the new filter
+    refreshOrders();
   }
 
   // Set custom date range filter
@@ -85,6 +91,8 @@ class AdminOrdersProvider extends ChangeNotifier {
     _dateFilter = null;
     _dateRange = dateRange;
     notifyListeners();
+    // Reload orders with the new filter
+    refreshOrders();
   }
 
   // Helper method to check if order matches date filter
@@ -177,50 +185,11 @@ class AdminOrdersProvider extends ChangeNotifier {
         return; // Exit early if database is not available
       }
 
-      // Load orders
-      final ordersResponse = await _supabase
-          .from('kl_orders')
-          .select()
-          .order('created_at', ascending: false);
-
-      final ordersData = ordersResponse as List;
-      print(
-        'AdminOrdersProvider: Found ${ordersData.length} orders in database',
-      );
-
-      // Load order items for each order
-      final orders = <Order>[];
-      for (final orderData in ordersData) {
-        final orderId = orderData['id'];
-        print('AdminOrdersProvider: Loading items for order: $orderId');
-
-        try {
-          final itemsResponse = await _supabase
-              .from('kl_order_items')
-              .select()
-              .eq('order_id', orderId);
-
-          final items = (itemsResponse as List)
-              .map((item) => OrderItem.fromJson(item))
-              .toList();
-
-          orders.add(Order.fromJson(orderData, items));
-        } catch (e) {
-          print(
-            'AdminOrdersProvider: Error loading items for order $orderId: $e',
-          );
-          // Still add the order even if items fail to load
-          orders.add(Order.fromJson(orderData, []));
-        }
-      }
-
-      _orders = orders;
-      print(
-        'AdminOrdersProvider: Successfully loaded ${_orders.length} orders',
-      );
-
-      if (orders.isEmpty) {
-        print('AdminOrdersProvider: No orders found in database');
+      // Use filtered loading if any filters are applied, otherwise load all orders
+      if (_hasActiveFilters()) {
+        await _loadFilteredOrders();
+      } else {
+        await _loadAllOrdersFromDatabase();
       }
     } catch (e) {
       print(
@@ -230,6 +199,164 @@ class AdminOrdersProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Check if any filters are currently active
+  bool _hasActiveFilters() {
+    return _selectedStatus != null ||
+        _courierFilter != null ||
+        _dateFilter != null ||
+        _dateRange != null ||
+        _searchQuery.isNotEmpty;
+  }
+
+  // Load all orders from database (original implementation)
+  Future<void> _loadAllOrdersFromDatabase() async {
+    final ordersResponse = await _supabase
+        .from('kl_orders')
+        .select()
+        .order('created_at', ascending: false);
+
+    final ordersData = ordersResponse as List;
+    print('AdminOrdersProvider: Found ${ordersData.length} orders in database');
+
+    // Load order items for each order
+    final orders = <Order>[];
+    for (final orderData in ordersData) {
+      final orderId = orderData['id'];
+      print('AdminOrdersProvider: Loading items for order: $orderId');
+
+      try {
+        final itemsResponse = await _supabase
+            .from('kl_order_items')
+            .select()
+            .eq('order_id', orderId);
+
+        final items = (itemsResponse as List)
+            .map((item) => OrderItem.fromJson(item))
+            .toList();
+
+        orders.add(Order.fromJson(orderData, items));
+      } catch (e) {
+        print(
+          'AdminOrdersProvider: Error loading items for order $orderId: $e',
+        );
+        // Still add the order even if items fail to load
+        orders.add(Order.fromJson(orderData, []));
+      }
+    }
+
+    _orders = orders;
+    print('AdminOrdersProvider: Successfully loaded ${_orders.length} orders');
+
+    if (orders.isEmpty) {
+      print('AdminOrdersProvider: No orders found in database');
+    }
+  }
+
+  // Load only filtered orders from database (optimized)
+  Future<void> _loadFilteredOrders() async {
+    print('AdminOrdersProvider: Loading filtered orders...');
+
+    // Build the base query
+    var query = _supabase.from('kl_orders').select();
+
+    // Apply status filter
+    if (_selectedStatus != null) {
+      query = query.eq('status', _selectedStatus!.databaseValue);
+      print(
+        'AdminOrdersProvider: Applied status filter: ${_selectedStatus!.databaseValue}',
+      );
+    }
+
+    // Apply date filters
+    final now = DateTime.now();
+    if (_dateFilter == 'today') {
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+      query = query
+          .gte('created_at', today.toIso8601String())
+          .lt('created_at', tomorrow.toIso8601String());
+      print('AdminOrdersProvider: Applied today filter');
+    } else if (_dateFilter == 'month') {
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
+      query = query
+          .gte('created_at', startOfMonth.toIso8601String())
+          .lt('created_at', startOfNextMonth.toIso8601String());
+      print('AdminOrdersProvider: Applied month filter');
+    } else if (_dateRange != null) {
+      query = query
+          .gte('created_at', _dateRange!.start.toIso8601String())
+          .lt(
+            'created_at',
+            _dateRange!.end.add(const Duration(days: 1)).toIso8601String(),
+          );
+      print('AdminOrdersProvider: Applied custom date range filter');
+    }
+
+    // Apply courier filter
+    if (_courierFilter == 'resi_otomatis') {
+      query = query.ilike('courier_info', '%resi otomatis%');
+      print('AdminOrdersProvider: Applied resi otomatis filter');
+    }
+
+    // Execute the filtered query
+    final ordersResponse = await query.order('created_at', ascending: false);
+    final ordersData = ordersResponse as List;
+
+    print(
+      'AdminOrdersProvider: Found ${ordersData.length} filtered orders in database',
+    );
+
+    // Load order items for each filtered order
+    final orders = <Order>[];
+    for (final orderData in ordersData) {
+      final orderId = orderData['id'];
+
+      try {
+        final itemsResponse = await _supabase
+            .from('kl_order_items')
+            .select()
+            .eq('order_id', orderId);
+
+        final items = (itemsResponse as List)
+            .map((item) => OrderItem.fromJson(item))
+            .toList();
+
+        orders.add(Order.fromJson(orderData, items));
+      } catch (e) {
+        print(
+          'AdminOrdersProvider: Error loading items for order $orderId: $e',
+        );
+        // Still add the order even if items fail to load
+        orders.add(Order.fromJson(orderData, []));
+      }
+    }
+
+    _orders = orders;
+    print(
+      'AdminOrdersProvider: Successfully loaded ${orders.length} filtered orders',
+    );
+
+    // Apply client-side search filter if search query exists
+    if (_searchQuery.isNotEmpty) {
+      _orders = _orders.where((order) {
+        return order.orderNumber.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ||
+            order.shippingAddress.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ) ||
+            (order.receiverName?.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ??
+                false);
+      }).toList();
+      print(
+        'AdminOrdersProvider: Applied client-side search filter for: $_searchQuery',
+      );
     }
   }
 
@@ -586,16 +713,22 @@ class AdminOrdersProvider extends ChangeNotifier {
   void setSearchQuery(String query) {
     _searchQuery = query;
     notifyListeners();
+    // Reload orders with the new search filter
+    refreshOrders();
   }
 
   void setSelectedStatus(OrderStatus? status) {
     _selectedStatus = status;
     notifyListeners();
+    // Reload orders with the new status filter
+    refreshOrders();
   }
 
   void setCourierFilter(String? filter) {
     _courierFilter = filter;
     notifyListeners();
+    // Reload orders with the new courier filter
+    refreshOrders();
   }
 
   void setDateRange(DateTimeRange? dateRange) {
@@ -615,6 +748,13 @@ class AdminOrdersProvider extends ChangeNotifier {
     _dateFilter = null;
     _dateRange = null;
     notifyListeners();
+    // Reload orders after clearing filters
+    refreshOrders();
+  }
+
+  // Refresh orders based on current filters
+  Future<void> refreshOrders() async {
+    await loadAllOrders();
   }
 
   void clearError() {

@@ -31,9 +31,8 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
     // Load orders when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final adminOrdersProvider = context.read<AdminOrdersProvider>();
-      adminOrdersProvider.loadAllOrders();
 
-      // Set default "Today" filter
+      // Set default "Today" filter first (this will trigger optimized loading)
       adminOrdersProvider.setDefaultTodayFilter();
 
       // Set up notification service context provider
@@ -133,7 +132,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
-                await context.read<AdminOrdersProvider>().loadAllOrders();
+                await context.read<AdminOrdersProvider>().refreshOrders();
               },
               child: Consumer<AdminOrdersProvider>(
                 builder: (context, provider, child) {

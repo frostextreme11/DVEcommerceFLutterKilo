@@ -14,26 +14,61 @@ class OrderHistoryScreen extends StatefulWidget {
 class _OrderHistoryScreenState extends State<OrderHistoryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
 
-    // Load orders when screen opens
+    // Load orders when screen opens - load all orders initially
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ordersProvider = Provider.of<OrdersProvider>(
         context,
         listen: false,
       );
-      ordersProvider.loadUserOrders();
+      _loadOrdersForCurrentTab(ordersProvider, 0);
+    });
+
+    // Listen for tab changes to load filtered orders
+    _tabController.addListener(() {
+      final ordersProvider = Provider.of<OrdersProvider>(
+        context,
+        listen: false,
+      );
+      _loadOrdersForCurrentTab(ordersProvider, _tabController.index);
     });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _loadOrdersForCurrentTab(OrdersProvider ordersProvider, int tabIndex) {
+    // Apply search filter if there's a search query
+    if (_searchQuery.isNotEmpty) {
+      ordersProvider.searchOrders(_searchQuery);
+      return;
+    }
+
+    switch (tabIndex) {
+      case 0: // Semua (All)
+        ordersProvider.loadAllOrders();
+        break;
+      case 1: // Menunggu Ongkir
+        ordersProvider.loadOrdersByStatus(OrderStatus.menungguOngkir);
+        break;
+      case 2: // Menunggu Pembayaran
+        ordersProvider.loadOrdersByStatus(OrderStatus.menungguPembayaran);
+        break;
+      case 3: // Selesai
+        ordersProvider.loadOrdersByStatus(OrderStatus.lunas);
+        break;
+    }
   }
 
   @override
@@ -57,38 +92,100 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.go('/home'),
           ),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Semua'),
-              Tab(text: 'Menunggu Ongkir'),
-              Tab(text: 'Menunggu Pembayaran'),
-              Tab(text: 'Selesai'),
-            ],
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
-            indicatorColor: Colors.white,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(120),
+            child: Column(
+              children: [
+                // Search Bar
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                      // Reload orders with search query
+                      final ordersProvider = Provider.of<OrdersProvider>(
+                        context,
+                        listen: false,
+                      );
+                      _loadOrdersForCurrentTab(
+                        ordersProvider,
+                        _tabController.index,
+                      );
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search by order number or customer name...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                                // Reload orders without search query
+                                final ordersProvider =
+                                    Provider.of<OrdersProvider>(
+                                      context,
+                                      listen: false,
+                                    );
+                                _loadOrdersForCurrentTab(
+                                  ordersProvider,
+                                  _tabController.index,
+                                );
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                // Tab Bar
+                TabBar(
+                  controller: _tabController,
+                  tabs: const [
+                    Tab(text: 'Semua'),
+                    Tab(text: 'Menunggu Ongkir'),
+                    Tab(text: 'Menunggu Pembayaran'),
+                    Tab(text: 'Selesai'),
+                  ],
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
+                  indicatorColor: Colors.white,
+                ),
+              ],
+            ),
           ),
         ),
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildOrderList(ordersProvider.orders),
+            _buildOrderList(ordersProvider.orders), // All orders
             _buildOrderList(
-              ordersProvider.getOrdersByStatus(OrderStatus.menungguOngkir),
-            ),
-            _buildOrderList([
-              ...ordersProvider.getOrdersByStatus(
-                OrderStatus.menungguPembayaran,
-              ),
-              ...ordersProvider.getOrdersByStatus(
-                OrderStatus.pembayaranPartial,
-              ),
-            ]),
-            _buildOrderList([
-              ...ordersProvider.getOrdersByStatus(OrderStatus.lunas),
-              ...ordersProvider.getOrdersByStatus(OrderStatus.barangDikirim),
-            ]),
+              ordersProvider.orders,
+            ), // Menunggu Ongkir (filtered)
+            _buildOrderList(
+              ordersProvider.orders,
+            ), // Menunggu Pembayaran (filtered)
+            _buildOrderList(ordersProvider.orders), // Selesai (filtered)
           ],
         ),
       ),
@@ -169,7 +266,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Order #${order.orderNumber}',
+                    '${order.orderNumber}',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -345,7 +442,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Order #${order.orderNumber}',
+                    '${order.orderNumber}',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
