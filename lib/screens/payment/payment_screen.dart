@@ -743,6 +743,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
           await notificationService.sendOrderNotificationToAdmin(
             adminToken: tokenResponse['fcm_token'],
+            title:
+                'Payment from: ${order.isDropship ? order.senderName : order.receiverName} - ${order.orderNumber} - Rp ${paymentAmount.toStringAsFixed(0)}',
             customerName: order.receiverName ?? 'Customer',
             quantity: totalItems,
             totalPrice: paymentAmount,

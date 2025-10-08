@@ -466,10 +466,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
             const SizedBox(height: 16),
 
             // Payment History Section (if payments exist)
-            if (order.paymentStatus != order_model.PaymentStatus.paid) ...[
-              _buildPaymentHistorySection(),
-              const SizedBox(height: 16),
-            ],
+            _buildPaymentHistorySection(),
 
             // Action Buttons
             Consumer<AdminOrdersProvider>(
@@ -1265,6 +1262,35 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                 'updated_at': DateTime.now().toIso8601String(),
               });
 
+              // Also send push notification to admin
+              final adminTokensResponse = await supabase
+                  .from('kl_admin_fcm_tokens')
+                  .select('fcm_token');
+
+              final adminTokens = (adminTokensResponse as List)
+                  .map((token) => token['fcm_token'] as String)
+                  .toList();
+
+              // Send push notification to each admin
+              for (final adminToken in adminTokens) {
+                try {
+                  final notificationService = NotificationService();
+                  await notificationService.sendOrderNotificationToAdmin(
+                    adminToken: adminToken,
+                    title: 'Payment Received - $orderNumber',
+                    customerName: finalCustomerName,
+                    quantity: totalQuantity,
+                    totalPrice: amount,
+                    orderId: orderId ?? '',
+                    orderDate: DateTime.now(),
+                  );
+                } catch (e) {
+                  print(
+                    'Error sending push notification to admin $adminToken: $e',
+                  );
+                }
+              }
+
               print('Admin notification sent successfully');
             }
           }
@@ -1704,7 +1730,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                     _currentOrder!.userId,
                     _currentOrder!.id,
                     'Order Price Updated',
-                    'Your order ${_currentOrder!.orderNumber} price has been updated. Additional costs: Rp ${cost.toStringAsFixed(0)}. Total amount: Rp {(${_currentOrder!.totalAmount} + cost).toStringAsFixed(0)}. Please complete your payment.',
+                    'Your order ${_currentOrder!.orderNumber} price has been updated. Additional costs: Rp ${cost.toStringAsFixed(0)}. Total amount: Rp ${(_currentOrder!.totalAmount + cost).toStringAsFixed(0)}. Please complete your payment.',
                   );
                 } catch (e) {
                   print('Failed to send notification: $e');

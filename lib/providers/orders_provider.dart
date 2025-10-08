@@ -511,6 +511,7 @@ class OrdersProvider extends ChangeNotifier {
           // Use the notification service to send push notification
           await NotificationService().sendOrderNotificationToAdmin(
             adminToken: adminToken,
+            title: 'New Order Received',
             customerName: customerName,
             quantity: totalQuantity,
             totalPrice: order.totalAmount,

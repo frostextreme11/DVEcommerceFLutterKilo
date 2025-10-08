@@ -32,6 +32,7 @@ class AdminNotification {
   });
 
   factory AdminNotification.fromJson(Map<String, dynamic> json) {
+    print("NOP NOP NOP PARSE NOTIFICATION JSON: $json");
     return AdminNotification(
       id: json['id'],
       orderId: json['order_id'],
@@ -41,8 +42,10 @@ class AdminNotification {
       orderDate: DateTime.parse(json['order_date']),
       isRead: json['is_read'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
-      title: json['title'] ?? 'New Order Received!',
-      message: json['message'] ?? 'A new order has been placed.',
+      title: json['type'] == 'payment' ? json['title'] : 'New Order Received!',
+      message: json['type'] == 'payment'
+          ? json['message']
+          : 'A new order has been placed.',
       type: json['type'] ?? 'order',
     );
   }
@@ -394,8 +397,8 @@ class AdminNotificationProvider extends ChangeNotifier {
         'quantity': quantity,
         'total_price': totalPrice,
         'order_date': orderDate.toIso8601String(),
-        'title': title ?? 'New Order Received!',
-        'message': message ?? 'A new order has been placed.',
+        'title': type == 'payment' ? title : 'New Order Received!',
+        'message': type == 'payment' ? message : 'A new order has been placed.',
         'type': type ?? 'order',
         'is_read': false,
         'created_at': DateTime.now().toIso8601String(),
@@ -424,6 +427,7 @@ class AdminNotificationProvider extends ChangeNotifier {
         );
         await _notificationService.sendOrderNotificationToAdmin(
           adminToken: _adminFcmToken!,
+          title: title ?? 'New Order Received!',
           customerName: customerName,
           quantity: quantity,
           totalPrice: totalPrice,
