@@ -166,6 +166,7 @@ class _OrderDetailsContent extends StatefulWidget {
 class _OrderDetailsContentState extends State<_OrderDetailsContent> {
   order_model.Order? _currentOrder;
   StreamSubscription? _ordersSubscription;
+  UniqueKey _paymentHistoryKey = UniqueKey();
 
   @override
   void initState() {
@@ -211,8 +212,17 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
       if (_hasOrderChanged(updatedOrder)) {
         setState(() {
           _currentOrder = updatedOrder;
+          // Refresh payment history when order data changes
+          _refreshPaymentHistory();
         });
       }
+    });
+  }
+
+  void _refreshPaymentHistory() {
+    // Force rebuild of payment history section by changing the key
+    setState(() {
+      _paymentHistoryKey = UniqueKey();
     });
   }
 
@@ -224,7 +234,8 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
         _currentOrder!.courierInfo != newOrder.courierInfo ||
         _currentOrder!.shippingAddress != newOrder.shippingAddress ||
         _currentOrder!.additionalCosts != newOrder.additionalCosts ||
-        _currentOrder!.additionalCostsNotes != newOrder.additionalCostsNotes;
+        _currentOrder!.additionalCostsNotes != newOrder.additionalCostsNotes ||
+        _currentOrder!.totalAmount != newOrder.totalAmount;
   }
 
   @override
@@ -466,7 +477,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
             const SizedBox(height: 16),
 
             // Payment History Section (if payments exist)
-            _buildPaymentHistorySection(),
+            _buildPaymentHistorySection(_paymentHistoryKey),
 
             // Action Buttons
             Consumer<AdminOrdersProvider>(
@@ -765,8 +776,9 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
     );
   }
 
-  Widget _buildPaymentHistorySection() {
+  Widget _buildPaymentHistorySection(Key key) {
     return FutureBuilder<List<Payment>>(
+      key: key,
       future: _loadPaymentsForOrder(),
       builder: (context, snapshot) {
         // Loading state
@@ -1203,14 +1215,14 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
           })
           .eq('id', paymentId);
 
-      // If payment is completed, send admin notification
+      // If payment is completed, send notifications
       if (status == PaymentStatus.completed) {
         try {
           // Get payment details with proper order information
           final paymentResponse = await supabase
               .from('kl_payments')
               .select(
-                'amount, order_id, kl_orders(order_number, kl_users(full_name))',
+                'amount, order_id, kl_orders(order_number, kl_users(full_name, id))',
               )
               .eq('id', paymentId)
               .single();
@@ -1223,6 +1235,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
 
             final orderNumber = orderData?['order_number'] ?? 'Unknown';
             final customerName = userData?['full_name'] ?? 'Customer';
+            final customerId = userData?['id'] as String?;
             final amount = paymentData['amount'] ?? 0;
 
             // Ensure customer_name is never null or empty for database insertion
@@ -1230,6 +1243,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                 ? customerName
                 : 'Customer';
 
+            // Send admin notification (existing functionality)
             // Find admin user
             final adminResponse = await supabase
                 .from('kl_users')
@@ -1293,16 +1307,35 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
 
               print('Admin notification sent successfully');
             }
+
+            // Send customer notification (new functionality)
+            if (customerId != null && customerId.isNotEmpty) {
+              try {
+                await _sendNotificationToCustomer(
+                  context,
+                  customerId,
+                  orderId ?? '',
+                  'Payment Verified',
+                  'Your payment of Rp ${amount.toStringAsFixed(0)} for order $orderNumber has been verified and confirmed. Thank you!',
+                );
+                print('Customer notification sent successfully');
+              } catch (customerNotificationError) {
+                print(
+                  'Error sending customer notification: $customerNotificationError',
+                );
+                // Continue even if customer notification fails
+              }
+            }
           }
         } catch (notificationError) {
-          print('Error sending admin notification: $notificationError');
-          // Continue even if notification fails
+          print('Error sending notifications: $notificationError');
+          // Continue even if notifications fail
         }
       }
 
-      // Refresh the order details
-      // Since this is a StatelessWidget, we need to trigger a rebuild
-      // For now, we'll just complete the operation
+      // Refresh the order details and payment history
+      setState(() {});
+      _refreshPaymentHistory();
     } catch (e) {
       print('Error updating payment status: $e');
       throw e;
@@ -1523,21 +1556,41 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
             return ListTile(
               title: Text(status.displayName),
               leading: Icon(Icons.circle, color: status.color),
-              onTap: () {
-                context.read<AdminOrdersProvider>().updateOrderStatus(
-                  _currentOrder!.id,
-                  status,
-                );
+              onTap: () async {
+                // Update order status
+                final success = await context
+                    .read<AdminOrdersProvider>()
+                    .updateOrderStatus(_currentOrder!.id, status);
+
                 Navigator.pop(context);
+
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Order status updated to ${status.displayName}',
+                  if (success) {
+                    // Send notification to customer
+                    await _sendNotificationToCustomer(
+                      context,
+                      _currentOrder!.userId,
+                      _currentOrder!.id,
+                      'Order Status Updated',
+                      'Your order ${_currentOrder!.orderNumber} status has been updated to ${status.displayName}.',
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Order status updated to ${status.displayName}',
+                        ),
+                        backgroundColor: Colors.green,
                       ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to update order status'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
             );
@@ -1616,20 +1669,42 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               if (selectedCourier != null && selectedCourier!.isNotEmpty) {
-                context.read<AdminOrdersProvider>().updateCourierInfo(
-                  _currentOrder!.id,
-                  selectedCourier!,
-                );
+                // Update courier info
+                final success = await context
+                    .read<AdminOrdersProvider>()
+                    .updateCourierInfo(_currentOrder!.id, selectedCourier!);
+
                 Navigator.pop(context);
+
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Courier info updated to $selectedCourier'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                  if (success) {
+                    // Send notification to customer
+                    await _sendNotificationToCustomer(
+                      context,
+                      _currentOrder!.userId,
+                      _currentOrder!.id,
+                      'Courier Information Updated',
+                      'Courier information for your order ${_currentOrder!.orderNumber} has been updated to $selectedCourier.',
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Courier info updated to $selectedCourier',
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to update courier info'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               }
             },
