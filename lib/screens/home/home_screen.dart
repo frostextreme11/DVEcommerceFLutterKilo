@@ -23,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  DateTime? _lastCategoryRefresh;
 
   static const List<Widget> _widgetOptions = <Widget>[
     HomeContent(),
@@ -36,6 +37,27 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedIndex = index;
     });
+
+    // Refresh categories when home tab is selected
+    if (index == 0) {
+      _refreshCategoriesIfNeeded();
+    }
+  }
+
+  void _refreshCategoriesIfNeeded() {
+    final productsProvider = Provider.of<ProductsProvider>(
+      context,
+      listen: false,
+    );
+
+    // Only refresh if it's been more than 30 seconds since last refresh
+    // or if this is the first time
+    final now = DateTime.now();
+    if (_lastCategoryRefresh == null ||
+        now.difference(_lastCategoryRefresh!) > const Duration(seconds: 30)) {
+      _lastCategoryRefresh = now;
+      productsProvider.refreshCategories();
+    }
   }
 
   @override
@@ -197,6 +219,8 @@ class _HomeContentState extends State<HomeContent> {
   Widget build(BuildContext context) {
     final productsProvider = Provider.of<ProductsProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isLuxury = themeProvider.currentAppTheme == AppTheme.luxury;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -246,7 +270,14 @@ class _HomeContentState extends State<HomeContent> {
                               'Welcome${authProvider.userProfile?['full_name'] != null ? ', ${authProvider.userProfile!['full_name'].split(' ').first}' : ''}!',
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
-                                    color: Colors.white,
+                                    color: isLuxury
+                                        ? const Color.fromARGB(
+                                            255,
+                                            228,
+                                            181,
+                                            29,
+                                          )
+                                        : Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
@@ -255,7 +286,14 @@ class _HomeContentState extends State<HomeContent> {
                               'Discover premium Dalanova',
                               style: Theme.of(context).textTheme.bodyLarge
                                   ?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.9),
+                                    color: isLuxury
+                                        ? const Color.fromARGB(
+                                            255,
+                                            228,
+                                            181,
+                                            29,
+                                          )
+                                        : Colors.white.withValues(alpha: 0.9),
                                   ),
                             ),
                           ],
@@ -264,12 +302,21 @@ class _HomeContentState extends State<HomeContent> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: isLuxury
+                              ? const Color.fromARGB(
+                                  255,
+                                  228,
+                                  181,
+                                  29,
+                                ).withValues(alpha: 0.1)
+                              : Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.shopping_bag,
-                          color: Colors.white,
+                          color: isLuxury
+                              ? Color.fromARGB(255, 228, 181, 29)
+                              : Colors.white,
                           size: 24,
                         ),
                       ),
@@ -279,45 +326,6 @@ class _HomeContentState extends State<HomeContent> {
               ),
             ),
           ),
-
-          // Quick Stats
-          // SliverToBoxAdapter(
-          //   child: Container(
-          //     alignment: Alignment.center,
-          //     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          //     child: SingleChildScrollView(
-          //       scrollDirection: Axis.horizontal,
-          //       child: Row(
-          //         mainAxisSize: MainAxisSize.min,
-          //         children: [
-          //           _buildQuickStat(
-          //             context,
-          //             '${productsProvider.products.length}',
-          //             'Products',
-          //             Icons.inventory,
-          //             Colors.blue,
-          //           ),
-          //           const SizedBox(width: 12),
-          //           _buildQuickStat(
-          //             context,
-          //             '${productsProvider.discountedProducts.length}',
-          //             'On Sale',
-          //             Icons.discount,
-          //             Colors.red,
-          //           ),
-          //           const SizedBox(width: 12),
-          //           _buildQuickStat(
-          //             context,
-          //             '${productsProvider.categories.length}',
-          //             'Categories',
-          //             Icons.category,
-          //             Colors.green,
-          //           ),
-          //         ],
-          //       ),
-          //     ),
-          //   ),
-          // ),
 
           // Categories Section
           SliverToBoxAdapter(
