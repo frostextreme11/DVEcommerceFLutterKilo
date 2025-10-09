@@ -438,10 +438,12 @@ class OrdersProvider extends ChangeNotifier {
   }
 
   Order? getOrderById(String orderId) {
-    return _orders.firstWhere(
-      (order) => order.id == orderId,
-      orElse: () => throw Exception('Order not found'),
-    );
+    try {
+      return _orders.firstWhere((order) => order.id == orderId);
+    } catch (e) {
+      print('Order not found in local cache: $orderId');
+      return null;
+    }
   }
 
   void clearError() {
@@ -494,11 +496,17 @@ class OrdersProvider extends ChangeNotifier {
           'OrdersProvider: Order updated successfully: ${updatedOrder.orderNumber}',
         );
       } else {
-        print('OrdersProvider: Order not found in local list: $orderId');
+        // Add to local list if not found
+        _orders.add(updatedOrder);
+        notifyListeners();
+        print(
+          'OrdersProvider: New order added to list: ${updatedOrder.orderNumber}',
+        );
       }
     } catch (e) {
       _error = 'Failed to refresh order: ${e.toString()}';
       print('Error refreshing order: $e');
+      throw e; // Re-throw to let the calling method handle it
     }
   }
 

@@ -146,7 +146,13 @@ class NotificationService {
       RemoteMessage? message,
     ) {
       if (message != null) {
+        print(
+          '🚀 App opened from terminated state with message: ${message.messageId}',
+        );
+        print('🚀 Terminated message data: ${message.data}');
         _handleNotificationOpen(message);
+      } else {
+        print('🚀 App opened from terminated state but no message data');
       }
     });
 
@@ -221,23 +227,66 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     String? orderId = response.payload;
     if (orderId != null && orderId.isNotEmpty) {
-      _navigateToOrderDetails(orderId);
+      // For local notifications, we need to determine the type from the context
+      // For now, default to customer route since local notifications are typically for customers
+      _navigateToOrderDetails(
+        orderId,
+        notificationType: 'customer_notification',
+      );
     }
   }
 
   void _handleNotificationOpen(RemoteMessage message) {
     String? orderId = message.data['order_id'];
+    String? notificationType = message.data['type'];
+
+    print(
+      '🔍 Notification opened - Order ID: $orderId, Type: $notificationType',
+    );
+    print('🔍 Full message data: ${message.data}');
+
     if (orderId != null && orderId.isNotEmpty) {
-      _navigateToOrderDetails(orderId);
+      _navigateToOrderDetails(orderId, notificationType: notificationType);
+    } else {
+      print('❌ No order ID found in notification data');
     }
   }
 
-  void _navigateToOrderDetails(String orderId) {
+  void _navigateToOrderDetails(String orderId, {String? notificationType}) {
+    print(
+      '🚀 _navigateToOrderDetails called with orderId: $orderId, type: $notificationType',
+    );
+
     // This will be called when the app context is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = _getCurrentContext?.call();
+
+      print('🔍 Context available: ${context != null}');
+
       if (context != null) {
-        context.push('/admin/order-details/$orderId');
+        // Determine route based on notification type or user role
+        String route = '/orders/$orderId'; // Default to customer route
+
+        if (notificationType == 'new_order' ||
+            notificationType == 'admin_notification') {
+          route = '/admin/order-details/$orderId';
+        } else if (notificationType == 'customer_notification' ||
+            notificationType == null) {
+          route = '/orders/$orderId';
+        }
+
+        print(
+          'Navigating to route: $route for order: $orderId (type: $notificationType)',
+        );
+
+        try {
+          context.push(route);
+          print('✅ Navigation successful');
+        } catch (e) {
+          print('❌ Navigation failed: $e');
+        }
+      } else {
+        print('❌ Context is null, cannot navigate');
       }
     });
   }
@@ -494,7 +543,9 @@ class NotificationService {
 // Background message handler for FCM
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Handling background message: ${message.messageId}');
+  print('🔥 Background message handler triggered: ${message.messageId}');
+  print('🔥 Background message data: ${message.data}');
+  print('🔥 Background message notification: ${message.notification?.title}');
 
   // Initialize Firebase if not already done
   await Firebase.initializeApp();
@@ -502,11 +553,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Handle the background message by showing local notification
   await _showBackgroundNotification(message);
 
-  print('Background message data: ${message.data}');
+  print('✅ Background message handler completed');
 }
 
 Future<void> _showBackgroundNotification(RemoteMessage message) async {
   try {
+    print('📱 Background notification received: ${message.messageId}');
+    print('📱 Background notification data: ${message.data}');
+
     final FlutterLocalNotificationsPlugin localNotifications =
         FlutterLocalNotificationsPlugin();
 
@@ -560,8 +614,13 @@ Future<void> _showBackgroundNotification(RemoteMessage message) async {
         ),
         payload: message.data['order_id'],
       );
+      print(
+        '✅ Background notification shown with payload: ${message.data['order_id']}',
+      );
+    } else {
+      print('❌ No notification content to show');
     }
   } catch (e) {
-    print('Error showing background notification: $e');
+    print('❌ Error showing background notification: $e');
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/customer_notification_provider.dart';
+import '../../models/order.dart';
+import '../orders/order_tracking_screen.dart';
 
 class CustomerNotificationsScreen extends StatefulWidget {
   const CustomerNotificationsScreen({Key? key}) : super(key: key);
@@ -183,12 +185,37 @@ class _CustomerNotificationsScreenState
                           ),
                         ],
                       ),
-                      onTap: () {
+                      onTap: () async {
                         // Mark as read when tapped
                         if (!notification.isRead) {
                           context
                               .read<CustomerNotificationProvider>()
                               .markAsRead(notification.id);
+                        }
+
+                        // Navigate to order tracking screen if notification has order_id
+                        if (notification.orderId.isNotEmpty) {
+                          print(
+                            'Navigating to order tracking screen for order: ${notification.orderId}',
+                          );
+                          try {
+                            // Use push to maintain proper navigation stack for back button functionality
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => OrderTrackingScreen(
+                                  orderId: notification.orderId,
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            print('Error navigating to order tracking: $e');
+                            // Fallback: try using go router if push fails
+                            try {
+                              context.push('/orders/${notification.orderId}');
+                            } catch (e2) {
+                              print('Both navigation methods failed: $e2');
+                            }
+                          }
                         }
                       },
                     ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../services/notification_service.dart';
 import 'dart:async';
 
 class SplashScreen extends StatefulWidget {
@@ -28,45 +29,44 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeIn,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
-    _bounceAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.bounceOut,
-    ));
+    _bounceAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.bounceOut),
+    );
 
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
     _animationController.forward();
+
+    // Set up notification context provider for navigation from terminated state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final notificationService = Provider.of<NotificationService>(
+          context,
+          listen: false,
+        );
+        notificationService.setContextProvider(() => context);
+        print('✅ SplashScreen: Notification context provider set up');
+      }
+    });
 
     // Navigate after animation completes or auth state is determined
     Timer(const Duration(seconds: 3), () async {
       if (mounted && context != null) {
         try {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
 
           // Refresh auth state to ensure it's up to date
           await authProvider.refreshAuthState();
@@ -145,7 +145,9 @@ class _SplashScreenState extends State<SplashScreen>
                                 color: Theme.of(context).primaryColor,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                    color: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.3),
                                     blurRadius: 20,
                                     spreadRadius: 5,
                                   ),
@@ -182,17 +184,21 @@ class _SplashScreenState extends State<SplashScreen>
                       children: [
                         Text(
                           'Dalanova',
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Ecommerce',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                          ),
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
+                              ),
                         ),
                         const SizedBox(height: 16),
                         AnimatedBuilder(
@@ -202,7 +208,9 @@ class _SplashScreenState extends State<SplashScreen>
                               width: 40,
                               height: 4,
                               child: LinearProgressIndicator(
-                                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).primaryColor.withOpacity(0.2),
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   Theme.of(context).primaryColor,
                                 ),

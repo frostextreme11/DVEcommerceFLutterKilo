@@ -10,6 +10,7 @@ import '../../providers/customer_notification_provider.dart';
 import '../../models/order.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/search_filter_widget.dart';
+import '../../services/notification_service.dart';
 import '../product/product_detail_screen.dart';
 import '../product/product_by_category_screen.dart';
 import '../orders/order_tracking_screen.dart';
@@ -1078,6 +1079,16 @@ class _OrdersContentState extends State<OrdersContent> {
   @override
   void initState() {
     super.initState();
+
+    // Set up notification context provider for customer navigation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notificationService = Provider.of<NotificationService>(
+        context,
+        listen: false,
+      );
+      notificationService.setContextProvider(() => context);
+    });
+
     // Load orders when the orders tab is first accessed
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ordersProvider = Provider.of<OrdersProvider>(

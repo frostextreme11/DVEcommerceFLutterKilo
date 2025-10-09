@@ -34,6 +34,7 @@ import 'screens/admin/admin_notifications_screen.dart';
 import 'screens/customer/customer_notifications_screen.dart';
 import 'screens/checkout/checkout_screen.dart';
 import 'screens/orders/order_history_screen.dart';
+import 'screens/orders/order_tracking_screen.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -178,6 +179,13 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const CustomerNotificationsScreen(),
+    ),
+    GoRoute(
+      path: '/orders/:orderId',
+      builder: (context, state) {
+        final orderId = state.pathParameters['orderId']!;
+        return OrderTrackingScreen(orderId: orderId);
+      },
     ),
   ],
   redirect: (context, state) {

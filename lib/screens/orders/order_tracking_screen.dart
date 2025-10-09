@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../../models/order.dart';
 import '../../models/payment.dart';
 import '../../providers/orders_provider.dart';
@@ -9,9 +10,14 @@ import '../payment/payment_screen.dart';
 import '../payment/invoice_preview_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
-  final Order order;
+  final Order? order;
+  final String? orderId;
 
-  const OrderTrackingScreen({super.key, required this.order});
+  const OrderTrackingScreen({super.key, this.order, this.orderId})
+    : assert(
+        order != null || orderId != null,
+        'Either order or orderId must be provided',
+      );
 
   @override
   State<OrderTrackingScreen> createState() => _OrderTrackingScreenState();
@@ -19,28 +25,131 @@ class OrderTrackingScreen extends StatefulWidget {
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   late Future<List<Payment>> _paymentsFuture;
-  late Order _currentOrder;
+  Order? _currentOrder;
+  bool _isLoadingOrder = false;
+  String? _loadingError;
 
   @override
   void initState() {
     super.initState();
-    _currentOrder = widget.order;
-    _paymentsFuture = _loadPayments();
+    _initializeOrder();
+  }
 
-    // Refresh order data when screen opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshOrderData();
+  Future<void> _initializeOrder() async {
+    print('🚀 Initializing order screen...');
+    setState(() {
+      _isLoadingOrder = true;
+      _loadingError = null;
     });
 
-    // Set up callback for order-specific notifications
-    CustomerNotificationProvider.setOrderNotificationCallback((orderId) {
-      if (orderId == widget.order.id) {
-        print(
-          'OrderTrackingScreen: Received notification for current order: $orderId',
-        );
+    try {
+      // Add overall timeout for the entire initialization process
+      await Future.any([
+        _initializeOrderInternal(),
+        Future.delayed(const Duration(seconds: 20), () {
+          throw Exception('Order initialization timed out after 20 seconds');
+        }),
+      ]);
+    } catch (e) {
+      print('❌ Error initializing order: $e');
+      setState(() {
+        _loadingError = e.toString();
+        _isLoadingOrder = false;
+      });
+    }
+  }
+
+  Future<void> _initializeOrderInternal() async {
+    if (widget.order != null) {
+      print('✅ Using provided order object');
+      _currentOrder = widget.order;
+    } else if (widget.orderId != null) {
+      print('🔍 Loading order by ID: ${widget.orderId}');
+      // Fetch order by ID
+      await _loadOrderById(widget.orderId!);
+    } else {
+      throw Exception('No order or orderId provided');
+    }
+
+    if (_currentOrder != null) {
+      print('✅ Order loaded successfully: ${_currentOrder!.orderNumber}');
+      _paymentsFuture = _loadPayments();
+
+      // Refresh order data when screen opens
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         _refreshOrderData();
-      }
+      });
+
+      // Set up callback for order-specific notifications
+      CustomerNotificationProvider.setOrderNotificationCallback((orderId) {
+        if (orderId == _currentOrder!.id) {
+          print(
+            'OrderTrackingScreen: Received notification for current order: $orderId',
+          );
+          _refreshOrderData();
+        }
+      });
+    } else {
+      print('❌ Order is still null after loading attempt');
+      throw Exception('Failed to load order');
+    }
+
+    setState(() {
+      _isLoadingOrder = false;
     });
+  }
+
+  Future<void> _loadOrderById(String orderId) async {
+    try {
+      print('🔍 Loading order by ID: $orderId');
+      final ordersProvider = Provider.of<OrdersProvider>(
+        context,
+        listen: false,
+      );
+
+      // First try to get order from provider cache
+      final order = ordersProvider.getOrderById(orderId);
+      if (order != null) {
+        print('✅ Order found in provider cache');
+        _currentOrder = order;
+        return;
+      }
+
+      // If not in cache, try to fetch from database with timeout
+      print('🔄 Fetching order from database...');
+      try {
+        // Use a timeout for the refresh operation
+        await ordersProvider
+            .refreshOrderById(orderId)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                print('❌ Order refresh timed out');
+                throw Exception('Order refresh timed out after 15 seconds');
+              },
+            );
+
+        // Try to get the order again after refresh
+        final refreshedOrder = ordersProvider.getOrderById(orderId);
+        if (refreshedOrder != null) {
+          print('✅ Order loaded successfully from database');
+          _currentOrder = refreshedOrder;
+        } else {
+          print('❌ Order not found after refresh');
+          throw Exception('Order not found in database');
+        }
+      } catch (refreshError) {
+        print('❌ Error refreshing order: $refreshError');
+        rethrow;
+      }
+    } catch (e) {
+      print('❌ Error loading order by ID: $e');
+      if (mounted) {
+        setState(() {
+          _loadingError = e.toString();
+        });
+      }
+    }
   }
 
   @override
@@ -50,12 +159,30 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     super.dispose();
   }
 
+  void _clearErrorAndRetry() {
+    print('🔄 Retrying order initialization...');
+    setState(() {
+      _loadingError = null;
+      _isLoadingOrder = true;
+      _currentOrder = null;
+    });
+    _initializeOrder();
+  }
+
+  void _clearError() {
+    setState(() {
+      _loadingError = null;
+    });
+  }
+
   Future<List<Payment>> _loadPayments() {
+    if (_currentOrder == null) return Future.value([]);
+
     final paymentProvider = Provider.of<PaymentProvider>(
       context,
       listen: false,
     );
-    return paymentProvider.getPaymentsForOrder(widget.order.id);
+    return paymentProvider.getPaymentsForOrder(_currentOrder!.id);
   }
 
   Future<void> _refreshData() async {
@@ -63,7 +190,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _refreshOrderData() async {
-    if (!mounted) return;
+    if (!mounted || _currentOrder == null) return;
 
     try {
       final ordersProvider = Provider.of<OrdersProvider>(
@@ -76,10 +203,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       );
 
       // Refresh order data from database
-      await ordersProvider.refreshOrderById(widget.order.id);
+      await ordersProvider.refreshOrderById(_currentOrder!.id);
 
       // Get the updated order from the provider
-      final updatedOrder = ordersProvider.getOrderById(widget.order.id);
+      final updatedOrder = ordersProvider.getOrderById(_currentOrder!.id);
       if (updatedOrder != null) {
         setState(() {
           _currentOrder = updatedOrder;
@@ -87,7 +214,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       }
 
       // Refresh payment data
-      await paymentProvider.refreshPaymentsForOrder(widget.order.id);
+      await paymentProvider.refreshPaymentsForOrder(_currentOrder!.id);
 
       // Reload payments future
       setState(() {
@@ -95,7 +222,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       });
 
       print(
-        'OrderTrackingScreen: Order data refreshed for order: ${widget.order.orderNumber}',
+        'OrderTrackingScreen: Order data refreshed for order: ${_currentOrder!.orderNumber}',
       );
     } catch (e) {
       print('Error refreshing order data: $e');
@@ -115,388 +242,488 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Widget build(BuildContext context) {
     final paymentProvider = Provider.of<PaymentProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Order #${_currentOrder.orderNumber}'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+    // Show loading screen while order is being loaded
+    if (_isLoadingOrder) {
+      return PopScope(
+        canPop: true,
+        onPopInvoked: (didPop) async {
+          if (!didPop) {
+            Navigator.of(context).pop();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Loading Order...'),
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          body: const Center(child: CircularProgressIndicator()),
         ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Order Status Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Order Status',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildOrderStatusTimeline(context, _currentOrder),
-                    ],
+      );
+    }
+
+    // Show error screen if order loading failed
+    if (_loadingError != null || _currentOrder == null) {
+      return PopScope(
+        canPop: true,
+        onPopInvoked: (didPop) async {
+          if (!didPop) {
+            Navigator.of(context).pop();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Order Error'),
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Failed to Load Order',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Order Details Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 8),
+                  Text(
+                    _loadingError ?? 'Order not found',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
                     children: [
-                      Text(
-                        'Order Details',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Go Back'),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      _buildOrderDetail(
-                        'Order Number',
-                        _currentOrder.orderNumber,
-                      ),
-                      _buildOrderDetail(
-                        'Total Amount',
-                        'Rp ${_currentOrder.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                      ),
-                      _buildOrderDetail(
-                        'Payment Method',
-                        _currentOrder.paymentMethod ?? 'Not specified',
-                      ),
-                      _buildOrderDetail(
-                        'Shipping Address',
-                        _currentOrder.shippingAddress,
-                      ),
-                      if (_currentOrder.courierInfo != null &&
-                          _currentOrder.courierInfo!.isNotEmpty)
-                        _buildOrderDetail(
-                          'Courier Service',
-                          _currentOrder.courierInfo!,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _clearErrorAndRetry,
+                          child: const Text('Retry'),
                         ),
-                      if (_currentOrder.notes != null &&
-                          _currentOrder.notes!.isNotEmpty)
-                        _buildOrderDetail('Notes', _currentOrder.notes!),
-                      _buildOrderDetail(
-                        'Order Date',
-                        _currentOrder.createdAt.toString().split(' ')[0],
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
+            ),
+          ),
+        ),
+      );
+    }
 
-              const SizedBox(height: 16),
-
-              // Additional Costs Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Additional Costs',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Order #${_currentOrder!.orderNumber}'),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Order Status Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order Status',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_currentOrder.additionalCosts != null &&
-                          _currentOrder.additionalCosts! > 0) ...[
+                        const SizedBox(height: 16),
+                        _buildOrderStatusTimeline(context, _currentOrder!),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Order Details Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order Details',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
                         _buildOrderDetail(
-                          'Additional Amount',
-                          'Rp ${_currentOrder.additionalCosts!.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                          'Order Number',
+                          _currentOrder!.orderNumber,
                         ),
-                        if (_currentOrder.additionalCostsNotes != null &&
-                            _currentOrder.additionalCostsNotes!.isNotEmpty)
+                        _buildOrderDetail(
+                          'Total Amount',
+                          'Rp ${_currentOrder!.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                        ),
+                        _buildOrderDetail(
+                          'Payment Method',
+                          _currentOrder!.paymentMethod ?? 'Not specified',
+                        ),
+                        _buildOrderDetail(
+                          'Shipping Address',
+                          _currentOrder!.shippingAddress,
+                        ),
+                        if (_currentOrder!.courierInfo != null &&
+                            _currentOrder!.courierInfo!.isNotEmpty)
                           _buildOrderDetail(
-                            'Notes',
-                            _currentOrder.additionalCostsNotes!,
+                            'Courier Service',
+                            _currentOrder!.courierInfo!,
                           ),
-                      ] else ...[
+                        if (_currentOrder!.notes != null &&
+                            _currentOrder!.notes!.isNotEmpty)
+                          _buildOrderDetail('Notes', _currentOrder!.notes!),
                         _buildOrderDetail(
-                          'Additional Costs',
-                          'No additional costs',
+                          'Order Date',
+                          _currentOrder!.createdAt.toString().split(' ')[0],
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Payment History Card
-              FutureBuilder<List<Payment>>(
-                future: _paymentsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                    );
-                  } else if (snapshot.hasError) {
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Payment History',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Error loading payment history',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ],
+                // Additional Costs Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Additional Costs',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    );
-                  } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                    final payments = snapshot.data!;
-                    final paymentProgress = paymentProvider
-                        .calculatePaymentProgress(
-                          _currentOrder.id,
-                          _currentOrder.totalAmount +
-                              (_currentOrder.additionalCosts ?? 0),
-                        );
-
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Payment History & Status',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                        const SizedBox(height: 16),
+                        if (_currentOrder!.additionalCosts != null &&
+                            _currentOrder!.additionalCosts! > 0) ...[
+                          _buildOrderDetail(
+                            'Additional Amount',
+                            'Rp ${_currentOrder!.additionalCosts!.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                          ),
+                          if (_currentOrder!.additionalCostsNotes != null &&
+                              _currentOrder!.additionalCostsNotes!.isNotEmpty)
+                            _buildOrderDetail(
+                              'Notes',
+                              _currentOrder!.additionalCostsNotes!,
                             ),
-                            const SizedBox(height: 16),
+                        ] else ...[
+                          _buildOrderDetail(
+                            'Additional Costs',
+                            'No additional costs',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
 
-                            // Payment Progress
-                            _buildPaymentProgress(context, paymentProgress),
+                const SizedBox(height: 16),
 
-                            const SizedBox(height: 16),
-
-                            // Payment Status
-                            _buildPaymentStatus(context, _currentOrder),
-
-                            const SizedBox(height: 16),
-
-                            // Payment History List
-                            ...payments.map(
-                              (payment) =>
-                                  _buildPaymentHistoryItem(context, payment),
-                            ),
-                          ],
+                // Payment History Card
+                FutureBuilder<List<Payment>>(
+                  future: _paymentsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
                         ),
-                      ),
-                    );
-                  } else {
-                    final paymentProgress = paymentProvider
-                        .calculatePaymentProgress(
-                          _currentOrder.id,
-                          _currentOrder.totalAmount +
-                              (_currentOrder.additionalCosts ?? 0),
-                        );
-
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Payment History & Status',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Payment Progress (always show)
-                            _buildPaymentProgress(context, paymentProgress),
-
-                            const SizedBox(height: 16),
-
-                            // Payment Status (always show)
-                            _buildPaymentStatus(context, widget.order),
-
-                            const SizedBox(height: 16),
-
-                            // Payment History or No Payment Message
-                            if (paymentProgress.totalPaid > 0) ...[
+                      );
+                    } else if (snapshot.hasError) {
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
                                 'Payment History',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
                               Text(
-                                'No payment records found',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            ] else ...[
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.orange.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.info_outline,
-                                          color: Colors.orange,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Payment Required',
-                                          style: TextStyle(
-                                            color: Colors.orange,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'You haven\'t submitted any payments yet. Please complete your payment to proceed with the order.',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                'Error loading payment history',
+                                style: TextStyle(color: Colors.red),
                               ),
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  }
-                },
-              ),
+                      );
+                    } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                      final payments = snapshot.data!;
+                      final paymentProgress = paymentProvider
+                          .calculatePaymentProgress(
+                            _currentOrder!.id,
+                            _currentOrder!.totalAmount +
+                                (_currentOrder!.additionalCosts ?? 0),
+                          );
 
-              const SizedBox(height: 16),
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Payment History & Status',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 16),
 
-              // Order Items Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Order Items',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                              // Payment Progress
+                              _buildPaymentProgress(context, paymentProgress),
+
+                              const SizedBox(height: 16),
+
+                              // Payment Status
+                              _buildPaymentStatus(context, _currentOrder!),
+
+                              const SizedBox(height: 16),
+
+                              // Payment History List
+                              ...payments.map(
+                                (payment) =>
+                                    _buildPaymentHistoryItem(context, payment),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      ..._currentOrder.items.map(
-                        (item) => _buildOrderItem(context, item),
-                      ),
-                    ],
+                      );
+                    } else {
+                      final paymentProgress = paymentProvider
+                          .calculatePaymentProgress(
+                            _currentOrder!.id,
+                            _currentOrder!.totalAmount +
+                                (_currentOrder!.additionalCosts ?? 0),
+                          );
+
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Payment History & Status',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Payment Progress (always show)
+                              _buildPaymentProgress(context, paymentProgress),
+
+                              const SizedBox(height: 16),
+
+                              // Payment Status (always show)
+                              _buildPaymentStatus(context, _currentOrder!),
+
+                              const SizedBox(height: 16),
+
+                              // Payment History or No Payment Message
+                              if (paymentProgress.totalPaid > 0) ...[
+                                Text(
+                                  'Payment History',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No payment records found',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ] else ...[
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.info_outline,
+                                            color: Colors.orange,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Payment Required',
+                                            style: TextStyle(
+                                              color: Colors.orange,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'You haven\'t submitted any payments yet. Please complete your payment to proceed with the order.',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Order Items Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order Items',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        ..._currentOrder!.items.map(
+                          (item) => _buildOrderItem(context, item),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Action Buttons
-              if (_currentOrder.status == OrderStatus.barangDikirim) ...[
-                // Invoice Print Button for shipped orders
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  InvoicePreviewScreen(order: _currentOrder),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.receipt_long),
-                        label: const Text('Print Invoice'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ] else ...[
-                // Payment Button for unpaid orders
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back),
-                        label: const Text('Back to Orders'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    if (_currentOrder.status == OrderStatus.menungguOngkir ||
-                        _currentOrder.status ==
-                            OrderStatus.menungguPembayaran ||
-                        _currentOrder.status == OrderStatus.pembayaranPartial)
+                // Action Buttons
+                if (_currentOrder!.status == OrderStatus.barangDikirim) ...[
+                  // Invoice Print Button for shipped orders
+                  Row(
+                    children: [
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    PaymentScreen(order: _currentOrder),
+                                    InvoicePreviewScreen(order: _currentOrder!),
                               ),
                             );
                           },
-                          icon: const Icon(Icons.payment),
-                          label: const Text('Pay Now'),
+                          icon: const Icon(Icons.receipt_long),
+                          label: const Text('Print Invoice'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ],
+                  ),
+                ] else ...[
+                  // Payment Button for unpaid orders
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Back to Orders'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      if (_currentOrder!.status == OrderStatus.menungguOngkir ||
+                          _currentOrder!.status ==
+                              OrderStatus.menungguPembayaran ||
+                          _currentOrder!.status ==
+                              OrderStatus.pembayaranPartial)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      PaymentScreen(order: _currentOrder!),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.payment),
+                            label: const Text('Pay Now'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
