@@ -850,7 +850,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             duration: const Duration(seconds: 3),
           ),
         );
-
+        context.go('/home');
         // Show Pay Now option for payment
         // _showPaymentOptions(context, order);
       } else {

@@ -6,6 +6,9 @@ import 'dart:io';
 import '../../models/order.dart';
 import '../../models/payment.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/payment_provider.dart';
+import '../../providers/orders_provider.dart';
+import '../../providers/customer_notification_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/notification_service.dart';
 import 'invoice_preview_screen.dart';
@@ -26,6 +29,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String? _uploadedImageUrl;
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _amountController = TextEditingController();
+
+  // Payment data state
+  List<Payment> _payments = [];
+  bool _isLoadingPayments = false;
+  PaymentProgress? _paymentProgress;
 
   // Bank information
   final Map<String, String> _bankInfo = {
@@ -51,6 +59,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             icon: const Icon(Icons.receipt_long),
             onPressed: () => _showInvoicePreview(context),
             tooltip: 'Invoice Preview',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _isLoadingPayments ? null : _refreshPaymentData,
+            tooltip: 'Refresh Payment Data',
           ),
         ],
       ),
@@ -88,6 +101,192 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
 
             const SizedBox(height: 24),
+
+            // Payment Status Card (only show if there are payments)
+            if (_payments.isNotEmpty ||
+                (_paymentProgress != null &&
+                    _paymentProgress!.totalPaid > 0)) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.payment,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Payment Status',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Payment Progress
+                      if (_paymentProgress != null) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Payment Progress:',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              '${_paymentProgress!.progress.toStringAsFixed(1)}%',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: _paymentProgress!.isFullyPaid
+                                        ? Colors.green
+                                        : _paymentProgress!.hasPartialPayment
+                                        ? Colors.orange
+                                        : Colors.grey,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: _paymentProgress!.progress / 100,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _paymentProgress!.isFullyPaid
+                                ? Colors.green
+                                : _paymentProgress!.hasPartialPayment
+                                ? Colors.orange
+                                : Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Paid: Rp ${_paymentProgress!.totalPaid.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                              style: TextStyle(
+                                color: _paymentProgress!.totalPaid > 0
+                                    ? Colors.green
+                                    : Colors.grey,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              'Total: Rp ${_paymentProgress!.orderTotal.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_paymentProgress!.remainingAmount > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Remaining: Rp ${_paymentProgress!.remainingAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                      ],
+
+                      const SizedBox(height: 16),
+
+                      // Recent Payments
+                      if (_payments.isNotEmpty) ...[
+                        Text(
+                          'Recent Payments:',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        ..._payments
+                            .take(3)
+                            .map(
+                              (payment) => Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Rp ${payment.amount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(
+                                                context,
+                                              ).primaryColor,
+                                            ),
+                                          ),
+                                          Text(
+                                            payment.createdAt.toString().split(
+                                              ' ',
+                                            )[0],
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: payment.status.color.withOpacity(
+                                          0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        payment.status.displayName,
+                                        style: TextStyle(
+                                          color: payment.status.color,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+            ],
 
             // Bank Information Card
             Card(
@@ -669,7 +868,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
         );
 
-        Navigator.of(context).pop(); // Go back to previous screen
+        // Refresh payment data to show the latest payment
+        await _refreshPaymentData();
+
+        // Also trigger refresh of order tracking screen if it's open
+        // by refreshing the order data in OrdersProvider
+        final ordersProvider = Provider.of<OrdersProvider>(
+          context,
+          listen: false,
+        );
+        await ordersProvider.refreshOrderById(widget.order.id);
+
+        print(
+          'PaymentScreen: Order data refreshed for order: ${widget.order.orderNumber}',
+        );
+
+        // Clear form after successful submission
+        setState(() {
+          _amountController.clear();
+          _paymentProofImage = null;
+          _uploadedImageUrl = null;
+        });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -765,6 +984,53 @@ class _PaymentScreenState extends State<PaymentScreen> {
         builder: (context) => InvoicePreviewScreen(order: widget.order),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentData();
+  }
+
+  Future<void> _loadPaymentData() async {
+    setState(() {
+      _isLoadingPayments = true;
+    });
+
+    try {
+      final paymentProvider = Provider.of<PaymentProvider>(
+        context,
+        listen: false,
+      );
+
+      // Load payments for this order
+      final payments = await paymentProvider.getPaymentsForOrder(
+        widget.order.id,
+      );
+      final paymentProgress = paymentProvider.calculatePaymentProgress(
+        widget.order.id,
+        widget.order.totalAmount + (widget.order.additionalCosts ?? 0),
+      );
+
+      setState(() {
+        _payments = payments;
+        _paymentProgress = paymentProgress;
+      });
+
+      print(
+        'PaymentScreen: Loaded ${payments.length} payments for order ${widget.order.orderNumber}',
+      );
+    } catch (e) {
+      print('Error loading payment data: $e');
+    } finally {
+      setState(() {
+        _isLoadingPayments = false;
+      });
+    }
+  }
+
+  Future<void> _refreshPaymentData() async {
+    await _loadPaymentData();
   }
 
   @override

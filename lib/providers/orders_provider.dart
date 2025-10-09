@@ -182,6 +182,68 @@ class OrdersProvider extends ChangeNotifier {
     await loadUserOrders();
   }
 
+  // Method to load finished orders (both lunas and barangDikirim)
+  Future<void> loadFinishedOrders() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        _error = 'User not authenticated';
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      // Build the query for finished orders (lunas and barangDikirim)
+      final finishedStatuses = [
+        OrderStatus.lunas.databaseValue,
+        OrderStatus.barangDikirim.databaseValue,
+      ];
+
+      var query = _supabase
+          .from('kl_orders')
+          .select()
+          .eq('user_id', userId)
+          .inFilter('status', finishedStatuses);
+
+      // Order by creation date (newest first) and execute query
+      final ordersResponse = await query.order('created_at', ascending: false);
+      final ordersData = ordersResponse as List;
+
+      // Load order items for each order
+      final orders = <Order>[];
+      for (final orderData in ordersData) {
+        final orderId = orderData['id'];
+
+        final itemsResponse = await _supabase
+            .from('kl_order_items')
+            .select()
+            .eq('order_id', orderId);
+
+        final items = (itemsResponse as List)
+            .map((item) => OrderItem.fromJson(item))
+            .toList();
+
+        orders.add(Order.fromJson(orderData, items));
+      }
+
+      _orders = orders;
+      _isInitialized = true;
+      print(
+        'OrdersProvider: Successfully loaded ${orders.length} finished orders',
+      );
+    } catch (e) {
+      _error = 'Failed to load finished orders: ${e.toString()}';
+      print('Error loading finished orders: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<Order?> createOrder({
     required List<CartItem> cartItems,
     required String shippingAddress,

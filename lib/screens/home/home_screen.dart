@@ -24,6 +24,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   DateTime? _lastCategoryRefresh;
+  DateTime? _lastOrderRefresh;
 
   static const List<Widget> _widgetOptions = <Widget>[
     HomeContent(),
@@ -41,6 +42,27 @@ class _HomeScreenState extends State<HomeScreen> {
     // Refresh categories when home tab is selected
     if (index == 0) {
       _refreshCategoriesIfNeeded();
+    }
+
+    // Refresh orders when orders tab is selected
+    if (index == 3) {
+      _refreshOrdersIfNeeded();
+    }
+  }
+
+  void _refreshOrdersIfNeeded() {
+    final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+
+    // Only refresh if it's been more than 30 seconds since last refresh
+    // or if this is the first time, and not currently loading
+    final now = DateTime.now();
+    if (_lastOrderRefresh == null ||
+        now.difference(_lastOrderRefresh!) > const Duration(seconds: 30)) {
+      if (!ordersProvider.isLoading && ordersProvider.isInitialized) {
+        _lastOrderRefresh = now;
+        print('HomeScreen: Refreshing orders on tab access...');
+        ordersProvider.forceRefreshOrders();
+      }
     }
   }
 
@@ -1067,6 +1089,28 @@ class _OrdersContentState extends State<OrdersContent> {
         ordersProvider.loadUserOrders();
       }
     });
+
+    // Set up callback for order notifications to trigger refresh
+    CustomerNotificationProvider.setOrderNotificationCallback((orderId) {
+      print('OrdersContent: Received order notification for order: $orderId');
+      _refreshOrderData();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Clear the callback when widget is disposed
+    CustomerNotificationProvider.setOrderNotificationCallback((orderId) {});
+    super.dispose();
+  }
+
+  void _refreshOrderData() {
+    if (!mounted) return;
+
+    final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
+
+    print('OrdersContent: Refreshing order data due to notification...');
+    ordersProvider.forceRefreshOrders();
   }
 
   @override

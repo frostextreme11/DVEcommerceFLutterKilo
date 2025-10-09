@@ -66,7 +66,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
         ordersProvider.loadOrdersByStatus(OrderStatus.menungguPembayaran);
         break;
       case 3: // Selesai
-        ordersProvider.loadOrdersByStatus(OrderStatus.lunas);
+        ordersProvider.loadFinishedOrders();
         break;
     }
   }

@@ -4,6 +4,7 @@ import '../../models/order.dart';
 import '../../models/payment.dart';
 import '../../providers/orders_provider.dart';
 import '../../providers/payment_provider.dart';
+import '../../providers/customer_notification_provider.dart';
 import '../payment/payment_screen.dart';
 import '../payment/invoice_preview_screen.dart';
 
@@ -18,11 +19,35 @@ class OrderTrackingScreen extends StatefulWidget {
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   late Future<List<Payment>> _paymentsFuture;
+  late Order _currentOrder;
 
   @override
   void initState() {
     super.initState();
+    _currentOrder = widget.order;
     _paymentsFuture = _loadPayments();
+
+    // Refresh order data when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshOrderData();
+    });
+
+    // Set up callback for order-specific notifications
+    CustomerNotificationProvider.setOrderNotificationCallback((orderId) {
+      if (orderId == widget.order.id) {
+        print(
+          'OrderTrackingScreen: Received notification for current order: $orderId',
+        );
+        _refreshOrderData();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Clear the callback when widget is disposed
+    CustomerNotificationProvider.setOrderNotificationCallback((orderId) {});
+    super.dispose();
   }
 
   Future<List<Payment>> _loadPayments() {
@@ -34,19 +59,56 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _refreshData() async {
-    final ordersProvider = Provider.of<OrdersProvider>(context, listen: false);
-    final paymentProvider = Provider.of<PaymentProvider>(
-      context,
-      listen: false,
-    );
+    await _refreshOrderData();
+  }
 
-    await ordersProvider.refreshOrderById(widget.order.id);
-    await paymentProvider.refreshPaymentsForOrder(widget.order.id);
+  Future<void> _refreshOrderData() async {
+    if (!mounted) return;
 
-    // Reload payments future
-    setState(() {
-      _paymentsFuture = _loadPayments();
-    });
+    try {
+      final ordersProvider = Provider.of<OrdersProvider>(
+        context,
+        listen: false,
+      );
+      final paymentProvider = Provider.of<PaymentProvider>(
+        context,
+        listen: false,
+      );
+
+      // Refresh order data from database
+      await ordersProvider.refreshOrderById(widget.order.id);
+
+      // Get the updated order from the provider
+      final updatedOrder = ordersProvider.getOrderById(widget.order.id);
+      if (updatedOrder != null) {
+        setState(() {
+          _currentOrder = updatedOrder;
+        });
+      }
+
+      // Refresh payment data
+      await paymentProvider.refreshPaymentsForOrder(widget.order.id);
+
+      // Reload payments future
+      setState(() {
+        _paymentsFuture = _loadPayments();
+      });
+
+      print(
+        'OrderTrackingScreen: Order data refreshed for order: ${widget.order.orderNumber}',
+      );
+    } catch (e) {
+      print('Error refreshing order data: $e');
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to refresh order data'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -55,7 +117,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Order #${widget.order.orderNumber}'),
+        title: Text('Order #${_currentOrder.orderNumber}'),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
@@ -84,7 +146,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildOrderStatusTimeline(context, widget.order),
+                      _buildOrderStatusTimeline(context, _currentOrder),
                     ],
                   ),
                 ),
@@ -108,32 +170,32 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       const SizedBox(height: 16),
                       _buildOrderDetail(
                         'Order Number',
-                        widget.order.orderNumber,
+                        _currentOrder.orderNumber,
                       ),
                       _buildOrderDetail(
                         'Total Amount',
-                        'Rp ${widget.order.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                        'Rp ${_currentOrder.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                       ),
                       _buildOrderDetail(
                         'Payment Method',
-                        widget.order.paymentMethod ?? 'Not specified',
+                        _currentOrder.paymentMethod ?? 'Not specified',
                       ),
                       _buildOrderDetail(
                         'Shipping Address',
-                        widget.order.shippingAddress,
+                        _currentOrder.shippingAddress,
                       ),
-                      if (widget.order.courierInfo != null &&
-                          widget.order.courierInfo!.isNotEmpty)
+                      if (_currentOrder.courierInfo != null &&
+                          _currentOrder.courierInfo!.isNotEmpty)
                         _buildOrderDetail(
                           'Courier Service',
-                          widget.order.courierInfo!,
+                          _currentOrder.courierInfo!,
                         ),
-                      if (widget.order.notes != null &&
-                          widget.order.notes!.isNotEmpty)
-                        _buildOrderDetail('Notes', widget.order.notes!),
+                      if (_currentOrder.notes != null &&
+                          _currentOrder.notes!.isNotEmpty)
+                        _buildOrderDetail('Notes', _currentOrder.notes!),
                       _buildOrderDetail(
                         'Order Date',
-                        widget.order.createdAt.toString().split(' ')[0],
+                        _currentOrder.createdAt.toString().split(' ')[0],
                       ),
                     ],
                   ),
@@ -156,17 +218,17 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      if (widget.order.additionalCosts != null &&
-                          widget.order.additionalCosts! > 0) ...[
+                      if (_currentOrder.additionalCosts != null &&
+                          _currentOrder.additionalCosts! > 0) ...[
                         _buildOrderDetail(
                           'Additional Amount',
-                          'Rp ${widget.order.additionalCosts!.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                          'Rp ${_currentOrder.additionalCosts!.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                         ),
-                        if (widget.order.additionalCostsNotes != null &&
-                            widget.order.additionalCostsNotes!.isNotEmpty)
+                        if (_currentOrder.additionalCostsNotes != null &&
+                            _currentOrder.additionalCostsNotes!.isNotEmpty)
                           _buildOrderDetail(
                             'Notes',
-                            widget.order.additionalCostsNotes!,
+                            _currentOrder.additionalCostsNotes!,
                           ),
                       ] else ...[
                         _buildOrderDetail(
@@ -217,9 +279,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     final payments = snapshot.data!;
                     final paymentProgress = paymentProvider
                         .calculatePaymentProgress(
-                          widget.order.id,
-                          widget.order.totalAmount +
-                              (widget.order.additionalCosts ?? 0),
+                          _currentOrder.id,
+                          _currentOrder.totalAmount +
+                              (_currentOrder.additionalCosts ?? 0),
                         );
 
                     return Card(
@@ -241,7 +303,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             const SizedBox(height: 16),
 
                             // Payment Status
-                            _buildPaymentStatus(context, widget.order),
+                            _buildPaymentStatus(context, _currentOrder),
 
                             const SizedBox(height: 16),
 
@@ -257,9 +319,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   } else {
                     final paymentProgress = paymentProvider
                         .calculatePaymentProgress(
-                          widget.order.id,
-                          widget.order.totalAmount +
-                              (widget.order.additionalCosts ?? 0),
+                          _currentOrder.id,
+                          _currentOrder.totalAmount +
+                              (_currentOrder.additionalCosts ?? 0),
                         );
 
                     return Card(
@@ -361,7 +423,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ...widget.order.items.map(
+                      ..._currentOrder.items.map(
                         (item) => _buildOrderItem(context, item),
                       ),
                     ],
@@ -372,7 +434,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               const SizedBox(height: 24),
 
               // Action Buttons
-              if (widget.order.status == OrderStatus.barangDikirim) ...[
+              if (_currentOrder.status == OrderStatus.barangDikirim) ...[
                 // Invoice Print Button for shipped orders
                 Row(
                   children: [
@@ -382,7 +444,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) =>
-                                  InvoicePreviewScreen(order: widget.order),
+                                  InvoicePreviewScreen(order: _currentOrder),
                             ),
                           );
                         },
@@ -410,16 +472,17 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    if (widget.order.status == OrderStatus.menungguOngkir ||
-                        widget.order.status == OrderStatus.menungguPembayaran ||
-                        widget.order.status == OrderStatus.pembayaranPartial)
+                    if (_currentOrder.status == OrderStatus.menungguOngkir ||
+                        _currentOrder.status ==
+                            OrderStatus.menungguPembayaran ||
+                        _currentOrder.status == OrderStatus.pembayaranPartial)
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    PaymentScreen(order: widget.order),
+                                    PaymentScreen(order: _currentOrder),
                               ),
                             );
                           },

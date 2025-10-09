@@ -81,6 +81,9 @@ class CustomerNotificationProvider extends ChangeNotifier {
   static const int _pageSize = 10;
   bool _hasMoreNotifications = true;
 
+  // Callback for order-related notifications
+  static Function(String orderId)? _onOrderNotificationReceived;
+
   List<CustomerNotification> get notifications => _notifications;
   List<CustomerNotification> get displayedNotifications =>
       _displayedNotifications;
@@ -98,6 +101,11 @@ class CustomerNotificationProvider extends ChangeNotifier {
       _displayedNotifications.take(10).toList();
 
   StreamSubscription<List<dynamic>>? _notificationsSubscription;
+
+  // Static method to set callback for order notifications
+  static void setOrderNotificationCallback(Function(String orderId) callback) {
+    _onOrderNotificationReceived = callback;
+  }
 
   CustomerNotificationProvider() {
     // Initialize asynchronously to avoid blocking provider creation
@@ -358,6 +366,9 @@ class CustomerNotificationProvider extends ChangeNotifier {
             _currentPage = 0;
             _hasMoreNotifications = _notifications.length > _pageSize;
 
+            // Check for new order-related notifications and trigger callback
+            _checkForNewOrderNotifications(data);
+
             notifyListeners();
           });
 
@@ -568,5 +579,27 @@ class CustomerNotificationProvider extends ChangeNotifier {
 
   Future<void> refreshNotifications() async {
     await _loadCustomerNotifications();
+  }
+
+  void _checkForNewOrderNotifications(List<dynamic> data) {
+    try {
+      // Get current notification IDs to detect new ones
+      final currentIds = _notifications.map((n) => n.id).toSet();
+
+      // Check for new notifications in the data
+      for (final notificationData in data) {
+        final notification = CustomerNotification.fromJson(notificationData);
+        if (!currentIds.contains(notification.id) &&
+            notification.orderId.isNotEmpty) {
+          print('New order notification detected: ${notification.orderId}');
+          // Trigger callback if set
+          if (_onOrderNotificationReceived != null) {
+            _onOrderNotificationReceived!(notification.orderId);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking for new order notifications: $e');
+    }
   }
 }
