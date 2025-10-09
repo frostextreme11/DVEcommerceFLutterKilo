@@ -111,33 +111,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
 
                     // Stock status
-                    if (widget.product.stockQuantity <= 5)
-                      Positioned(
-                        top: 100,
-                        right: 16,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: widget.product.stockQuantity == 0
-                                ? Colors.red
-                                : Colors.orange,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            widget.product.stockQuantity == 0
-                                ? 'Out of Stock'
-                                : 'Low Stock',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
+                    // if (widget.product.stockQuantity <= 5)
+                    //   Positioned(
+                    //     top: 100,
+                    //     right: 16,
+                    //     child: Container(
+                    //       padding: const EdgeInsets.symmetric(
+                    //         horizontal: 12,
+                    //         vertical: 6,
+                    //       ),
+                    //       decoration: BoxDecoration(
+                    //         color: widget.product.stockQuantity == 0
+                    //             ? Colors.red
+                    //             : Colors.orange,
+                    //         borderRadius: BorderRadius.circular(16),
+                    //       ),
+                    //       child: Text(
+                    //         widget.product.stockQuantity == 0
+                    //             ? 'Out of Stock'
+                    //             : 'Low Stock',
+                    //         style: const TextStyle(
+                    //           color: Colors.white,
+                    //           fontSize: 12,
+                    //           fontWeight: FontWeight.bold,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
                   ],
                 ),
               ),

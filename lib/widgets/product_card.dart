@@ -103,31 +103,31 @@ class ProductCard extends StatelessWidget {
                   ),
 
                   // Stock status
-                  if (product.stockQuantity <= 5)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: product.stockQuantity == 0
-                              ? Colors.red
-                              : Colors.orange,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          product.stockQuantity == 0 ? 'Out' : 'Low',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
+                  // if (product.stockQuantity <= 5)
+                  //   Positioned(
+                  //     top: 4,
+                  //     right: 4,
+                  //     child: Container(
+                  //       padding: const EdgeInsets.symmetric(
+                  //         horizontal: 4,
+                  //         vertical: 2,
+                  //       ),
+                  //       decoration: BoxDecoration(
+                  //         color: product.stockQuantity == 0
+                  //             ? Colors.red
+                  //             : Colors.orange,
+                  //         borderRadius: BorderRadius.circular(6),
+                  //       ),
+                  //       child: Text(
+                  //         product.stockQuantity == 0 ? 'Out' : 'Low',
+                  //         style: const TextStyle(
+                  //           color: Colors.white,
+                  //           fontSize: 8,
+                  //           fontWeight: FontWeight.bold,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ),
                 ],
               ),
 
