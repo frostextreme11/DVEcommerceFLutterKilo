@@ -4,9 +4,10 @@ import '../../providers/admin_users_provider.dart';
 import '../../models/user.dart';
 import '../../widgets/custom_button.dart';
 import 'user_form_screen.dart';
+import 'users_order_summary_screen.dart';
 
 class UsersAdminScreen extends StatefulWidget {
-  const UsersAdminScreen({Key? key}) : super(key: key);
+  const UsersAdminScreen({super.key});
 
   @override
   State<UsersAdminScreen> createState() => _UsersAdminScreenState();
@@ -47,13 +48,18 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: 'Search users...',
-                          prefixIcon: const Icon(Icons.search, color: Colors.white),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.white,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).brightness == Brightness.dark
+                          fillColor:
+                              Theme.of(context).brightness == Brightness.dark
                               ? Colors.grey[800]
                               : Colors.white,
                           hintStyle: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
                                 ? Colors.grey[400]
                                 : Colors.grey[600],
                           ),
@@ -107,9 +113,7 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                   final users = provider.filteredUsers;
 
                   if (users.isEmpty) {
-                    return const Center(
-                      child: Text('No users found'),
-                    );
+                    return const Center(child: Text('No users found'));
                   }
 
                   return ListView.builder(
@@ -140,11 +144,14 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
           ),
           child: DropdownButton<UserRole?>(
             value: provider.selectedRole,
-            hint: Text('Role', style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[300]
-                  : Colors.black54,
-            )),
+            hint: Text(
+              'Role',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[300]
+                    : Colors.black54,
+              ),
+            ),
             underline: const SizedBox(),
             dropdownColor: Theme.of(context).brightness == Brightness.dark
                 ? Colors.grey[800]
@@ -152,20 +159,26 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
             items: [
               DropdownMenuItem<UserRole?>(
                 value: null,
-                child: Text('All Roles', style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[300]
-                      : Colors.black,
-                )),
+                child: Text(
+                  'All Roles',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[300]
+                        : Colors.black,
+                  ),
+                ),
               ),
               ...UserRole.values.map((role) {
                 return DropdownMenuItem<UserRole?>(
                   value: role,
-                  child: Text(role.displayName, style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[300]
-                        : Colors.black,
-                  )),
+                  child: Text(
+                    role.displayName,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[300]
+                          : Colors.black,
+                    ),
+                  ),
                 );
               }),
             ],
@@ -191,7 +204,9 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                 // User Avatar
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).primaryColor.withValues(alpha: 0.1),
                   child: Text(
                     user.fullName?.isNotEmpty == true
                         ? user.fullName![0].toUpperCase()
@@ -219,17 +234,12 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                       const SizedBox(height: 4),
                       Text(
                         user.email,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(color: Colors.grey[600]),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         user.phoneNumber ?? 'No phone',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],
                   ),
@@ -239,7 +249,10 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                 Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: user.role.isAdmin ? Colors.purple : Colors.blue,
                         borderRadius: BorderRadius.circular(12),
@@ -284,7 +297,20 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                             children: [
                               Icon(Icons.delete, color: Colors.red),
                               SizedBox(width: 8),
-                              Text('Delete', style: TextStyle(color: Colors.red)),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'summary_order',
+                          child: Row(
+                            children: [
+                              Icon(Icons.summarize, color: Colors.blue),
+                              SizedBox(width: 8),
+                              Text('Summary Order'),
                             ],
                           ),
                         ),
@@ -305,10 +331,7 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                   Expanded(
                     child: Text(
                       user.fullAddress!,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -322,10 +345,7 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
             // Registration Date
             Text(
               'Joined: ${user.createdAt.toString().substring(0, 16)}',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
           ],
         ),
@@ -334,15 +354,11 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
   }
 
   void _handleUserAction(String action, User user) {
-    final provider = context.read<AdminUsersProvider>();
-
     switch (action) {
       case 'edit':
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => UserFormScreen(user: user),
-          ),
+          MaterialPageRoute(builder: (context) => UserFormScreen(user: user)),
         );
         break;
       case 'toggle_role':
@@ -350,6 +366,14 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
         break;
       case 'delete':
         _showDeleteConfirmation(user);
+        break;
+      case 'summary_order':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UsersOrderSummaryScreen(user: user),
+          ),
+        );
         break;
     }
   }
@@ -372,7 +396,10 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                 color: role.isAdmin ? Colors.purple : Colors.blue,
               ),
               onTap: () {
-                context.read<AdminUsersProvider>().updateUserRole(user.id, role);
+                context.read<AdminUsersProvider>().updateUserRole(
+                  user.id,
+                  role,
+                );
                 Navigator.pop(context);
               },
             );
@@ -393,7 +420,9 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete User'),
-        content: Text('Are you sure you want to delete user "${user.fullName ?? user.email}"? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete user "${user.fullName ?? user.email}"? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
