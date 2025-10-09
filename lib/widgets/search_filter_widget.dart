@@ -45,7 +45,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               productsProvider.setSearchQuery(value);
             },
             decoration: InputDecoration(
-              hintText: 'Search products...',
+              hintText: 'Cari Produk...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -59,7 +59,9 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                       },
                     ),
                   IconButton(
-                    icon: Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list),
+                    icon: Icon(
+                      _showFilters ? Icons.filter_list_off : Icons.filter_list,
+                    ),
                     onPressed: () {
                       setState(() {
                         _showFilters = !_showFilters;
@@ -69,7 +71,10 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 ],
               ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
             ),
           ),
         ),
@@ -96,7 +101,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               children: [
                 // Sort Options
                 Text(
-                  'Sort By',
+                  'Urutkan Berdasarkan',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -115,7 +120,9 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                         }
                       },
                       backgroundColor: Theme.of(context).colorScheme.surface,
-                      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                      selectedColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.2),
                       checkmarkColor: Theme.of(context).colorScheme.primary,
                     );
                   }).toList(),
@@ -143,19 +150,26 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                         }
                       },
                       backgroundColor: Theme.of(context).colorScheme.surface,
-                      selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                      selectedColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.2),
                       checkmarkColor: Theme.of(context).colorScheme.primary,
                     ),
                     ...productsProvider.categories.map((category) {
-                      final isSelected = productsProvider.selectedCategory == category;
+                      final isSelected =
+                          productsProvider.selectedCategory == category;
                       return FilterChip(
                         label: Text(category),
                         selected: isSelected,
                         onSelected: (selected) {
-                          productsProvider.setSelectedCategory(selected ? category : null);
+                          productsProvider.setSelectedCategory(
+                            selected ? category : null,
+                          );
                         },
                         backgroundColor: Theme.of(context).colorScheme.surface,
-                        selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                        selectedColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.2),
                         checkmarkColor: Theme.of(context).colorScheme.primary,
                       );
                     }),
@@ -166,7 +180,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
 
                 // Price Range
                 Text(
-                  'Price Range',
+                  'Rentang Harga',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -219,17 +233,17 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   String _getSortOptionLabel(SortOption option) {
     switch (option) {
       case SortOption.newest:
-        return 'Newest';
+        return 'Terbaru';
       case SortOption.priceLowToHigh:
-        return 'Price: Low to High';
+        return 'Harga: Terendah ke Tertinggi';
       case SortOption.priceHighToLow:
-        return 'Price: High to Low';
+        return 'Harga: Tertinggi ke Terendah';
       case SortOption.nameAZ:
-        return 'Name: A to Z';
+        return 'Nama: A ke Z';
       case SortOption.nameZA:
-        return 'Name: Z to A';
+        return 'Nama: Z ke A';
       case SortOption.popularity:
-        return 'Popularity';
+        return 'Popularitas';
     }
   }
 }

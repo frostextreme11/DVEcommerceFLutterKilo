@@ -28,7 +28,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'Bank Transfer';
   String? _selectedCourier;
   bool _isProcessing = false;
-  bool _isDropship = false;
+  bool _isDropship = true;
 
   final List<String> _courierOptions = [
     'Jne REG',
@@ -476,42 +476,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 16),
 
             // Dropship Checkbox
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).dividerColor),
-              ),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: _isDropship,
-                    onChanged: (value) {
-                      setState(() {
-                        _isDropship = value ?? false;
-                        if (!_isDropship) {
-                          // Clear sender fields when dropship is unchecked
-                          _senderNameController.clear();
-                          _senderPhoneController.clear();
-                        }
-                      });
-                    },
-                    activeColor: Theme.of(context).primaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Dropship Order',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
+            // Container(
+            //   padding: const EdgeInsets.all(12),
+            //   decoration: BoxDecoration(
+            //     color: Theme.of(context).cardColor,
+            //     borderRadius: BorderRadius.circular(8),
+            //     border: Border.all(color: Theme.of(context).dividerColor),
+            //   ),
+            //   child: Row(
+            //     children: [
+            //       Checkbox(
+            //         value: _isDropship,
+            //         onChanged: (value) {
+            //           setState(() {
+            //             _isDropship = value ?? false;
+            //             if (!_isDropship) {
+            //               // Clear sender fields when dropship is unchecked
+            //               _senderNameController.clear();
+            //               _senderPhoneController.clear();
+            //             }
+            //           });
+            //         },
+            //         activeColor: Theme.of(context).primaryColor,
+            //       ),
+            //       const SizedBox(width: 8),
+            //       Expanded(
+            //         child: Text(
+            //           'Dropship Order',
+            //           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            //             fontWeight: FontWeight.w500,
+            //           ),
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
             const SizedBox(height: 16),
 
             // Sender Information (only show if dropship is checked)
@@ -582,50 +581,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
 
             // Address Preview
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Alamat Pengiriman Tercatat',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _receiverAddressController.text.isNotEmpty
-                        ? _receiverAddressController.text
-                        : 'Alamat lengkap akan muncul di sini...',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.8),
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.all(12),
+            //   decoration: BoxDecoration(
+            //     color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+            //     borderRadius: BorderRadius.circular(8),
+            //     border: Border.all(
+            //       color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+            //     ),
+            //   ),
+            //   child: Column(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       Row(
+            //         children: [
+            //           Icon(
+            //             Icons.location_on,
+            //             size: 16,
+            //             color: Theme.of(context).primaryColor,
+            //           ),
+            //           const SizedBox(width: 8),
+            //           Text(
+            //             'Alamat Pengiriman Tercatat',
+            //             style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            //               fontWeight: FontWeight.bold,
+            //               color: Theme.of(context).primaryColor,
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //       const SizedBox(height: 8),
+            //       Text(
+            //         _receiverAddressController.text.isNotEmpty
+            //             ? _receiverAddressController.text
+            //             : 'Alamat lengkap akan muncul di sini...',
+            //         style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            //           color: Theme.of(
+            //             context,
+            //           ).colorScheme.onSurface.withValues(alpha: 0.8),
+            //           height: 1.4,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
           ],
         ),
       ),
@@ -723,9 +722,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text('Leave Checkout?'),
+              title: const Text('Tinggalkan Checkout?'),
               content: const Text(
-                'Are you sure you want to leave? Your checkout progress will be lost.',
+                'Apakah Anda yakin ingin meninggalkan checkout? Semua perubahan yang belum disimpan akan hilang.',
               ),
               actions: <Widget>[
                 TextButton(
@@ -761,7 +760,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!authProvider.isAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please log in to place an order'),
+          content: Text('Silakan masuk untuk melakukan pemesanan'),
           backgroundColor: Colors.red,
         ),
       );
@@ -771,7 +770,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all required fields correctly'),
+          content: Text('Mohon isi semua field yang diperlukan dengan benar'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -783,7 +782,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (_senderNameController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter sender name for dropship order'),
+            content: Text('Mohon masukkan nama pengirim'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -792,9 +791,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (_senderPhoneController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Please enter sender phone number for dropship order',
-            ),
+            content: Text('Mohon masukkan nomor telepon pengirim'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -841,7 +838,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Order placed successfully! Order #${order.orderNumber}',
+              'Order berhasil dibuat dengan nomor order #${order.orderNumber}',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
@@ -857,7 +854,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             SnackBar(
               content: Text(
                 ordersProvider.error ??
-                    'Failed to place order. Please try again.',
+                    'Gagal melakukan pemesanan. Silakan coba lagi.',
               ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
@@ -870,7 +867,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error placing order: ${e.toString()}'),
+            content: Text('Error mencheckout order: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),

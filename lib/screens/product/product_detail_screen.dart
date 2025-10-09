@@ -142,17 +142,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.share),
-                  onPressed: () {
-                    // Share product
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Share functionality coming soon!'),
-                      ),
-                    );
-                  },
-                ),
+                // IconButton(
+                //   icon: const Icon(Icons.share),
+                //   onPressed: () {
+                //     // Share product
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       const SnackBar(
+                //         content: Text('Share functionality coming soon!'),
+                //       ),
+                //     );
+                //   },
+                // ),
               ],
             ),
 
@@ -257,7 +257,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Items available',
+                          widget.product.stockQuantity > 0
+                              ? 'Tersedia'
+                              : 'Menunggu Restock',
                           style: TextStyle(
                             color: Theme.of(
                               context,
@@ -272,7 +274,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                     // Description
                     Text(
-                      'Description',
+                      'Deskripsi Produk',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -283,7 +285,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     Text(
                       widget.product.description.isNotEmpty
                           ? widget.product.description
-                          : 'No description available for this product.',
+                          : 'Produk ini belum memiliki deskripsi.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         height: 1.6,
                         color: Theme.of(
@@ -395,23 +397,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Row(
                 children: [
                   // Favorite Button
-                  IconButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Favorite functionality coming soon!'),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.favorite_border),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
+                  // IconButton(
+                  //   onPressed: () {
+                  //     ScaffoldMessenger.of(context).showSnackBar(
+                  //       const SnackBar(
+                  //         content: Text('Favorite functionality coming soon!'),
+                  //       ),
+                  //     );
+                  //   },
+                  //   icon: const Icon(Icons.favorite_border),
+                  //   style: IconButton.styleFrom(
+                  //     backgroundColor: Theme.of(
+                  //       context,
+                  //     ).colorScheme.primary.withValues(alpha: 0.1),
+                  //   ),
+                  // ),
+                  // const SizedBox(width: 12),
 
                   // Add to Cart Button
                   Expanded(
@@ -427,7 +428,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Updated cart: ${widget.product.name} x$_quantity',
+                                  'Keranjang terisi: ${widget.product.name} x$_quantity',
                                 ),
                                 duration: const Duration(seconds: 2),
                               ),
@@ -469,8 +470,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
                       label: Text(
                         isInCart
-                            ? 'Update Cart (${cartItem?.quantity ?? 0})'
-                            : 'Add to Cart',
+                            ? 'Tambah ke Keranjang (${cartItem?.quantity ?? 0})'
+                            : 'Tambah ke Keranjang',
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isInCart

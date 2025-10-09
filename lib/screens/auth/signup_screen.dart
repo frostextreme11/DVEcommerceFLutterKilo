@@ -35,21 +35,14 @@ class _SignUpScreenState extends State<SignUpScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
 
     _animationController.forward();
   }
@@ -82,7 +75,9 @@ class _SignUpScreenState extends State<SignUpScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Failed to create account. Email may already be in use.'),
+              content: Text(
+                'Failed to create account. Email may already be in use.',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -113,7 +108,9 @@ class _SignUpScreenState extends State<SignUpScreen>
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account created but failed to save profile. Please contact support.'),
+            content: Text(
+              'Account created but failed to save profile. Please contact support.',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -176,7 +173,7 @@ class _SignUpScreenState extends State<SignUpScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sign Up'),
+        title: const Text('Daftar Akun'),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
@@ -215,18 +212,26 @@ class _SignUpScreenState extends State<SignUpScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Create Account',
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
+                                'Membuat Akun',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                    ),
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Join Dalanova and discover premium Muslim fashion',
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
+                                'Join Dalanova dan nikmati pengalaman belanja produk premium kami.',
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface.withOpacity(0.7),
+                                    ),
                               ),
                             ],
                           ),
@@ -251,10 +256,15 @@ class _SignUpScreenState extends State<SignUpScreen>
                               children: [
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () => setState(() => _isEmailSignUp = false),
+                                    onPressed: () =>
+                                        setState(() => _isEmailSignUp = false),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: !_isEmailSignUp ? Theme.of(context).primaryColor : Colors.grey[300],
-                                      foregroundColor: !_isEmailSignUp ? Colors.white : Colors.black,
+                                      backgroundColor: !_isEmailSignUp
+                                          ? Theme.of(context).primaryColor
+                                          : Colors.grey[300],
+                                      foregroundColor: !_isEmailSignUp
+                                          ? Colors.white
+                                          : Colors.black,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -265,10 +275,15 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () => setState(() => _isEmailSignUp = true),
+                                    onPressed: () =>
+                                        setState(() => _isEmailSignUp = true),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: _isEmailSignUp ? Theme.of(context).primaryColor : Colors.grey[300],
-                                      foregroundColor: _isEmailSignUp ? Colors.white : Colors.black,
+                                      backgroundColor: _isEmailSignUp
+                                          ? Theme.of(context).primaryColor
+                                          : Colors.grey[300],
+                                      foregroundColor: _isEmailSignUp
+                                          ? Colors.white
+                                          : Colors.black,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -313,7 +328,9 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     if (value == null || value.trim().isEmpty) {
                                       return 'Please enter your email';
                                     }
-                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                    if (!RegExp(
+                                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                    ).hasMatch(value)) {
                                       return 'Please enter a valid email';
                                     }
                                     return null;
@@ -327,7 +344,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                                   controller: _passwordController,
                                   decoration: InputDecoration(
                                     labelText: 'Password',
-                                    hintText: 'Enter your password (min 6 characters)',
+                                    hintText:
+                                        'Enter your password (min 6 characters)',
                                     prefixIcon: const Icon(Icons.lock),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -397,8 +415,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                               TextFormField(
                                 controller: _fullNameController,
                                 decoration: InputDecoration(
-                                  labelText: 'Full Name',
-                                  hintText: 'Enter your full name',
+                                  labelText: 'Nama Lengkap',
+                                  hintText: 'Masukkan nama lengkap Anda',
                                   prefixIcon: const Icon(Icons.person),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -408,10 +426,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter your full name';
+                                    return 'Silakan masukkan nama lengkap Anda';
                                   }
                                   if (value.trim().length < 2) {
-                                    return 'Name must be at least 2 characters';
+                                    return 'Nama harus terdiri dari minimal 2 karakter';
                                   }
                                   return null;
                                 },
@@ -423,8 +441,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                               TextFormField(
                                 controller: _phoneController,
                                 decoration: InputDecoration(
-                                  labelText: 'Phone Number',
-                                  hintText: '+62xxxxxxxxxx',
+                                  labelText: 'Nomor Telepon',
+                                  hintText: 'contoh: +62xxxxxxxxxx',
                                   prefixIcon: const Icon(Icons.phone),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -435,10 +453,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 keyboardType: TextInputType.phone,
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter your phone number';
+                                    return 'Silakan masukkan nomor telepon Anda';
                                   }
                                   if (value.trim().length < 10) {
-                                    return 'Please enter a valid phone number';
+                                    return 'Silakan masukkan nomor telepon yang valid';
                                   }
                                   return null;
                                 },
@@ -450,8 +468,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                               TextFormField(
                                 controller: _addressController,
                                 decoration: InputDecoration(
-                                  labelText: 'Full Address',
-                                  hintText: 'Enter your complete address',
+                                  labelText: 'Alamat Lengkap',
+                                  hintText: 'Masukkan alamat lengkap Anda',
                                   prefixIcon: const Icon(Icons.location_on),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -462,10 +480,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 maxLines: 3,
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter your address';
+                                    return 'Silakan masukkan alamat lengkap Anda';
                                   }
                                   if (value.trim().length < 10) {
-                                    return 'Please enter a complete address';
+                                    return 'Silakan masukkan alamat lengkap yang valid';
                                   }
                                   return null;
                                 },
@@ -480,9 +498,13 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 child: ElevatedButton(
                                   onPressed: authProvider.isLoading
                                       ? null
-                                      : (_isEmailSignUp ? _handleEmailSignUp : _handleGoogleSignUp),
+                                      : (_isEmailSignUp
+                                            ? _handleEmailSignUp
+                                            : _handleGoogleSignUp),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Theme.of(context).primaryColor,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor,
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -495,11 +517,16 @@ class _SignUpScreenState extends State<SignUpScreen>
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
                                           ),
                                         )
                                       : Text(
-                                          _isEmailSignUp ? 'Create Account' : 'Continue with Google',
+                                          _isEmailSignUp
+                                              ? 'Buat Akun'
+                                              : 'Lanjutkan dengan Google',
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
@@ -515,21 +542,32 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    'Already have an account? ',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                    ),
+                                    'Sudah punya akun? ',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withOpacity(0.7),
+                                        ),
                                   ),
                                   TextButton(
                                     onPressed: () {
                                       GoRouter.of(context).go('/login');
                                     },
                                     child: Text(
-                                      'Sign In',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: Theme.of(context).primaryColor,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      'Masuk Sekarang',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: Theme.of(
+                                              context,
+                                            ).primaryColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
                                 ],

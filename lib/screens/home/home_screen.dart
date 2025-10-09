@@ -290,7 +290,7 @@ class _HomeContentState extends State<HomeContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Hallo ${authProvider.userProfile?['full_name'] != null ? ', ${authProvider.userProfile!['full_name'].split(' ').first}' : ''}!',
+                              'Hallo ${authProvider.userProfile?['full_name'] != null ? ', ${authProvider.userProfile!['full_name'].split(' ').first}' : ''}',
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
                                     color: isLuxury
@@ -306,7 +306,7 @@ class _HomeContentState extends State<HomeContent> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Discover premium Dalanova',
+                              'Jelajahi produk premium Dalanova',
                               style: Theme.of(context).textTheme.bodyLarge
                                   ?.copyWith(
                                     color: isLuxury
@@ -864,7 +864,7 @@ class _CartContentState extends State<CartContent> {
                       _showRemoveDialog(context, item, cartProvider),
                   icon: const Icon(Icons.delete, color: Colors.red),
                   iconSize: 20,
-                  tooltip: 'Remove item',
+                  tooltip: 'Hapus Barang',
                 ),
                 Row(
                   children: [
@@ -952,7 +952,7 @@ class _CartContentState extends State<CartContent> {
               children: [
                 Flexible(
                   child: Text(
-                    'Discount:',
+                    'Diskon:',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: Colors.green),
@@ -1007,7 +1007,7 @@ class _CartContentState extends State<CartContent> {
                     side: const BorderSide(color: Colors.red),
                   ),
                   child: const Text(
-                    'Clear Cart',
+                    'Kosongkan Keranjang',
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
@@ -1037,12 +1037,12 @@ class _CartContentState extends State<CartContent> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Remove Item'),
-        content: Text('Remove ${item.name} from cart?'),
+        title: const Text('Hapus dari Keranjang'),
+        content: Text('Hapus ${item.name} dari keranjang?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text('Batal'),
           ),
           TextButton(
             onPressed: () {
@@ -1050,13 +1050,13 @@ class _CartContentState extends State<CartContent> {
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${item.name} removed from cart'),
+                  content: Text('${item.name} dihapus dari keranjang'),
                   duration: const Duration(seconds: 2),
                 ),
               );
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Remove'),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -1518,7 +1518,7 @@ class _ProfileContentState extends State<ProfileContent> {
                 _buildStatCard(
                   context,
                   '${cartProvider.itemCount}',
-                  'Items in Cart',
+                  'Barang di Keranjang',
                   Icons.shopping_cart,
                   Colors.blue,
                 ),
@@ -1528,7 +1528,7 @@ class _ProfileContentState extends State<ProfileContent> {
                     return _buildStatCard(
                       context,
                       '${ordersProvider.orders.length}',
-                      'Total Orders',
+                      'Total Order',
                       Icons.receipt,
                       Colors.green,
                     );
@@ -1570,7 +1570,7 @@ class _ProfileContentState extends State<ProfileContent> {
                         context.go('/orders');
                       },
                       icon: const Icon(Icons.history),
-                      label: const Text('Order History'),
+                      label: const Text('Histori Order'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -1594,7 +1594,7 @@ class _ProfileContentState extends State<ProfileContent> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Sign Out'),
+                    child: const Text('Keluar'),
                   ),
                 ),
               ],

@@ -34,37 +34,22 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
-    _bounceAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.bounceOut,
-    ));
+    _bounceAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.bounceOut),
+    );
 
     _animationController.forward();
   }
@@ -176,7 +161,9 @@ class _LoginScreenState extends State<LoginScreen>
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter your email';
                         }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                        if (!RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        ).hasMatch(value)) {
                           return 'Please enter a valid email';
                         }
                         return null;
@@ -199,15 +186,18 @@ class _LoginScreenState extends State<LoginScreen>
                           setState(() => isLoading = true);
 
                           try {
-                            await Supabase.instance.client.auth.resetPasswordForEmail(
-                              emailController.text.trim(),
-                            );
+                            await Supabase.instance.client.auth
+                                .resetPasswordForEmail(
+                                  emailController.text.trim(),
+                                );
 
                             if (mounted) {
                               Navigator.of(dialogContext).pop();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Password reset email sent! Check your inbox.'),
+                                  content: Text(
+                                    'Password reset email sent! Check your inbox.',
+                                  ),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -233,7 +223,9 @@ class _LoginScreenState extends State<LoginScreen>
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text('Send Reset Link'),
@@ -293,7 +285,9 @@ class _LoginScreenState extends State<LoginScreen>
                                       color: Theme.of(context).primaryColor,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                          color: Theme.of(
+                                            context,
+                                          ).primaryColor.withOpacity(0.3),
                                           blurRadius: 20,
                                           spreadRadius: 5,
                                         ),
@@ -303,11 +297,20 @@ class _LoginScreenState extends State<LoginScreen>
                                       animation: _bounceAnimation,
                                       builder: (context, child) {
                                         return Transform.scale(
-                                          scale: 0.8 + (_bounceAnimation.value * 0.2),
-                                          child: const Icon(
-                                            Icons.shopping_bag,
-                                            color: Colors.white,
-                                            size: 50,
+                                          scale:
+                                              0.8 +
+                                              (_bounceAnimation.value * 0.2),
+                                          child: Image.asset(
+                                            'assets/logo.png',
+                                            fit: BoxFit.contain,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                                  return const Icon(
+                                                    Icons.store,
+                                                    color: Colors.white,
+                                                    size: 48,
+                                                  );
+                                                },
                                           ),
                                         );
                                       },
@@ -321,23 +324,37 @@ class _LoginScreenState extends State<LoginScreen>
                               animation: _animationController,
                               builder: (context, child) {
                                 return Transform.translate(
-                                  offset: Offset(0, _slideAnimation.value.dy * 20),
+                                  offset: Offset(
+                                    0,
+                                    _slideAnimation.value.dy * 20,
+                                  ),
                                   child: Column(
                                     children: [
                                       Text(
-                                        'Welcome to Dalanova',
-                                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.onSurface,
-                                        ),
+                                        'Dalanova',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurface,
+                                            ),
                                         textAlign: TextAlign.center,
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        'Your premium Muslim fashion destination',
-                                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                        ),
+                                        'Destinasi Produk Muslim Premium Anda',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withOpacity(0.7),
+                                            ),
                                         textAlign: TextAlign.center,
                                       ),
                                     ],
@@ -371,18 +388,27 @@ class _LoginScreenState extends State<LoginScreen>
                                   duration: const Duration(milliseconds: 300),
                                   curve: Curves.easeInOut,
                                   child: ElevatedButton(
-                                    onPressed: () => setState(() => _isEmailLogin = false),
+                                    onPressed: () =>
+                                        setState(() => _isEmailLogin = false),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: !_isEmailLogin ? Theme.of(context).primaryColor : Colors.grey[300],
-                                      foregroundColor: !_isEmailLogin ? Colors.white : Colors.black,
+                                      backgroundColor: !_isEmailLogin
+                                          ? Theme.of(context).primaryColor
+                                          : Colors.grey[300],
+                                      foregroundColor: !_isEmailLogin
+                                          ? Colors.white
+                                          : Colors.black,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
                                     child: AnimatedDefaultTextStyle(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       style: TextStyle(
-                                        fontWeight: !_isEmailLogin ? FontWeight.bold : FontWeight.normal,
+                                        fontWeight: !_isEmailLogin
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                       child: const Text('Google'),
                                     ),
@@ -395,18 +421,27 @@ class _LoginScreenState extends State<LoginScreen>
                                   duration: const Duration(milliseconds: 300),
                                   curve: Curves.easeInOut,
                                   child: ElevatedButton(
-                                    onPressed: () => setState(() => _isEmailLogin = true),
+                                    onPressed: () =>
+                                        setState(() => _isEmailLogin = true),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: _isEmailLogin ? Theme.of(context).primaryColor : Colors.grey[300],
-                                      foregroundColor: _isEmailLogin ? Colors.white : Colors.black,
+                                      backgroundColor: _isEmailLogin
+                                          ? Theme.of(context).primaryColor
+                                          : Colors.grey[300],
+                                      foregroundColor: _isEmailLogin
+                                          ? Colors.white
+                                          : Colors.black,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
                                     child: AnimatedDefaultTextStyle(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       style: TextStyle(
-                                        fontWeight: _isEmailLogin ? FontWeight.bold : FontWeight.normal,
+                                        fontWeight: _isEmailLogin
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                       child: const Text('Email'),
                                     ),
@@ -451,7 +486,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     if (value == null || value.trim().isEmpty) {
                                       return 'Please enter your email';
                                     }
-                                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                    if (!RegExp(
+                                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                    ).hasMatch(value)) {
                                       return 'Please enter a valid email';
                                     }
                                     return null;
@@ -486,9 +523,13 @@ class _LoginScreenState extends State<LoginScreen>
                                   width: double.infinity,
                                   height: 55,
                                   child: ElevatedButton(
-                                    onPressed: authProvider.isLoading ? null : _handleEmailSignIn,
+                                    onPressed: authProvider.isLoading
+                                        ? null
+                                        : _handleEmailSignIn,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(context).primaryColor,
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).primaryColor,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
@@ -500,7 +541,10 @@ class _LoginScreenState extends State<LoginScreen>
                                             height: 24,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
                                             ),
                                           )
                                         : const Text(
@@ -533,26 +577,37 @@ class _LoginScreenState extends State<LoginScreen>
                             height: 60,
                             margin: const EdgeInsets.only(bottom: 24),
                             child: ElevatedButton.icon(
-                              onPressed: authProvider.isLoading ? null : _handleGoogleSignIn,
+                              onPressed: authProvider.isLoading
+                                  ? null
+                                  : _handleGoogleSignIn,
                               icon: authProvider.isLoading
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   : Image.asset(
                                       'assets/images/google_logo.png',
                                       width: 24,
                                       height: 24,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return const Icon(Icons.account_circle, color: Colors.white);
-                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return const Icon(
+                                              Icons.account_circle,
+                                              color: Colors.white,
+                                            );
+                                          },
                                     ),
                               label: Text(
-                                authProvider.isLoading ? 'Signing in...' : 'Continue with Google',
+                                authProvider.isLoading
+                                    ? 'Mencoba masuk ke Dalanova...'
+                                    : 'Login Dengan Google',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -589,13 +644,15 @@ class _LoginScreenState extends State<LoginScreen>
                             // Forgot Password (only show for email login)
                             if (_isEmailLogin) ...[
                               TextButton(
-                                onPressed: () => _showForgotPasswordDialog(context),
+                                onPressed: () =>
+                                    _showForgotPasswordDialog(context),
                                 child: Text(
                                   'Forgot Password?',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Theme.of(context).primaryColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context).primaryColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -605,21 +662,28 @@ class _LoginScreenState extends State<LoginScreen>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  "Don't have an account? ",
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
+                                  "Tidak punya akun? ",
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.7),
+                                      ),
                                 ),
                                 TextButton(
                                   onPressed: () {
                                     context.go('/signup');
                                   },
                                   child: Text(
-                                    'Sign Up',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    'Daftar Sekarang',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context).primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                   ),
                                 ),
                               ],
@@ -627,15 +691,23 @@ class _LoginScreenState extends State<LoginScreen>
                             const SizedBox(height: 16),
 
                             // Debug Button (only in debug mode)
-                            if (!const bool.fromEnvironment('dart.vm.product')) ...[
+                            if (!const bool.fromEnvironment(
+                              'dart.vm.product',
+                            )) ...[
                               TextButton(
                                 onPressed: () async {
-                                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                  final authProvider =
+                                      Provider.of<AuthProvider>(
+                                        context,
+                                        listen: false,
+                                      );
                                   await authProvider.clearAllData();
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('All authentication data cleared'),
+                                        content: Text(
+                                          'All authentication data cleared',
+                                        ),
                                         backgroundColor: Colors.blue,
                                       ),
                                     );
@@ -650,10 +722,13 @@ class _LoginScreenState extends State<LoginScreen>
                             ],
 
                             Text(
-                              'By continuing, you agree to our Terms of Service and Privacy Policy',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
+                              'Dengan masuk, Anda menyetujui Ketentuan Layanan dan Kebijakan Privasi kami.',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface.withOpacity(0.6),
+                                  ),
                               textAlign: TextAlign.center,
                             ),
                           ],

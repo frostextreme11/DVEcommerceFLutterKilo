@@ -85,7 +85,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Order History'),
+          title: const Text('Histori Order'),
           backgroundColor: Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
           leading: IconButton(
@@ -127,7 +127,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                       );
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search by order number or customer name...',
+                      hintText: 'Cari Order...',
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
@@ -163,8 +163,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                   controller: _tabController,
                   tabs: const [
                     Tab(text: 'Semua'),
-                    Tab(text: 'Menunggu Ongkir'),
-                    Tab(text: 'Menunggu Pembayaran'),
+                    Tab(text: 'Ongkir'),
+                    Tab(text: 'Tagihan'),
                     Tab(text: 'Selesai'),
                   ],
                   labelColor: Colors.white,

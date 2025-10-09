@@ -36,7 +36,7 @@ class _CustomerNotificationsScreenState
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Notifications'),
+          title: const Text('Notifikasi'),
           backgroundColor: Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
           elevation: 0,
@@ -56,7 +56,7 @@ class _CustomerNotificationsScreenState
                               .markAllAsRead();
                         },
                   child: const Text(
-                    'Mark All Read',
+                    'Tandai Semua Sudah Dibaca',
                     style: TextStyle(color: Colors.white),
                   ),
                 );

@@ -314,7 +314,7 @@ class _CartScreenState extends State<CartScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Discount:',
+                      'Diskon:',
                       style: Theme.of(
                         context,
                       ).textTheme.bodyLarge?.copyWith(color: Colors.green),

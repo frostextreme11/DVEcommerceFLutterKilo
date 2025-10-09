@@ -20,7 +20,9 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      context.read<AdminProductsProvider>().setSearchQuery(_searchController.text);
+      context.read<AdminProductsProvider>().setSearchQuery(
+        _searchController.text,
+      );
     });
   }
 
@@ -47,14 +49,19 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: 'Search products...',
-                          prefixIcon: const Icon(Icons.search, color: Colors.white),
+                          hintText: 'Cari Produk...',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.white,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).brightness == Brightness.dark
+                          fillColor:
+                              Theme.of(context).brightness == Brightness.dark
                               ? Colors.grey[800]
                               : Colors.white,
                           hintStyle: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
                                 ? Colors.grey[400]
                                 : Colors.grey[600],
                           ),
@@ -128,9 +135,7 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
                   final products = provider.filteredProducts;
 
                   if (products.isEmpty) {
-                    return const Center(
-                      child: Text('No products found'),
-                    );
+                    return const Center(child: Text('No products found'));
                   }
 
                   return ListView.builder(
@@ -161,11 +166,14 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
           ),
           child: DropdownButton<String?>(
             value: provider.selectedCategory,
-            hint: Text('Category', style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[300]
-                  : Colors.black54,
-            )),
+            hint: Text(
+              'Category',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[300]
+                    : Colors.black54,
+              ),
+            ),
             underline: const SizedBox(),
             dropdownColor: Theme.of(context).brightness == Brightness.dark
                 ? Colors.grey[800]
@@ -173,20 +181,26 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
             items: [
               DropdownMenuItem<String?>(
                 value: null,
-                child: Text('All Categories', style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[300]
-                      : Colors.black,
-                )),
+                child: Text(
+                  'All Categories',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[300]
+                        : Colors.black,
+                  ),
+                ),
               ),
               ...provider.categories.map((category) {
                 return DropdownMenuItem<String?>(
                   value: category,
-                  child: Text(category ?? 'Uncategorized', style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey[300]
-                        : Colors.black,
-                  )),
+                  child: Text(
+                    category ?? 'Uncategorized',
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[300]
+                          : Colors.black,
+                    ),
+                  ),
                 );
               }),
             ],
@@ -224,11 +238,7 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
                         : null,
                   ),
                   child: product.imageUrl == null
-                      ? Icon(
-                          Icons.image,
-                          color: Colors.grey[400],
-                          size: 30,
-                        )
+                      ? Icon(Icons.image, color: Colors.grey[400], size: 30)
                       : null,
                 ),
                 const SizedBox(width: 16),
@@ -256,10 +266,7 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Stock: ${product.stockQuantity}',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],
                   ),
@@ -269,7 +276,10 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
                 Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: product.isActive ? Colors.green : Colors.red,
                         borderRadius: BorderRadius.circular(12),
@@ -314,7 +324,10 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
                             children: [
                               Icon(Icons.delete, color: Colors.red),
                               SizedBox(width: 8),
-                              Text('Delete', style: TextStyle(color: Colors.red)),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ],
                           ),
                         ),
@@ -330,10 +343,7 @@ class _ProductsAdminScreenState extends State<ProductsAdminScreen> {
               const SizedBox(height: 8),
               Text(
                 'Category: ${product.category}',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
               ),
             ],
           ],

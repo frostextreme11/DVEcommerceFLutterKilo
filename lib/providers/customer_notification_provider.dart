@@ -518,15 +518,29 @@ class CustomerNotificationProvider extends ChangeNotifier {
   }
 
   Future<void> deleteNotification(String notificationId) async {
+    // Optimistically remove from local lists first to prevent UI errors
+    final initialLength = _notifications.length;
+    _notifications.removeWhere((n) => n.id == notificationId);
+
+    // Also remove from displayed notifications to match the main list
+    _displayedNotifications.removeWhere((n) => n.id == notificationId);
+
+    // Notify listeners immediately to update UI
+    notifyListeners();
+
+    // If we didn't actually remove anything, restore the lists
+    if (_notifications.length == initialLength) {
+      print(
+        'CustomerNotificationProvider: Notification not found in local list: $notificationId',
+      );
+      return;
+    }
+
     try {
       await _supabase
           .from('kl_customer_notifications')
           .delete()
           .eq('id', notificationId);
-
-      // Remove from local list
-      _notifications.removeWhere((n) => n.id == notificationId);
-      notifyListeners();
 
       print(
         'CustomerNotificationProvider: Notification deleted: $notificationId',
@@ -534,6 +548,9 @@ class CustomerNotificationProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Failed to delete notification: ${e.toString()}';
       print('Error deleting notification: $e');
+
+      // If database deletion fails, we could optionally restore the notification
+      // For now, we'll keep the optimistic update since the user intended to delete it
       notifyListeners();
     }
   }

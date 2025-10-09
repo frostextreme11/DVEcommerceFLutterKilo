@@ -229,13 +229,13 @@ class ProductCard extends StatelessWidget {
                                         ).showSnackBar(
                                           SnackBar(
                                             content: Text(
-                                              '${product.name} added to cart',
+                                              '${product.name} ditambahkan ke keranjang',
                                             ),
                                             duration: const Duration(
                                               seconds: 2,
                                             ),
                                             action: SnackBarAction(
-                                              label: 'View Cart',
+                                              label: 'Lihat Keranjang',
                                               onPressed: () {
                                                 // Navigate to cart screen
                                                 GoRouter.of(
@@ -261,8 +261,8 @@ class ProductCard extends StatelessWidget {
                             ),
                             child: Text(
                               isInCart
-                                  ? 'In Cart (${cartItem?.quantity ?? 0})'
-                                  : 'Add to Cart',
+                                  ? 'Beli (${cartItem?.quantity ?? 0})'
+                                  : 'Beli',
                               style: const TextStyle(fontSize: 12),
                             ),
                           ),
@@ -356,7 +356,7 @@ class ProductCard extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('Batal'),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -365,12 +365,14 @@ class ProductCard extends StatelessWidget {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Cart updated: ${product.name} x$quantity'),
+                    content: Text(
+                      'Keranjang diperbarui: ${product.name} x$quantity',
+                    ),
                     duration: const Duration(seconds: 2),
                   ),
                 );
               },
-              child: const Text('Update Cart'),
+              child: const Text('Update Keranjang'),
             ),
           ],
         ),
