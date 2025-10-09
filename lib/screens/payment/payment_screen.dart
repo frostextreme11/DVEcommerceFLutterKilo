@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -870,8 +871,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
         );
 
-        // Refresh payment data to show the latest payment
-        await _refreshPaymentData();
+        // Navigate back with success result after successful payment with delay to avoid conflicts
+        Future.delayed(const Duration(milliseconds: 500), () {
+          try {
+            if (context.mounted) {
+              print(
+                "PaymentScreen: Navigating back with payment success result",
+              );
+              Navigator.of(
+                context,
+              ).pop({'payment_success': true, 'order_id': widget.order.id});
+            }
+          } catch (e) {
+            print('Navigation error: $e');
+          }
+        });
 
         // Also trigger refresh of order tracking screen if it's open
         // by refreshing the order data in OrdersProvider

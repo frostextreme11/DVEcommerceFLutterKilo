@@ -238,6 +238,30 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     }
   }
 
+  void _handleNavigationResult(Map<String, dynamic> result) {
+    if (result['payment_success'] == true) {
+      final paymentOrderId = result['order_id'] as String?;
+      if (paymentOrderId == _currentOrder?.id) {
+        print(
+          'OrderTrackingScreen: Payment success detected for current order, refreshing data...',
+        );
+
+        // Refresh payment data immediately when returning from successful payment
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _refreshOrderData();
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment data has been updated'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final paymentProvider = Provider.of<PaymentProvider>(context);
@@ -701,13 +725,19 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               OrderStatus.pembayaranPartial)
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).push(
+                            onPressed: () async {
+                              final result = await Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       PaymentScreen(order: _currentOrder!),
                                 ),
                               );
+
+                              // Handle result when returning from payment screen
+                              if (result != null &&
+                                  result is Map<String, dynamic>) {
+                                _handleNavigationResult(result);
+                              }
                             },
                             icon: const Icon(Icons.payment),
                             label: const Text('Bayar Sekarang'),

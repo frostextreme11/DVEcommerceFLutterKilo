@@ -3,10 +3,12 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config/supabase_config.dart';
+import '../providers/auth_provider.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -264,19 +266,34 @@ class NotificationService {
       print('🔍 Context available: ${context != null}');
 
       if (context != null) {
-        // Determine route based on notification type or user role
-        String route = '/orders/$orderId'; // Default to customer route
+        // Check if current user is admin by accessing auth provider
+        bool isAdmin = false;
+        try {
+          // Try to get the auth provider from context
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
+          isAdmin = authProvider.isAdmin;
+          print('🔍 Current user role check: isAdmin = $isAdmin');
+        } catch (e) {
+          print('❌ Error checking user role: $e');
+        }
 
-        if (notificationType == 'new_order' ||
+        // Determine route based on user role first, then notification type
+        String route;
+        if (isAdmin) {
+          route = '/admin/order-details/$orderId';
+          print('🔍 Admin user detected, routing to admin order details');
+        } else if (notificationType == 'new_order' ||
             notificationType == 'admin_notification') {
           route = '/admin/order-details/$orderId';
-        } else if (notificationType == 'customer_notification' ||
-            notificationType == null) {
-          route = '/orders/$orderId';
+        } else {
+          route = '/orders/$orderId'; // Default to customer route
         }
 
         print(
-          'Navigating to route: $route for order: $orderId (type: $notificationType)',
+          'Navigating to route: $route for order: $orderId (type: $notificationType, isAdmin: $isAdmin)',
         );
 
         try {
