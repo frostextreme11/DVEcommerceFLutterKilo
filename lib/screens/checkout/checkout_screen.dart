@@ -129,22 +129,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Order Summary
-                _buildSectionTitle('Order Summary'),
+                _buildSectionTitle('Ringkasan Daftar Pesanan'),
                 _buildOrderSummary(cartProvider),
 
                 const SizedBox(height: 24),
 
                 // Shipping Information
-                _buildSectionTitle('Shipping Information'),
+                _buildSectionTitle('Informasi Pengiriman'),
                 _buildShippingForm(),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 10),
 
                 // Payment Method
-                _buildSectionTitle('Payment Method'),
-                _buildPaymentMethodSelector(),
-
-                const SizedBox(height: 24),
+                //_buildSectionTitle('Payment Method'),
+                //_buildPaymentMethodSelector(),
 
                 // Order Total
                 _buildOrderTotal(cartProvider),
@@ -182,7 +180,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           )
                         : Text(
-                            'Place Order - Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                            'Checkout Sekarang - Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -327,7 +325,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             // Receiver Information Section
             Text(
-              'Receiver Information',
+              'Informasi Penerima',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.primary,
@@ -339,8 +337,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             TextFormField(
               controller: _receiverNameController,
               decoration: InputDecoration(
-                labelText: 'Receiver Full Name',
-                hintText: 'Enter receiver\'s full name',
+                labelText: 'Nama Lengkap Penerima',
+                hintText: 'Masukkan Nama Penerima',
                 prefixIcon: const Icon(Icons.person),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -350,10 +348,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter receiver\'s name';
+                  return 'Tolong masukkan nama penerima';
                 }
                 if (value.trim().length < 2) {
-                  return 'Name must be at least 2 characters';
+                  return 'Nama harus terdiri dari minimal 2 karakter';
                 }
                 return null;
               },
@@ -365,7 +363,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             TextFormField(
               controller: _receiverPhoneController,
               decoration: InputDecoration(
-                labelText: 'Receiver Phone Number',
+                labelText: 'Nomor Telepon Penerima',
                 hintText: '+62xxxxxxxxxx',
                 prefixIcon: const Icon(Icons.phone),
                 border: OutlineInputBorder(
@@ -377,10 +375,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               keyboardType: TextInputType.phone,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter receiver\'s phone number';
+                  return 'Tolong masukkan nomor telepon penerima';
                 }
                 if (value.trim().length < 10) {
-                  return 'Please enter a valid phone number';
+                  return 'Tolong masukkan nomor telepon yang valid';
                 }
                 return null;
               },
@@ -390,7 +388,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
             // Shipping Address Section
             Text(
-              'Shipping Address',
+              'Alamat Pengiriman',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.primary,
@@ -402,9 +400,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             TextFormField(
               controller: _receiverAddressController,
               decoration: InputDecoration(
-                labelText: 'Complete Shipping Address',
-                hintText:
-                    'Street address, district, city, province, postal code',
+                labelText: 'Alamat Lengkap Pengiriman',
+                hintText: 'Alamat jalan, kecamatan, kota, provinsi, kode pos',
                 prefixIcon: const Icon(Icons.location_on),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -415,10 +412,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               maxLines: 4,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter complete shipping address';
+                  return 'Tolong masukkan alamat pengiriman yang lengkap';
                 }
                 if (value.trim().length < 20) {
-                  return 'Please enter a complete address with all details';
+                  return 'Tolong masukkan alamat yang lengkap dengan semua detail';
                 }
                 return null;
               },
@@ -430,8 +427,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             DropdownButtonFormField<String>(
               value: _selectedCourier,
               decoration: InputDecoration(
-                labelText: 'Courier Service',
-                hintText: 'Select a courier service',
+                labelText: 'Kurir Pengiriman',
+                hintText: 'Pilih layanan kurir',
                 prefixIcon: const Icon(Icons.local_shipping),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -452,7 +449,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               },
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please select a courier service';
+                  return 'Tolong pilih layanan kurir';
                 }
                 return null;
               },
@@ -464,8 +461,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             TextFormField(
               controller: _notesController,
               decoration: InputDecoration(
-                labelText: 'Order Notes (Optional)',
-                hintText: 'Any special delivery instructions...',
+                labelText: 'Catatan Pesanan (Opsional)',
+                hintText: 'Instruksi orderan atau pengiriman',
                 prefixIcon: const Icon(Icons.note),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -520,7 +517,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             // Sender Information (only show if dropship is checked)
             if (_isDropship) ...[
               Text(
-                'Sender Information',
+                'Informasi Pengirim',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.primary,
@@ -532,8 +529,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               TextFormField(
                 controller: _senderNameController,
                 decoration: InputDecoration(
-                  labelText: 'Sender Full Name',
-                  hintText: 'Enter sender\'s full name',
+                  labelText: 'Nama Lengkap Pengirim',
+                  hintText: 'Masukkan Nama Pengirim',
                   prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -543,10 +540,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 validator: (value) {
                   if (_isDropship && (value == null || value.trim().isEmpty)) {
-                    return 'Please enter sender\'s name';
+                    return 'Tolong masukkan nama pengirim';
                   }
                   if (_isDropship && value != null && value.trim().length < 2) {
-                    return 'Name must be at least 2 characters';
+                    return 'Nama harus terdiri dari minimal 2 karakter';
                   }
                   return null;
                 },
@@ -558,7 +555,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               TextFormField(
                 controller: _senderPhoneController,
                 decoration: InputDecoration(
-                  labelText: 'Sender Phone Number',
+                  labelText: 'Nomor Telepon Pengirim',
                   hintText: '+62xxxxxxxxxx',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   border: OutlineInputBorder(
@@ -570,12 +567,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (_isDropship && (value == null || value.trim().isEmpty)) {
-                    return 'Please enter sender\'s phone number';
+                    return 'Tolong masukkan nomor telepon pengirim';
                   }
                   if (_isDropship &&
                       value != null &&
                       value.trim().length < 10) {
-                    return 'Please enter a valid phone number';
+                    return 'Tolong masukkan nomor telepon yang valid';
                   }
                   return null;
                 },
@@ -606,7 +603,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Delivery Address Preview',
+                        'Alamat Pengiriman Tercatat',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).primaryColor,
@@ -618,7 +615,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   Text(
                     _receiverAddressController.text.isNotEmpty
                         ? _receiverAddressController.text
-                        : 'Complete address will appear here...',
+                        : 'Alamat lengkap akan muncul di sini...',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(
                         context,

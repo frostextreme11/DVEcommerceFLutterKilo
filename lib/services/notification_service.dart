@@ -310,9 +310,7 @@ class NotificationService {
       // Format date
       String formattedDate =
           '${orderDate.day}/${orderDate.month}/${orderDate.year} ${orderDate.hour}:${orderDate.minute.toString().padLeft(2, '0')}';
-      print(
-        "NOP NOP NOP sendOrderNotificationToAdmin SEND FCM NOTIFICATION ADMIN TOKEN: $adminToken",
-      );
+
       // Send FCM notification directly
       await _sendFCMNotification(
         token: adminToken,
@@ -344,9 +342,6 @@ class NotificationService {
     required String orderId,
   }) async {
     try {
-      print(
-        "NOP NOP NOP sendOrderNotificationToCustomer SEND FCM NOTIFICATION CUSTOMER TOKEN: $customerToken",
-      );
       // Send FCM notification directly
       await _sendFCMNotification(
         token: customerToken,

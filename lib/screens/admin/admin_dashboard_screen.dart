@@ -55,112 +55,134 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final usersProvider = context.read<AdminUsersProvider>();
     final categoriesProvider = context.read<AdminCategoriesProvider>();
 
-    // Load all data
+    // Load essential data only (products, users, categories)
+    // Orders will be loaded only when the orders tab is accessed
     productsProvider.loadProducts();
-    ordersProvider.loadAllOrders();
     usersProvider.loadUsers();
     categoriesProvider.loadCategories();
+
+    // Reset sales values to ensure clean state for tap-to-calculate
+    ordersProvider.resetSalesValues();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          // Notifications Button
-          Consumer<AdminNotificationProvider>(
-            builder: (context, notificationProvider, child) {
-              final unreadCount = notificationProvider.unreadCount;
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications),
-                    onPressed: () {
-                      context.push('/admin/notifications');
-                    },
-                    tooltip: 'Notifications',
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Navigate back to cart screen when cart is empty
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_titles[_selectedIndex]),
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          actions: [
+            // Notifications Button
+            Consumer<AdminNotificationProvider>(
+              builder: (context, notificationProvider, child) {
+                final unreadCount = notificationProvider.unreadCount;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications),
+                      onPressed: () {
+                        context.push('/admin/notifications');
+                      },
+                      tooltip: 'Notifications',
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          textAlign: TextAlign.center,
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
-          // Theme Settings Button
-          IconButton(
-            icon: const Icon(Icons.palette),
-            onPressed: () {
-              _showThemeSettingsDialog(context);
-            },
-            tooltip: 'Theme Settings',
-          ),
-          // Logout Button
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              _showLogoutDialog(context);
-            },
-            tooltip: 'Logout',
-          ),
-        ],
-      ),
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory),
-            label: 'Products',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Orders',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.category),
-            label: 'Categories',
-          ),
-        ],
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey,
+                  ],
+                );
+              },
+            ),
+            // Theme Settings Button
+            IconButton(
+              icon: const Icon(Icons.palette),
+              onPressed: () {
+                _showThemeSettingsDialog(context);
+              },
+              tooltip: 'Theme Settings',
+            ),
+            // Logout Button
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () {
+                _showLogoutDialog(context);
+              },
+              tooltip: 'Logout',
+            ),
+          ],
+        ),
+        body: _screens[_selectedIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+
+            // Load orders only when orders tab is selected
+            if (index == 2) {
+              // Orders tab index
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final ordersProvider = context.read<AdminOrdersProvider>();
+                if (ordersProvider.orders.isEmpty) {
+                  ordersProvider.loadAllOrders();
+                }
+              });
+            }
+          },
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.inventory),
+              label: 'Products',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart),
+              label: 'Orders',
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.category),
+              label: 'Categories',
+            ),
+          ],
+          selectedItemColor: Theme.of(context).primaryColor,
+          unselectedItemColor: Colors.grey,
+        ),
       ),
     );
   }
@@ -296,25 +318,53 @@ class DashboardOverviewScreen extends StatelessWidget {
           // Sales Statistics Cards
           Consumer<AdminOrdersProvider>(
             builder: (context, ordersProvider, child) {
+              final monthlySalesText = ordersProvider.monthlySales > 0
+                  ? 'Rp ${ordersProvider.monthlySales.toStringAsFixed(0)}'
+                  : 'Tap to calculate';
+
+              final yearlySalesText = ordersProvider.yearlySales > 0
+                  ? 'Rp ${ordersProvider.yearlySales.toStringAsFixed(0)}'
+                  : 'Tap to calculate';
+
               return Row(
                 children: [
                   Expanded(
-                    child: _buildSalesCard(
-                      context,
-                      'Monthly Sales',
-                      'Rp ${ordersProvider.monthlySales.toStringAsFixed(0)}',
-                      Icons.trending_up,
-                      Colors.green,
+                    child: GestureDetector(
+                      onTap:
+                          ordersProvider.monthlySales == 0 &&
+                              !ordersProvider.isCalculatingSales
+                          ? () => ordersProvider.calculateMonthlySales()
+                          : null,
+                      child: _buildSalesCard(
+                        context,
+                        'Monthly Sales',
+                        monthlySalesText,
+                        Icons.trending_up,
+                        Colors.green,
+                        isLoading:
+                            ordersProvider.isCalculatingSales &&
+                            ordersProvider.monthlySales == 0,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildSalesCard(
-                      context,
-                      'Yearly Sales',
-                      'Rp ${ordersProvider.yearlySales.toStringAsFixed(0)}',
-                      Icons.calendar_today,
-                      Colors.blue,
+                    child: GestureDetector(
+                      onTap:
+                          ordersProvider.yearlySales == 0 &&
+                              !ordersProvider.isCalculatingSales
+                          ? () => ordersProvider.calculateYearlySales()
+                          : null,
+                      child: _buildSalesCard(
+                        context,
+                        'Yearly Sales',
+                        yearlySalesText,
+                        Icons.calendar_today,
+                        Colors.blue,
+                        isLoading:
+                            ordersProvider.isCalculatingSales &&
+                            ordersProvider.yearlySales == 0,
+                      ),
                     ),
                   ),
                 ],
@@ -344,23 +394,32 @@ class DashboardOverviewScreen extends StatelessWidget {
                   final totalUsers = usersProvider.users.length;
                   final totalCategories = categoriesProvider.categories.length;
 
-                  final pendingOrders =
-                      ordersProvider
-                          .getOrdersByStatus(OrderStatus.menungguOngkir)
-                          .length +
-                      ordersProvider
-                          .getOrdersByStatus(OrderStatus.menungguPembayaran)
-                          .length +
-                      ordersProvider
-                          .getOrdersByStatus(OrderStatus.pembayaranPartial)
-                          .length;
-                  final completedOrders =
-                      ordersProvider
-                          .getOrdersByStatus(OrderStatus.lunas)
-                          .length +
-                      ordersProvider
-                          .getOrdersByStatus(OrderStatus.barangDikirim)
-                          .length;
+                  // Handle order stats - show 0 if orders not loaded yet
+                  final pendingOrders = ordersProvider.orders.isNotEmpty
+                      ? ordersProvider
+                                .getOrdersByStatus(OrderStatus.menungguOngkir)
+                                .length +
+                            ordersProvider
+                                .getOrdersByStatus(
+                                  OrderStatus.menungguPembayaran,
+                                )
+                                .length +
+                            ordersProvider
+                                .getOrdersByStatus(
+                                  OrderStatus.pembayaranPartial,
+                                )
+                                .length
+                      : 0;
+
+                  final completedOrders = ordersProvider.orders.isNotEmpty
+                      ? ordersProvider
+                                .getOrdersByStatus(OrderStatus.lunas)
+                                .length +
+                            ordersProvider
+                                .getOrdersByStatus(OrderStatus.barangDikirim)
+                                .length
+                      : 0;
+
                   final activeProducts = productsProvider.products
                       .where((p) => p.isActive)
                       .length;
@@ -467,11 +526,20 @@ class DashboardOverviewScreen extends StatelessWidget {
                   Icons.list,
                   Colors.orange,
                   () {
-                    // Switch to orders tab
+                    // Switch to orders tab and load orders
                     final state = context
                         .findAncestorStateOfType<_AdminDashboardScreenState>();
                     state?.setState(() {
                       state._selectedIndex = 2; // Orders tab index
+                    });
+
+                    // Load orders after switching to orders tab
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final ordersProvider = context
+                          .read<AdminOrdersProvider>();
+                      if (ordersProvider.orders.isEmpty) {
+                        ordersProvider.loadAllOrders();
+                      }
                     });
                   },
                 ),
@@ -541,8 +609,9 @@ class DashboardOverviewScreen extends StatelessWidget {
     String title,
     String value,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    bool isLoading = false,
+  }) {
     return Card(
       elevation: 4,
       child: Padding(
@@ -550,7 +619,17 @@ class DashboardOverviewScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 32, color: color),
+            if (isLoading)
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              )
+            else
+              Icon(icon, size: 32, color: color),
             const SizedBox(height: 8),
             Text(
               value,

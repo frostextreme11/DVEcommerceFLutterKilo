@@ -367,7 +367,7 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
                   child: const Text(
-                    'Proceed to Checkout',
+                    'Checkout Semua Barang',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),

@@ -387,38 +387,38 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Order Details',
+                          'Detail Order',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 16),
                         _buildOrderDetail(
-                          'Order Number',
+                          'Nomor Order',
                           _currentOrder!.orderNumber,
                         ),
                         _buildOrderDetail(
-                          'Total Amount',
+                          'Total Harga',
                           'Rp ${_currentOrder!.totalAmount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                         ),
                         _buildOrderDetail(
-                          'Payment Method',
+                          'Metode Pembayaran',
                           _currentOrder!.paymentMethod ?? 'Not specified',
                         ),
                         _buildOrderDetail(
-                          'Shipping Address',
+                          'Alamat Pengiriman',
                           _currentOrder!.shippingAddress,
                         ),
                         if (_currentOrder!.courierInfo != null &&
                             _currentOrder!.courierInfo!.isNotEmpty)
                           _buildOrderDetail(
-                            'Courier Service',
+                            'Kurir',
                             _currentOrder!.courierInfo!,
                           ),
                         if (_currentOrder!.notes != null &&
                             _currentOrder!.notes!.isNotEmpty)
                           _buildOrderDetail('Notes', _currentOrder!.notes!),
                         _buildOrderDetail(
-                          'Order Date',
+                          'Tanggal Order',
                           _currentOrder!.createdAt.toString().split(' ')[0],
                         ),
                       ],
@@ -436,7 +436,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Additional Costs',
+                          'Ongkos Tambahan / Ongkir',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -444,20 +444,17 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         if (_currentOrder!.additionalCosts != null &&
                             _currentOrder!.additionalCosts! > 0) ...[
                           _buildOrderDetail(
-                            'Additional Amount',
+                            'Ongkos Tambahan',
                             'Rp ${_currentOrder!.additionalCosts!.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                           ),
                           if (_currentOrder!.additionalCostsNotes != null &&
                               _currentOrder!.additionalCostsNotes!.isNotEmpty)
                             _buildOrderDetail(
-                              'Notes',
+                              'Catatan',
                               _currentOrder!.additionalCostsNotes!,
                             ),
                         ] else ...[
-                          _buildOrderDetail(
-                            'Additional Costs',
-                            'No additional costs',
-                          ),
+                          _buildOrderDetail('Ongkos Tambahan', 'Tidak ada'),
                         ],
                       ],
                     ),
@@ -514,7 +511,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Payment History & Status',
+                                'Histori Pembayaran & Status',
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
@@ -606,7 +603,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
-                                            'Payment Required',
+                                            'Belum melakukan Pembayaran',
                                             style: TextStyle(
                                               color: Colors.orange,
                                               fontWeight: FontWeight.w600,
@@ -616,7 +613,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        'You haven\'t submitted any payments yet. Please complete your payment to proceed with the order.',
+                                        'Anda belum melakukan pembayaran untuk pesanan ini. Silakan lakukan pembayaran dan upload bukti pembayaran.',
                                         style: TextStyle(
                                           color: Colors.grey.shade700,
                                         ),
@@ -643,7 +640,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Order Items',
+                          'Barang yang dibeli',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -690,7 +687,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         child: OutlinedButton.icon(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(Icons.arrow_back),
-                          label: const Text('Back to Orders'),
+                          label: const Text('Back'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
@@ -713,7 +710,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               );
                             },
                             icon: const Icon(Icons.payment),
-                            label: const Text('Pay Now'),
+                            label: const Text('Bayar Sekarang'),
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
@@ -791,7 +788,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   ),
                   if (isCurrent && order.status == OrderStatus.barangDikirim)
                     Text(
-                      'Estimated delivery: 2-3 business days',
+                      'Estimasi tiba 2-3 hari kerja',
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: Colors.grey),
@@ -949,7 +946,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Payment Progress',
+              'Progres Pembayaran',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -1031,7 +1028,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           Icon(Icons.payment, color: order.paymentStatus.color),
           const SizedBox(width: 8),
           Text(
-            'Payment Status: ${order.paymentStatus.displayName}',
+            'Status Pembayaran: ${order.paymentStatus.displayName}',
             style: TextStyle(
               color: order.paymentStatus.color,
               fontWeight: FontWeight.w600,

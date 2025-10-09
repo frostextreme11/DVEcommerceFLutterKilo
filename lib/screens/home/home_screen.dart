@@ -290,7 +290,7 @@ class _HomeContentState extends State<HomeContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Welcome${authProvider.userProfile?['full_name'] != null ? ', ${authProvider.userProfile!['full_name'].split(' ').first}' : ''}!',
+                              'Hallo ${authProvider.userProfile?['full_name'] != null ? ', ${authProvider.userProfile!['full_name'].split(' ').first}' : ''}!',
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
                                     color: isLuxury
@@ -358,7 +358,7 @@ class _HomeContentState extends State<HomeContent> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
                   child: Text(
-                    'Shop by Category',
+                    'Kategori Produk',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -732,7 +732,7 @@ class _CartContentState extends State<CartContent> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Your cart is empty',
+            'keranjang anda kosong',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Theme.of(
                 context,
@@ -741,7 +741,7 @@ class _CartContentState extends State<CartContent> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add some products to get started',
+            'Tambahkan beberapa produk untuk memulai',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(
                 context,
@@ -759,7 +759,7 @@ class _CartContentState extends State<CartContent> {
               });
             },
             icon: const Icon(Icons.shopping_bag),
-            label: const Text('Start Shopping'),
+            label: const Text('Mulai Belanja'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
@@ -1224,7 +1224,7 @@ class _OrdersContentState extends State<OrdersContent> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Your Orders',
+                'Order Anda',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -1620,19 +1620,19 @@ class _ProfileContentState extends State<ProfileContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Personal Information',
+              'Informasi Personal',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildProfileItem('Name', authProvider.userProfile!['full_name']),
+            _buildProfileItem('Nama', authProvider.userProfile!['full_name']),
             _buildProfileItem(
-              'Phone',
+              'Nomor Telepon',
               authProvider.userProfile!['phone_number'],
             ),
             _buildProfileItem(
-              'Address',
+              'Alamat',
               authProvider.userProfile!['full_address'],
             ),
           ],
@@ -1662,12 +1662,12 @@ class _ProfileContentState extends State<ProfileContent> {
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
-                  labelText: 'Full Name',
+                  labelText: 'Nama Lengkap',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your name';
+                    return 'Silakan masukkan nama Anda';
                   }
                   return null;
                 },
@@ -1679,13 +1679,13 @@ class _ProfileContentState extends State<ProfileContent> {
               TextFormField(
                 controller: _phoneController,
                 decoration: const InputDecoration(
-                  labelText: 'Phone Number',
+                  labelText: 'Nomor Telepon',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.phone,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your phone number';
+                    return 'Silakan masukkan nomor telepon Anda';
                   }
                   return null;
                 },
@@ -1697,13 +1697,13 @@ class _ProfileContentState extends State<ProfileContent> {
               TextFormField(
                 controller: _addressController,
                 decoration: const InputDecoration(
-                  labelText: 'Address',
+                  labelText: 'Alamat',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your address';
+                    return 'Silakan masukkan alamat Anda';
                   }
                   return null;
                 },

@@ -1315,8 +1315,8 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                   context,
                   customerId,
                   orderId ?? '',
-                  'Payment Verified',
-                  'Your payment of Rp ${amount.toStringAsFixed(0)} for order $orderNumber has been verified and confirmed. Thank you!',
+                  'Pembayaran Diterima',
+                  'Pembayaran Anda sebesar Rp ${amount.toStringAsFixed(0)} untuk pesanan $orderNumber telah diverifikasi dan dikonfirmasi. Terima kasih!',
                 );
                 print('Customer notification sent successfully');
               } catch (customerNotificationError) {
@@ -1571,8 +1571,8 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                       context,
                       _currentOrder!.userId,
                       _currentOrder!.id,
-                      'Order Status Updated',
-                      'Your order ${_currentOrder!.orderNumber} status has been updated to ${status.displayName}.',
+                      'Status Pesanan Diperbarui',
+                      'Status pesanan ${_currentOrder!.orderNumber} Anda telah diperbarui menjadi ${status.displayName}.',
                     );
 
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1685,14 +1685,14 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                       context,
                       _currentOrder!.userId,
                       _currentOrder!.id,
-                      'Courier Information Updated',
-                      'Courier information for your order ${_currentOrder!.orderNumber} has been updated to $selectedCourier.',
+                      'Informasi Kurir Diperbarui',
+                      'Informasi kurir untuk pesanan ${_currentOrder!.orderNumber} Anda telah diperbarui menjadi $selectedCourier.',
                     );
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Courier info updated to $selectedCourier',
+                          'Informasi kurir diperbarui menjadi $selectedCourier',
                         ),
                         backgroundColor: Colors.green,
                       ),
@@ -1700,7 +1700,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Failed to update courier info'),
+                        content: Text('Gagal memperbarui informasi kurir'),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -1804,8 +1804,8 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                     context,
                     _currentOrder!.userId,
                     _currentOrder!.id,
-                    'Order Price Updated',
-                    'Your order ${_currentOrder!.orderNumber} price has been updated. Additional costs: Rp ${cost.toStringAsFixed(0)}. Total amount: Rp ${(_currentOrder!.totalAmount + cost).toStringAsFixed(0)}. Please complete your payment.',
+                    'Harga Pesanan Diperbarui',
+                    'Harga pesanan ${_currentOrder!.orderNumber} Anda telah diperbarui. Biaya tambahan: Rp ${cost.toStringAsFixed(0)}. Jumlah total: Rp ${(_currentOrder!.totalAmount + cost).toStringAsFixed(0)}. Silakan selesaikan pembayaran Anda.',
                   );
                 } catch (e) {
                   print('Failed to send notification: $e');
@@ -1820,14 +1820,14 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
               if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Additional costs updated successfully'),
+                    content: Text('Biaya tambahan berhasil diperbarui'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Failed to update additional costs'),
+                    content: Text('Gagal memperbarui biaya tambahan'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -1929,7 +1929,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
   void _showNotifyCustomerDialog(BuildContext context) {
     final messageController = TextEditingController(
       text:
-          'Reminder: Please complete your payment for order ${_currentOrder!.orderNumber}. Total amount: Rp ${_currentOrder!.totalAmount.toStringAsFixed(0)}',
+          'Mohon selesaikan pembayaran untuk pesanan ${_currentOrder!.orderNumber}. Total: Rp ${_currentOrder!.totalAmount.toStringAsFixed(0)}',
     );
 
     showDialog(
@@ -1965,7 +1965,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                   context,
                   _currentOrder!.userId,
                   _currentOrder!.id,
-                  'Payment Reminder',
+                  'Pembayaran Diingatkan',
                   message,
                 );
                 Navigator.pop(context);
@@ -1996,8 +1996,8 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
 
           final messageController = TextEditingController(
             text: remainingAmount > 0
-                ? 'Payment reminder for order ${_currentOrder!.orderNumber}. Total: Rp ${totalAmount.toStringAsFixed(0)}, Paid: Rp ${totalPaid.toStringAsFixed(0)}, Remaining: Rp ${remainingAmount.toStringAsFixed(0)}. Please complete your payment.'
-                : 'Payment reminder for order ${_currentOrder!.orderNumber}. Total amount: Rp ${totalAmount.toStringAsFixed(0)}. Thank you for your payment!',
+                ? 'Mohon selesaikan pembayaran untuk pesanan ${_currentOrder!.orderNumber}. Total: Rp ${totalAmount.toStringAsFixed(0)}, Dibayar: Rp ${totalPaid.toStringAsFixed(0)}, Sisa: Rp ${remainingAmount.toStringAsFixed(0)}.'
+                : 'Pengingat pembayaran untuk pesanan ${_currentOrder!.orderNumber}. Total: Rp ${totalAmount.toStringAsFixed(0)}. Terima kasih atas pembayaran Anda!',
           );
 
           return AlertDialog(
@@ -2087,7 +2087,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                       context,
                       _currentOrder!.userId,
                       _currentOrder!.id,
-                      'Payment Required',
+                      'Pembayaran Diingatkan',
                       message,
                     );
                     Navigator.pop(context);

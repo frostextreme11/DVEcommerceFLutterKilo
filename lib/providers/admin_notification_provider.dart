@@ -32,7 +32,6 @@ class AdminNotification {
   });
 
   factory AdminNotification.fromJson(Map<String, dynamic> json) {
-    print("NOP NOP NOP PARSE NOTIFICATION JSON: $json");
     return AdminNotification(
       id: json['id'],
       orderId: json['order_id'],

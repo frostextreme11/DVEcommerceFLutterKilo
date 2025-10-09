@@ -81,7 +81,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Total Amount:',
+                      'Total Bayar:',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -303,7 +303,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Transfer Information',
+                          'Informasi Nomor Rekening',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -369,7 +369,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Payment',
+                      'Pembayaran',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -514,7 +514,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             child: ElevatedButton.icon(
                               onPressed: _isUploading ? null : _pickImage,
                               icon: const Icon(Icons.photo_camera),
-                              label: const Text('Change Photo'),
+                              label: const Text('Ganti Gambar'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange,
                                 foregroundColor: Colors.white,
@@ -526,7 +526,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             child: OutlinedButton.icon(
                               onPressed: _isUploading ? null : _removeImage,
                               icon: const Icon(Icons.delete),
-                              label: const Text('Remove'),
+                              label: const Text('Hapus Gambar'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.red,
                               ),
@@ -600,8 +600,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               width: double.infinity,
               child: CustomButton(
                 text: _isSubmitting
-                    ? 'Submitting Payment...'
-                    : 'Submit Payment',
+                    ? 'Pembayaran Disubmit...'
+                    : 'Submit Pembayaran',
                 onPressed:
                     (_paymentProofImage == null && _uploadedImageUrl == null) ||
                         _isSubmitting
@@ -741,7 +741,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               .from('payment-proofs')
               .getPublicUrl(fileName);
 
-          print('Payment proof uploaded successfully: $imageUrl');
+          print('Bukti Pembayaran Berhasil diupload: $imageUrl');
           setState(() {
             _uploadedImageUrl = imageUrl;
             _paymentProofImage = null; // Clear the file reference
@@ -752,7 +752,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Payment proof upload failed. Please check your connection and try again. Error: $e',
+              'Upload bukti pembayaran gagal. Silakan periksa koneksi Anda dan coba lagi. Error: $e',
             ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
@@ -764,7 +764,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error uploading image: $e'),
+          content: Text('Error Upload Gambar: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -785,7 +785,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (_uploadedImageUrl == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please upload payment proof first'),
+            content: Text('Silakan unggah bukti pembayaran terlebih dahulu'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -796,7 +796,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_uploadedImageUrl == null && _paymentProofImage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please wait for payment proof to upload or try again'),
+          content: Text(
+            'Silakan tunggu hingga bukti pembayaran diunggah atau coba lagi',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -815,7 +817,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (enteredAmountText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter payment amount'),
+            content: Text('Silakan masukkan jumlah pembayaran'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -827,7 +829,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Please enter a valid payment amount (minimum Rp 10,000)',
+              'Silakan masukkan jumlah pembayaran yang valid (minimum Rp 10.000)',
             ),
             backgroundColor: Colors.orange,
           ),
@@ -862,7 +864,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Payment submitted successfully! Admin will verify your payment.',
+              'Pembayaran berhasil disubmit! Admin akan memverifikasi pembayaran Anda.',
             ),
             backgroundColor: Colors.green,
           ),
@@ -893,7 +895,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error submitting payment: $e'),
+          content: Text('Error submit pembayaran: $e'),
           backgroundColor: Colors.red,
         ),
       );

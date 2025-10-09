@@ -136,10 +136,10 @@ class ThemeProvider extends ChangeNotifier {
   static final ThemeData _luxuryTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    primaryColor: const Color.fromARGB(255, 34, 22, 13), // Dark Brown
+    primaryColor: const Color.fromARGB(255, 48, 31, 18), // Dark Brown
     scaffoldBackgroundColor: const Color(0xFFFEFEFE),
     colorScheme: const ColorScheme.light(
-      primary: Color.fromARGB(255, 34, 22, 13),
+      primary: Color.fromARGB(255, 48, 31, 18),
       secondary: Color(0xFF654321), // Darker Brown
       surface: Colors.white,
       background: Color(0xFFFEFEFE),
@@ -151,26 +151,26 @@ class ThemeProvider extends ChangeNotifier {
       onError: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color.fromARGB(255, 34, 22, 13),
+      backgroundColor: Color.fromARGB(255, 48, 31, 18),
       foregroundColor: Colors.white,
       elevation: 2,
       shadowColor: Color(0xFF8B4513),
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
-      shadowColor: const Color.fromARGB(255, 34, 22, 13).withValues(alpha: 0.2),
+      shadowColor: const Color.fromARGB(255, 48, 31, 18).withValues(alpha: 0.2),
       elevation: 6,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: const Color.fromARGB(255, 34, 22, 13),
+          color: const Color.fromARGB(255, 48, 31, 18),
           width: 1,
         ),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color.fromARGB(255, 34, 22, 13),
+        backgroundColor: const Color.fromARGB(255, 48, 31, 18),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

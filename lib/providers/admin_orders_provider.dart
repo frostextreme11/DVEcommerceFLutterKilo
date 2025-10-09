@@ -823,40 +823,102 @@ class AdminOrdersProvider extends ChangeNotifier {
         .toList();
   }
 
-  // Calculate total sales for current month
-  double get monthlySales {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+  // Sales calculation variables
+  double _monthlySales = 0.0;
+  double _yearlySales = 0.0;
+  bool _isCalculatingSales = false;
 
-    return _orders
-        .where(
-          (order) =>
-              order.createdAt.isAfter(startOfMonth) &&
-              order.createdAt.isBefore(endOfMonth) &&
-              (order.status == OrderStatus.menungguPembayaran ||
-                  order.status == OrderStatus.pembayaranPartial ||
-                  order.status == OrderStatus.lunas ||
-                  order.status == OrderStatus.barangDikirim),
-        )
-        .fold(0.0, (sum, order) => sum + order.totalAmount);
+  // Getters for sales values
+  double get monthlySales => _monthlySales;
+  double get yearlySales => _yearlySales;
+  bool get isCalculatingSales => _isCalculatingSales;
+
+  // Calculate total sales for current month on demand (optimized - direct DB query)
+  Future<void> calculateMonthlySales() async {
+    if (_isCalculatingSales) return;
+
+    _isCalculatingSales = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+      // Query orders directly from database for monthly sales
+      var query = _supabase
+          .from('kl_orders')
+          .select('total_amount, status, created_at')
+          .gte('created_at', startOfMonth.toIso8601String())
+          .lte('created_at', endOfMonth.toIso8601String());
+
+      // Apply status filter using or conditions
+      query = query.or(
+        'status.eq.${OrderStatus.menungguPembayaran.databaseValue},status.eq.${OrderStatus.pembayaranPartial.databaseValue},status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
+      );
+
+      final ordersResponse = await query;
+
+      final ordersData = ordersResponse as List;
+      _monthlySales = ordersData.fold(0.0, (sum, order) {
+        final totalAmount = order['total_amount'] as double? ?? 0.0;
+        return sum + totalAmount;
+      });
+
+      print(
+        'AdminOrdersProvider: Calculated monthly sales from DB: Rp ${_monthlySales.toStringAsFixed(0)} (${ordersData.length} orders)',
+      );
+    } catch (e) {
+      print('AdminOrdersProvider: Error calculating monthly sales from DB: $e');
+      _monthlySales = 0.0;
+    } finally {
+      _isCalculatingSales = false;
+      notifyListeners();
+    }
   }
 
-  // Calculate total sales for current year
-  double get yearlySales {
-    final now = DateTime.now();
-    final startOfYear = DateTime(now.year, 1, 1);
-    final endOfYear = DateTime(now.year, 12, 31, 23, 59, 59);
+  // Calculate total sales for current year on demand (optimized - direct DB query)
+  Future<void> calculateYearlySales() async {
+    if (_isCalculatingSales) return;
 
-    return _orders
-        .where(
-          (order) =>
-              order.createdAt.isAfter(startOfYear) &&
-              order.createdAt.isBefore(endOfYear) &&
-              (order.status == OrderStatus.lunas ||
-                  order.status == OrderStatus.barangDikirim),
-        )
-        .fold(0.0, (sum, order) => sum + order.totalAmount);
+    _isCalculatingSales = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now();
+      final startOfYear = DateTime(now.year, 1, 1);
+      final endOfYear = DateTime(now.year, 12, 31, 23, 59, 59);
+
+      // Query orders directly from database for yearly sales
+      var query = _supabase
+          .from('kl_orders')
+          .select('total_amount, status, created_at')
+          .gte('created_at', startOfYear.toIso8601String())
+          .lte('created_at', endOfYear.toIso8601String());
+
+      // Apply status filter using or conditions
+      query = query.or(
+        'status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
+      );
+
+      final ordersResponse = await query;
+
+      final ordersData = ordersResponse as List;
+      _yearlySales = ordersData.fold(0.0, (sum, order) {
+        final totalAmount = order['total_amount'] as double? ?? 0.0;
+        return sum + totalAmount;
+      });
+
+      print(
+        'AdminOrdersProvider: Calculated yearly sales from DB: Rp ${_yearlySales.toStringAsFixed(0)} (${ordersData.length} orders)',
+      );
+    } catch (e) {
+      print('AdminOrdersProvider: Error calculating yearly sales from DB: $e');
+      _yearlySales = 0.0;
+    } finally {
+      _isCalculatingSales = false;
+      notifyListeners();
+    }
   }
 
   // Calculate total sales for all time
@@ -868,5 +930,12 @@ class AdminOrdersProvider extends ChangeNotifier {
               order.status == OrderStatus.barangDikirim,
         )
         .fold(0.0, (sum, order) => sum + order.totalAmount);
+  }
+
+  // Reset sales values
+  void resetSalesValues() {
+    _monthlySales = 0.0;
+    _yearlySales = 0.0;
+    notifyListeners();
   }
 }
