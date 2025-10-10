@@ -5,6 +5,7 @@ import '../../models/user.dart';
 import '../../widgets/custom_button.dart';
 import 'user_form_screen.dart';
 import 'users_order_summary_screen.dart';
+import 'all_users_order_summary_screen.dart';
 
 class UsersAdminScreen extends StatefulWidget {
   const UsersAdminScreen({super.key});
@@ -74,6 +75,8 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
                     _buildRoleFilter(),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Row(children: [_buildAllUsersOrderSummaryButton()]),
               ],
             ),
           ),
@@ -188,6 +191,36 @@ class _UsersAdminScreenState extends State<UsersAdminScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAllUsersOrderSummaryButton() {
+    return Expanded(
+      child: SizedBox(
+        height: 48,
+        child: ElevatedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AllUsersOrderSummaryScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.summarize, color: Colors.white),
+          label: const Text(
+            'All Users Order Summary',
+            style: TextStyle(color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+        ),
+      ),
     );
   }
 

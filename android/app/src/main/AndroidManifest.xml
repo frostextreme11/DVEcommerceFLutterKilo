@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
-        android:label="DalanovaKL"
+        android:label="Dalanova"
         android:icon="@mipmap/ic_launcher">
 
         <!-- Google Sign-In -->
