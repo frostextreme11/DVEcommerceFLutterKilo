@@ -6,25 +6,32 @@ import 'dart:typed_data';
 import '../models/order.dart';
 
 class PrintService {
-  static const String _separator = '===========================================================================';
+  static const String _separator =
+      '===========================================================================';
 
   /// Generate PDF for delivery addresses
-  static Future<Uint8List> generateDeliveryAddressPdf(List<Order> orders) async {
+  static Future<Uint8List> generateDeliveryAddressPdf(
+    List<Order> orders,
+  ) async {
     final pdf = pw.Document();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(15), // Reduced margin to fit more content
+        margin: const pw.EdgeInsets.all(
+          15,
+        ), // Reduced margin to fit more content
         header: (context) => _buildHeader(),
         build: (context) => [
           pw.SizedBox(height: 10),
-          ...orders.map((order) => pw.Container(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: _buildOrderDeliveryLayout(order),
+          ...orders.map(
+            (order) => pw.Container(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: _buildOrderDeliveryLayout(order),
+              ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -33,7 +40,9 @@ class PrintService {
   }
 
   /// Generate PDF for delivery addresses with new format
-  static Future<Uint8List> generateDeliveryAddressPdfNew(List<Order> orders) async {
+  static Future<Uint8List> generateDeliveryAddressPdfNew(
+    List<Order> orders,
+  ) async {
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -43,12 +52,14 @@ class PrintService {
         header: (context) => _buildHeader(),
         build: (context) => [
           pw.SizedBox(height: 10),
-          ...orders.map((order) => pw.Container(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: _buildOrderDeliveryLayoutNew(order),
+          ...orders.map(
+            (order) => pw.Container(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: _buildOrderDeliveryLayoutNew(order),
+              ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -74,7 +85,10 @@ class PrintService {
 
   /// Generate print layout for delivery addresses
   static List<pw.Widget> _buildOrderDeliveryLayout(Order order) {
-    final totalQuantity = order.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    final totalQuantity = order.items.fold<int>(
+      0,
+      (sum, item) => sum + item.quantity,
+    );
 
     return [
       // Order container - keeps entire order together
@@ -96,7 +110,10 @@ class PrintService {
                 pw.Expanded(
                   child: pw.Text(
                     'Penerima: ${order.receiverName ?? 'No name'}',
-                    style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                 ),
                 pw.Text(
@@ -118,9 +135,9 @@ class PrintService {
                   ),
                 ),
                 pw.Text(
-                    'Ekspedisi: ${order.courierInfo ?? 'No courier'}',
-                    style: pw.TextStyle(fontSize: 10),
-                  ),
+                  'Ekspedisi: ${order.courierInfo ?? 'No courier'}',
+                  style: pw.TextStyle(fontSize: 10),
+                ),
               ],
             ),
             pw.SizedBox(height: 6),
@@ -146,10 +163,14 @@ class PrintService {
             pw.Wrap(
               spacing: 4,
               runSpacing: 2,
-              children: order.items.map((item) => pw.Text(
-                '${item.productName}=(${item.quantity})',
-                style: pw.TextStyle(fontSize: 9),
-              )).toList(),
+              children: order.items
+                  .map(
+                    (item) => pw.Text(
+                      '${item.productName}=(${item.quantity})',
+                      style: pw.TextStyle(fontSize: 9),
+                    ),
+                  )
+                  .toList(),
             ),
             pw.SizedBox(height: 6),
 
@@ -167,9 +188,16 @@ class PrintService {
 
   /// Generate print layout for delivery addresses with new format
   static List<pw.Widget> _buildOrderDeliveryLayoutNew(Order order) {
-    final totalQuantity = order.items.fold<int>(0, (sum, item) => sum + item.quantity);
-    final senderName = order.isDropship ? (order.senderName ?? 'Dropship') : 'Dalanova';
-    final senderPhone = order.isDropship ? (order.senderPhone ?? 'No phone') : '0823-1854-9875';
+    final totalQuantity = order.items.fold<int>(
+      0,
+      (sum, item) => sum + item.quantity,
+    );
+    final senderName = order.isDropship
+        ? (order.senderName ?? 'Dropship')
+        : 'Dalanova';
+    final senderPhone = order.isDropship
+        ? (order.senderPhone ?? 'No phone')
+        : '0823-1854-9875';
 
     return [
       // Order container - keeps entire order together
@@ -191,7 +219,10 @@ class PrintService {
                 pw.Expanded(
                   child: pw.Text(
                     'Penerima: ${order.receiverName ?? 'No name'}',
-                    style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                 ),
                 pw.Text(
@@ -213,9 +244,9 @@ class PrintService {
                   ),
                 ),
                 pw.Text(
-                    'Ekspedisi: ${order.courierInfo ?? 'No courier'}',
-                    style: pw.TextStyle(fontSize: 10),
-                  ),
+                  'Ekspedisi: ${order.courierInfo ?? 'No courier'}',
+                  style: pw.TextStyle(fontSize: 10),
+                ),
               ],
             ),
             pw.SizedBox(height: 6),
@@ -236,14 +267,14 @@ class PrintService {
               children: [
                 pw.Expanded(
                   child: pw.Text(
-                    ' ',
+                    'Note: ${order.notes ?? '-'}',
                     style: pw.TextStyle(fontSize: 10),
                   ),
                 ),
                 pw.Text(
-                    'Pengirim: $senderName',
-                    style: pw.TextStyle(fontSize: 10),
-                  ),
+                  'Pengirim: $senderName',
+                  style: pw.TextStyle(fontSize: 10),
+                ),
               ],
             ),
             pw.SizedBox(height: 6),
@@ -252,14 +283,11 @@ class PrintService {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Expanded(
-                  child: pw.Text(
-                    '',
-                    style: pw.TextStyle(fontSize: 10),
-                  ),
+                  child: pw.Text('', style: pw.TextStyle(fontSize: 10)),
                 ),
                 pw.Text(
-                    'No Hp: $senderPhone',
-                    style: pw.TextStyle(fontSize: 10),
+                  'No Hp: $senderPhone',
+                  style: pw.TextStyle(fontSize: 10),
                 ),
               ],
             ),
@@ -276,10 +304,14 @@ class PrintService {
             pw.Wrap(
               spacing: 4,
               runSpacing: 2,
-              children: order.items.map((item) => pw.Text(
-                '${item.productName}=(${item.quantity})',
-                style: pw.TextStyle(fontSize: 9),
-              )).toList(),
+              children: order.items
+                  .map(
+                    (item) => pw.Text(
+                      '${item.productName}=(${item.quantity})',
+                      style: pw.TextStyle(fontSize: 9),
+                    ),
+                  )
+                  .toList(),
             ),
             pw.SizedBox(height: 6),
 
@@ -316,51 +348,53 @@ class PrintService {
   }
 
   /// Save delivery addresses as PDF file
-  static Future<void> saveDeliveryAddressesAsPdf(List<Order> orders, String filename) async {
+  static Future<void> saveDeliveryAddressesAsPdf(
+    List<Order> orders,
+    String filename,
+  ) async {
     final pdfData = await generateDeliveryAddressPdf(orders);
 
-    await Printing.sharePdf(
-      bytes: pdfData,
-      filename: filename,
-    );
+    await Printing.sharePdf(bytes: pdfData, filename: filename);
   }
 
   /// Save delivery addresses with new format as PDF file
-  static Future<void> saveDeliveryAddressesAsPdfNew(List<Order> orders, String filename) async {
+  static Future<void> saveDeliveryAddressesAsPdfNew(
+    List<Order> orders,
+    String filename,
+  ) async {
     final pdfData = await generateDeliveryAddressPdfNew(orders);
 
-    await Printing.sharePdf(
-      bytes: pdfData,
-      filename: filename,
-    );
+    await Printing.sharePdf(bytes: pdfData, filename: filename);
   }
 
   /// Show print preview dialog
-  static Future<void> showPrintPreview(BuildContext context, List<Order> orders) async {
+  static Future<void> showPrintPreview(
+    BuildContext context,
+    List<Order> orders,
+  ) async {
     final pdfData = await generateDeliveryAddressPdf(orders);
 
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PrintPreviewScreen(
-          pdfData: pdfData,
-          orders: orders,
-        ),
+        builder: (context) =>
+            PrintPreviewScreen(pdfData: pdfData, orders: orders),
       ),
     );
   }
 
   /// Show print preview dialog with new format
-  static Future<void> showPrintPreviewNew(BuildContext context, List<Order> orders) async {
+  static Future<void> showPrintPreviewNew(
+    BuildContext context,
+    List<Order> orders,
+  ) async {
     final pdfData = await generateDeliveryAddressPdfNew(orders);
 
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PrintPreviewScreen(
-          pdfData: pdfData,
-          orders: orders,
-        ),
+        builder: (context) =>
+            PrintPreviewScreen(pdfData: pdfData, orders: orders),
       ),
     );
   }
@@ -398,22 +432,22 @@ class PrintPreviewScreen extends StatelessWidget {
         build: (format) => pdfData,
         allowSharing: false,
         allowPrinting: false,
-        pdfFileName: 'delivery_addresses_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        pdfFileName:
+            'delivery_addresses_${DateTime.now().millisecondsSinceEpoch}.pdf',
         initialPageFormat: PdfPageFormat.a4,
       ),
     );
   }
 
   void _printPdf() {
-    Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdfData,
-    );
+    Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdfData);
   }
 
   void _sharePdf() {
     Printing.sharePdf(
       bytes: pdfData,
-      filename: 'delivery_addresses_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      filename:
+          'delivery_addresses_${DateTime.now().millisecondsSinceEpoch}.pdf',
     );
   }
 }

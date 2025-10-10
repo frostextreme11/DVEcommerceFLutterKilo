@@ -14,6 +14,7 @@ class AdminOrdersProvider extends ChangeNotifier {
   String? _courierFilter; // 'all', 'resi_otomatis', or null
   DateTimeRange? _dateRange;
   String? _dateFilter; // 'today', 'month', 'all_time', or null for custom range
+  String? _paymentFilter; // 'all', 'pending_payment', or null
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
@@ -23,6 +24,7 @@ class AdminOrdersProvider extends ChangeNotifier {
   String? get courierFilter => _courierFilter;
   DateTimeRange? get dateRange => _dateRange;
   String? get dateFilter => _dateFilter;
+  String? get paymentFilter => _paymentFilter;
 
   // Stream for listening to orders changes
   Stream<List<Order>> get ordersStream => Stream.value(_orders);
@@ -55,7 +57,13 @@ class AdminOrdersProvider extends ChangeNotifier {
 
       final matchesDate = _matchesDateFilter(order.createdAt);
 
-      return matchesSearch && matchesStatus && matchesCourier && matchesDate;
+      final matchesPayment = _matchesPaymentFilterSync(order);
+
+      return matchesSearch &&
+          matchesStatus &&
+          matchesCourier &&
+          matchesDate &&
+          matchesPayment;
     }).toList();
   }
 
@@ -121,6 +129,20 @@ class AdminOrdersProvider extends ChangeNotifier {
               orderDate.isBefore(_dateRange!.end.add(const Duration(days: 1)));
         }
         return true; // No filter applied
+    }
+  }
+
+  // Helper method to check if order matches payment filter (synchronous)
+  bool _matchesPaymentFilterSync(Order order) {
+    switch (_paymentFilter) {
+      case 'pending_payment':
+        // Payment filter is handled in the loading logic (_applyPaymentFilter)
+        // So we return true here to not interfere with the async filtering
+        return true;
+
+      case 'all':
+      default:
+        return true; // Show all orders or no filter applied
     }
   }
 
@@ -208,6 +230,7 @@ class AdminOrdersProvider extends ChangeNotifier {
         _courierFilter != null ||
         _dateFilter != null ||
         _dateRange != null ||
+        _paymentFilter != null ||
         _searchQuery.isNotEmpty;
   }
 
@@ -302,6 +325,15 @@ class AdminOrdersProvider extends ChangeNotifier {
       print('AdminOrdersProvider: Applied resi otomatis filter');
     }
 
+    // Apply payment filter - this requires checking kl_payments table
+    if (_paymentFilter == 'pending_payment') {
+      // For pending payment filter, we need to get order IDs that have pending payments
+      // This is complex in the current architecture, so we'll handle it after loading orders
+      print(
+        'AdminOrdersProvider: Payment filter will be applied after loading orders',
+      );
+    }
+
     // Execute the filtered query
     final ordersResponse = await query.order('created_at', ascending: false);
     final ordersData = ordersResponse as List;
@@ -357,6 +389,11 @@ class AdminOrdersProvider extends ChangeNotifier {
       print(
         'AdminOrdersProvider: Applied client-side search filter for: $_searchQuery',
       );
+    }
+
+    // Apply payment filter if active
+    if (_paymentFilter == 'pending_payment') {
+      _orders = await _applyPaymentFilter(_orders);
     }
   }
 
@@ -731,6 +768,13 @@ class AdminOrdersProvider extends ChangeNotifier {
     refreshOrders();
   }
 
+  void setPaymentFilter(String? filter) {
+    _paymentFilter = filter;
+    notifyListeners();
+    // Reload orders with the new payment filter
+    refreshOrders();
+  }
+
   void setDateRange(DateTimeRange? dateRange) {
     if (dateRange != null) {
       setCustomDateRangeFilter(dateRange);
@@ -747,6 +791,7 @@ class AdminOrdersProvider extends ChangeNotifier {
     _courierFilter = null;
     _dateFilter = null;
     _dateRange = null;
+    _paymentFilter = null;
     notifyListeners();
     // Reload orders after clearing filters
     refreshOrders();
@@ -937,5 +982,47 @@ class AdminOrdersProvider extends ChangeNotifier {
     _monthlySales = 0.0;
     _yearlySales = 0.0;
     notifyListeners();
+  }
+
+  // Apply payment filter by checking kl_payments table
+  Future<List<Order>> _applyPaymentFilter(List<Order> orders) async {
+    if (_paymentFilter != 'pending_payment') {
+      return orders;
+    }
+
+    try {
+      print(
+        'AdminOrdersProvider: Applying payment filter for pending payments...',
+      );
+
+      // Get all order IDs that have pending payments in kl_payments table
+      final paymentsResponse = await _supabase
+          .from('kl_payments')
+          .select('order_id')
+          .eq('status', 'pending');
+
+      final paymentsData = paymentsResponse as List;
+      final pendingOrderIds = paymentsData
+          .map((payment) => payment['order_id'] as String)
+          .toSet();
+
+      print(
+        'AdminOrdersProvider: Found ${pendingOrderIds.length} orders with pending payments',
+      );
+
+      // Filter orders to only include those with pending payments
+      final filteredOrders = orders
+          .where((order) => pendingOrderIds.contains(order.id))
+          .toList();
+
+      print(
+        'AdminOrdersProvider: Filtered to ${filteredOrders.length} orders with pending payments',
+      );
+      return filteredOrders;
+    } catch (e) {
+      print('AdminOrdersProvider: Error applying payment filter: $e');
+      // Return original orders if there's an error
+      return orders;
+    }
   }
 }

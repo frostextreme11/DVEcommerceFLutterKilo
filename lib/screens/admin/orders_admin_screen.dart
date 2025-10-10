@@ -106,6 +106,8 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                         'resi_otomatis',
                       ),
                       const SizedBox(width: 8),
+                      _buildPaymentFilterButton(),
+                      const SizedBox(width: 8),
                       _buildDateFilterButton(),
                       const SizedBox(width: 8),
                       _buildMonthFilterButton(),
@@ -236,6 +238,32 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
               provider.setSelectedStatus(value);
             },
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPaymentFilterButton() {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, provider, child) {
+        final isSelected = provider.paymentFilter == 'pending_payment';
+
+        return ElevatedButton(
+          onPressed: () {
+            provider.setPaymentFilter(isSelected ? null : 'pending_payment');
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isSelected
+                ? Colors.white
+                : Colors.white.withOpacity(0.3),
+            foregroundColor: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: const Text('Pending Payment'),
         );
       },
     );
@@ -1105,7 +1133,8 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             provider.selectedStatus != null ||
             provider.courierFilter != null ||
             provider.dateFilter != null ||
-            provider.dateRange != null;
+            provider.dateRange != null ||
+            provider.paymentFilter != null;
 
         return ElevatedButton.icon(
           onPressed: hasActiveFilters

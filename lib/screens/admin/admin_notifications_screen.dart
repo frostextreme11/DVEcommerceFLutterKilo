@@ -13,6 +13,8 @@ class AdminNotificationsScreen extends StatefulWidget {
 }
 
 class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
+  String _currentFilter = 'All'; // 'All', 'Order', 'Payment'
+
   @override
   void initState() {
     super.initState();
@@ -20,6 +22,20 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AdminNotificationProvider>().refreshNotifications();
     });
+  }
+
+  List<AdminNotification> _getFilteredNotifications(
+    List<AdminNotification> notifications,
+  ) {
+    if (_currentFilter == 'All') {
+      return notifications;
+    }
+    return notifications
+        .where(
+          (notification) =>
+              notification.type.toLowerCase() == _currentFilter.toLowerCase(),
+        )
+        .toList();
   }
 
   @override
@@ -31,6 +47,38 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Filter dropdown
+          Consumer<AdminNotificationProvider>(
+            builder: (context, notificationProvider, child) {
+              return Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: DropdownButton<String>(
+                  value: _currentFilter,
+                  dropdownColor: Theme.of(context).primaryColor,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  underline: Container(),
+                  icon: const Icon(Icons.filter_list, color: Colors.white),
+                  items: ['All', 'Payment'].map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(
+                        value,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _currentFilter = newValue;
+                      });
+                    }
+                  },
+                ),
+              );
+            },
+          ),
+          // Mark all read button
           Consumer<AdminNotificationProvider>(
             builder: (context, notificationProvider, child) {
               return TextButton(
@@ -56,22 +104,27 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final notifications = notificationProvider.displayedNotifications;
+          final allNotifications = notificationProvider.displayedNotifications;
+          final notifications = _getFilteredNotifications(allNotifications);
 
           if (notifications.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.notifications_none, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
                   Text(
-                    'No notifications yet',
+                    _currentFilter == 'All'
+                        ? 'No notifications yet'
+                        : 'No ${_currentFilter.toLowerCase()} notifications',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Notifications will appear here when customers place orders',
+                    _currentFilter == 'All'
+                        ? 'Notifications will appear here when customers place orders'
+                        : '${_currentFilter} notifications will appear here',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
