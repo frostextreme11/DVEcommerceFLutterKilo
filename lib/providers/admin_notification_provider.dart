@@ -232,10 +232,35 @@ class AdminNotificationProvider extends ChangeNotifier {
               'Real-time notification update received: ${data.length} notifications',
             );
 
-            // Update notifications list
-            _notifications = data
+            // Convert new data to notifications
+            final newNotifications = data
                 .map((json) => AdminNotification.fromJson(json))
                 .toList();
+
+            // Check if this is likely a new notification (data length increased)
+            final isNewNotification =
+                newNotifications.length > _notifications.length;
+
+            // Update notifications list - preserve local read status for existing notifications
+            if (!isNewNotification &&
+                newNotifications.length == _notifications.length) {
+              // Same number of notifications, likely an update - merge with existing read status
+              for (int i = 0; i < newNotifications.length; i++) {
+                final existingNotification = _notifications.firstWhere(
+                  (n) => n.id == newNotifications[i].id,
+                  orElse: () => newNotifications[i],
+                );
+                // Preserve the local read status if it was marked as read
+                if (existingNotification.isRead &&
+                    !newNotifications[i].isRead) {
+                  newNotifications[i] = newNotifications[i].copyWith(
+                    isRead: true,
+                  );
+                }
+              }
+            }
+
+            _notifications = newNotifications;
 
             // Update displayed notifications to show latest 10
             _displayedNotifications = _notifications.take(_pageSize).toList();
@@ -245,7 +270,7 @@ class AdminNotificationProvider extends ChangeNotifier {
             notifyListeners();
 
             // Show local notification for new orders if it's a new notification
-            if (data.isNotEmpty) {
+            if (isNewNotification && data.isNotEmpty) {
               print(
                 'AdminNotificationProvider: New notifications received: ${data.length}',
               );
@@ -452,10 +477,20 @@ class AdminNotificationProvider extends ChangeNotifier {
 
   Future<void> markAsRead(String notificationId) async {
     try {
-      await _supabase
+      print(
+        'AdminNotificationProvider: Marking notification as read: $notificationId',
+      );
+
+      final response = await _supabase
           .from('kl_admin_notifications')
-          .update({'is_read': true})
-          .eq('id', notificationId);
+          .update({
+            'is_read': true,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', notificationId)
+          .select();
+
+      print('AdminNotificationProvider: Database update response: $response');
 
       // Update local notification
       final notificationIndex = _notifications.indexWhere(
@@ -465,13 +500,14 @@ class AdminNotificationProvider extends ChangeNotifier {
         _notifications[notificationIndex] = _notifications[notificationIndex]
             .copyWith(isRead: true);
         notifyListeners();
+        print('AdminNotificationProvider: Local notification updated');
       }
 
       print(
-        'AdminNotificationProvider: Notification marked as read: $notificationId',
+        'AdminNotificationProvider: Notification marked as read successfully: $notificationId',
       );
     } catch (e) {
-      print('Error marking notification as read (updating locally): $e');
+      print('Error marking notification as read: $e');
       // Update locally even if database update fails
       final notificationIndex = _notifications.indexWhere(
         (n) => n.id == notificationId,
@@ -480,6 +516,9 @@ class AdminNotificationProvider extends ChangeNotifier {
         _notifications[notificationIndex] = _notifications[notificationIndex]
             .copyWith(isRead: true);
         notifyListeners();
+        print(
+          'AdminNotificationProvider: Updated locally despite database error',
+        );
       }
     }
   }
@@ -491,11 +530,23 @@ class AdminNotificationProvider extends ChangeNotifier {
           .map((n) => n.id)
           .toList();
 
+      print(
+        'AdminNotificationProvider: Marking all notifications as read. Unread count: ${unreadIds.length}',
+      );
+
       if (unreadIds.isNotEmpty) {
-        await _supabase
+        final response = await _supabase
             .from('kl_admin_notifications')
-            .update({'is_read': true})
-            .inFilter('id', unreadIds);
+            .update({
+              'is_read': true,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .inFilter('id', unreadIds)
+            .select();
+
+        print(
+          'AdminNotificationProvider: Database update response for mark all as read: $response',
+        );
 
         // Update local notifications
         _notifications = _notifications
@@ -503,15 +554,24 @@ class AdminNotificationProvider extends ChangeNotifier {
             .toList();
         notifyListeners();
 
-        print('AdminNotificationProvider: All notifications marked as read');
+        print(
+          'AdminNotificationProvider: All notifications marked as read successfully',
+        );
+      } else {
+        print(
+          'AdminNotificationProvider: No unread notifications to mark as read',
+        );
       }
     } catch (e) {
-      print('Error marking all notifications as read (updating locally): $e');
+      print('Error marking all notifications as read: $e');
       // Update locally even if database update fails
       _notifications = _notifications
           .map((n) => n.copyWith(isRead: true))
           .toList();
       notifyListeners();
+      print(
+        'AdminNotificationProvider: Updated all notifications locally despite database error',
+      );
     }
   }
 

@@ -202,14 +202,18 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                         ),
                       ],
                     ),
-                    onTap: () {
-                      context.push(
-                        '/admin/order-details/${notification.orderId}',
-                      );
-                      // Mark as read when tapped
+                    onTap: () async {
+                      // Mark as read when tapped (before navigation)
                       if (!notification.isRead) {
-                        context.read<AdminNotificationProvider>().markAsRead(
-                          notification.id,
+                        await context
+                            .read<AdminNotificationProvider>()
+                            .markAsRead(notification.id);
+                      }
+
+                      // Navigate after marking as read
+                      if (context.mounted) {
+                        context.push(
+                          '/admin/order-details/${notification.orderId}',
                         );
                       }
                     },
