@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -810,6 +811,48 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       print(
         'CheckoutScreen: User authenticated: ${authProvider.isAuthenticated}',
       );
+
+      // Validate stock availability for all cart items
+      final outOfStockItems = <String>[];
+      for (final cartItem in cartProvider.items) {
+        try {
+          final productResponse = await Supabase.instance.client
+              .from('kl_products')
+              .select('stock_quantity, name')
+              .eq('id', cartItem.productId)
+              .single();
+
+          final stockQuantity = productResponse['stock_quantity'] ?? 0;
+          if (stockQuantity < cartItem.quantity) {
+            outOfStockItems.add(productResponse['name'] ?? cartItem.name);
+          }
+        } catch (e) {
+          print('Error checking stock for product ${cartItem.productId}: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error checking stock for ${cartItem.name}. Please try again.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      // If any items are out of stock, show error and prevent order creation
+      if (outOfStockItems.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Produk ini tidak tersedia: ${outOfStockItems.join(', ')}. Silakan hapus dari keranjang belanja atau kurangi jumlahnya.',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
 
       final order = await ordersProvider.createOrder(
         cartItems: cartProvider.items,
