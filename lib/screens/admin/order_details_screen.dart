@@ -683,15 +683,18 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 100,
+          Flexible(
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '$label:',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
+                Flexible(
+                  child: Text(
+                    '$label:',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -701,10 +704,16 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                   },
                   icon: const Icon(Icons.edit, size: 16),
                   tooltip: 'Edit Address',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 16),
           Expanded(child: Text(value)),
         ],
       ),

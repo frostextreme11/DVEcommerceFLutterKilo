@@ -638,11 +638,35 @@ class AdminOrdersProvider extends ChangeNotifier {
 
   Future<bool> deleteOrder(String orderId) async {
     try {
-      // Delete order items first
-      await _supabase.from('kl_order_items').delete().eq('order_id', orderId);
+      // Get the order details first to check its status
+      final order = await getOrderById(orderId);
+      if (order == null) {
+        print('AdminOrdersProvider: Order not found for deletion: $orderId');
+        return false;
+      }
 
-      // Delete order
-      await _supabase.from('kl_orders').delete().eq('id', orderId);
+      // For cancelled orders, delete the order record directly without deleting order items first
+      // This prevents the trigger_increase_stock trigger from running and double-restoring quantities
+      if (order.status == OrderStatus.cancelled) {
+        print(
+          'AdminOrdersProvider: Deleting cancelled order, skipping order items deletion to prevent double quantity restoration',
+        );
+
+        // Delete order directly (this will cascade delete order items via foreign key)
+        await _supabase.from('kl_orders').delete().eq('id', orderId);
+      } else {
+        // For non-cancelled orders, delete order items first (normal process)
+        // The trigger_increase_stock will run and restore quantities correctly
+        print(
+          'AdminOrdersProvider: Deleting non-cancelled order, order items will be deleted first',
+        );
+
+        // Delete order items first (this will trigger quantity restoration)
+        await _supabase.from('kl_order_items').delete().eq('order_id', orderId);
+
+        // Delete order
+        await _supabase.from('kl_orders').delete().eq('id', orderId);
+      }
 
       _orders.removeWhere((order) => order.id == orderId);
       notifyListeners();
@@ -660,7 +684,7 @@ class AdminOrdersProvider extends ChangeNotifier {
 
   Future<bool> cancelOrder(String orderId) async {
     try {
-      // Get the order details first to restore quantities
+      // Get the order details first
       final order = await getOrderById(orderId);
       if (order == null) {
         print(
@@ -682,8 +706,8 @@ class AdminOrdersProvider extends ChangeNotifier {
         return false;
       }
 
-      // Start a transaction-like operation
-      // 1. Update order status to cancelled
+      // Update order status to cancelled
+      // The database trigger "trigger_handle_order_cancellation" will handle quantity restoration
       await _supabase
           .from('kl_orders')
           .update({
@@ -691,36 +715,6 @@ class AdminOrdersProvider extends ChangeNotifier {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', orderId);
-
-      // 2. Restore product quantities for each order item
-      for (final item in order.items) {
-        if (item.productId.isNotEmpty) {
-          // Get current product stock
-          final productResponse = await _supabase
-              .from('kl_products')
-              .select('stock_quantity')
-              .eq('id', item.productId)
-              .maybeSingle();
-
-          if (productResponse != null) {
-            final currentStock = productResponse['stock_quantity'] as int? ?? 0;
-            final newStock = currentStock + item.quantity;
-
-            // Update product stock
-            await _supabase
-                .from('kl_products')
-                .update({
-                  'stock_quantity': newStock,
-                  'updated_at': DateTime.now().toIso8601String(),
-                })
-                .eq('id', item.productId);
-
-            print(
-              'AdminOrdersProvider: Restored ${item.quantity} units of product ${item.productId}. New stock: $newStock',
-            );
-          }
-        }
-      }
 
       // Update local order
       final orderIndex = _orders.indexWhere((o) => o.id == orderId);
@@ -732,6 +726,9 @@ class AdminOrdersProvider extends ChangeNotifier {
       }
 
       print('AdminOrdersProvider: Order cancelled successfully: $orderId');
+      print(
+        'AdminOrdersProvider: Database trigger will handle quantity restoration',
+      );
       return true;
     } catch (e) {
       print('Error cancelling order (updating locally): $e');

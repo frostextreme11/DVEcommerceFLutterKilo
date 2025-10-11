@@ -489,6 +489,54 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      FutureBuilder<Map<String, String?>>(
+                        future: _getUserInfo(order.userId),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Text(
+                              'Loading...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          } else if (snapshot.hasError) {
+                            return Text(
+                              'Error loading user info',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            );
+                          } else {
+                            final userInfo = snapshot.data ?? {};
+                            final userName = userInfo['name'] ?? 'No name';
+                            final userEmail = userInfo['email'] ?? 'No email';
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  userName,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  userEmail,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+                        },
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Rp ${order.totalAmount.toStringAsFixed(0)}',
@@ -650,16 +698,16 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                         ),
                       ),
                     ],
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
-                        ],
-                      ),
-                    ),
+                    // const PopupMenuItem(
+                    //   value: 'delete',
+                    //   child: Row(
+                    //     children: [
+                    //       Icon(Icons.delete, color: Colors.red),
+                    //       SizedBox(width: 8),
+                    //       Text('Delete', style: TextStyle(color: Colors.red)),
+                    //     ],
+                    //   ),
+                    // ),
                   ],
                 ),
               ],
@@ -1094,6 +1142,28 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<Map<String, String?>> _getUserInfo(String userId) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userResponse = await supabase
+          .from('kl_users')
+          .select('full_name, email')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (userResponse != null) {
+        return {
+          'name': userResponse['full_name'] as String?,
+          'email': userResponse['email'] as String?,
+        };
+      }
+      return {'name': null, 'email': null};
+    } catch (e) {
+      print('Error fetching user info: $e');
+      return {'name': null, 'email': null};
     }
   }
 
