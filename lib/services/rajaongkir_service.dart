@@ -84,16 +84,72 @@ class RajaOngkirService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['meta']['status'] == 'success') {
-          final results = (data['data'] as List)
+          final allResults = (data['data'] as List)
               .map((item) => ShippingCost.fromJson(item))
               .toList();
-          print('Successfully parsed ${results.length} shipping costs');
-          return results;
+
+          // Filter only allowed courier codes (based on API response)
+          final allowedCodes = [
+            'jne',
+            'sicepat',
+            //'ide',
+            'jnt',
+            'sentral',
+            'lion',
+            'baraka',
+          ];
+          final filteredResults = allResults.where((shippingCost) {
+            final code = shippingCost.code.toLowerCase();
+            return allowedCodes.any(
+              (allowed) => code.contains(allowed) || allowed.contains(code),
+            );
+          }).toList();
+
+          print("NOP NOP filteredResults: $filteredResults");
+
+          // Group by courier code and take the lowest cost option for each
+          final groupedResults = <String, ShippingCost>{};
+          for (final result in filteredResults) {
+            final code = result.code.toLowerCase();
+            if (!groupedResults.containsKey(code) ||
+                result.cost < groupedResults[code]!.cost) {
+              groupedResults[code] = result;
+            }
+          }
+
+          print("NOP NOP groupedResults: $groupedResults");
+
+          final finalResults = filteredResults.toList()
+            ..sort((a, b) => a.name.compareTo(b.name));
+
+          // If no results from API, at least return the hardcoded zero-cost couriers
+          if (finalResults.isEmpty) {
+            print(
+              'No API results found, returning hardcoded zero-cost couriers',
+            );
+            return getHardcodedZeroCostCouriers();
+          }
+
+          print(
+            'Successfully filtered and grouped ${finalResults.length} shipping costs from ${allResults.length} total results',
+          );
+          return finalResults;
         } else {
           print('Cost API returned error: ${data['meta']['message']}');
+          print('Full error response: ${response.body}');
+
+          // If it's a 422 error with courier list, extract valid couriers
+          if (response.statusCode == 422 && data['meta']['message'] != null) {
+            final message = data['meta']['message'] as String;
+            if (message.contains('the valid courier is')) {
+              final validCouriers = extractValidCourierCodes(message);
+              print('Valid couriers from API: $validCouriers');
+            }
+          }
         }
       } else {
         print('Cost API request failed with status: ${response.statusCode}');
+        print('Full error response: ${response.body}');
       }
       return [];
     } catch (e) {
@@ -120,9 +176,38 @@ class RajaOngkirService {
     ];
   }
 
-  // Get hardcoded couriers with zero shipping cost
+  // Extract valid courier codes from API error message
+  static List<String> extractValidCourierCodes(String errorMessage) {
+    try {
+      final startIndex = errorMessage.indexOf('the valid courier is');
+      if (startIndex != -1) {
+        final courierListText = errorMessage.substring(
+          startIndex + 'the valid courier is'.length,
+        );
+        final courierCodes = courierListText
+            .split(',')
+            .map((code) => code.trim())
+            .toList();
+        print('Extracted valid courier codes: $courierCodes');
+        return courierCodes;
+      }
+    } catch (e) {
+      print('Error extracting courier codes: $e');
+    }
+    return [];
+  }
+
+  // Get hardcoded couriers with zero shipping cost (only valid ones)
   static List<ShippingCost> getHardcodedZeroCostCouriers() {
     return [
+      ShippingCost(
+        name: 'J&T Express',
+        code: 'jnt',
+        service: 'Resi Otomatis',
+        description: 'JNT Resi Otomatis',
+        cost: 0,
+        etd: '1-2 hari',
+      ),
       ShippingCost(
         name: 'SPX',
         code: 'spx',
@@ -132,12 +217,20 @@ class RajaOngkirService {
         etd: '1-2 hari',
       ),
       ShippingCost(
-        name: 'J&T Express',
-        code: 'jnt',
-        service: 'Resi Otomatis',
-        description: 'JNT Resi Otomatis',
+        name: 'Indah Cargo',
+        code: 'indahcargocod',
+        service: 'COD',
+        description: 'Indah Cargo COD',
         cost: 0,
-        etd: '1-2 hari',
+        etd: '2-4 hari',
+      ),
+      ShippingCost(
+        name: 'Baraka Express',
+        code: 'barakaexpresscod',
+        service: 'COD',
+        description: 'Baraka Express COD',
+        cost: 0,
+        etd: '2-4 hari',
       ),
     ];
   }

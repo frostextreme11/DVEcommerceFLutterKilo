@@ -297,9 +297,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         (sum, item) => sum + (item.quantity * 800), // 800 grams per item
       );
 
-      final courierCodes = RajaOngkirService.getAvailableCouriers()
-          .map((courier) => courier.code)
-          .join(':');
+      // Only request allowed courier codes: jne, sicepat, ide, jnt, sentral, lion (baraka is not valid)
+      final courierCodes = 'jne:sicepat:ide:jnt:sentral:lion';
 
       print('Calculating shipping cost:');
       print('Origin: ${_selectedOrigin!.id} (${_selectedOrigin!.cityName})');
@@ -334,13 +333,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } catch (e) {
       print('Error calculating shipping cost: $e');
       if (mounted) {
+        // Fallback to zero-cost couriers if API fails
+        final fallbackCouriers =
+            RajaOngkirService.getHardcodedZeroCostCouriers();
         setState(() {
+          _shippingCosts = fallbackCouriers;
+          _filteredShippingCosts = fallbackCouriers;
           _isLoadingShippingCost = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error calculating shipping cost: $e'),
-            backgroundColor: Colors.red,
+            content: Text('Using free shipping options due to API error'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
@@ -849,29 +853,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Courier Search Field
-                  TextFormField(
-                    controller: _courierSearchController,
-                    decoration: InputDecoration(
-                      labelText: 'Cari Kurir',
-                      hintText: 'Cari kurir lalu pilih di bawah...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _courierSearchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _courierSearchController.clear();
-                                _filterShippingCosts('');
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: Theme.of(context).cardColor,
-                    ),
-                    onChanged: _filterShippingCosts,
-                  ),
+                  // TextFormField(
+                  //   controller: _courierSearchController,
+                  //   decoration: InputDecoration(
+                  //     labelText: 'Cari Kurir',
+                  //     hintText: 'Cari kurir lalu pilih di bawah...',
+                  //     prefixIcon: const Icon(Icons.search),
+                  //     suffixIcon: _courierSearchController.text.isNotEmpty
+                  //         ? IconButton(
+                  //             icon: const Icon(Icons.clear),
+                  //             onPressed: () {
+                  //               _courierSearchController.clear();
+                  //               _filterShippingCosts('');
+                  //             },
+                  //           )
+                  //         : null,
+                  //     border: OutlineInputBorder(
+                  //       borderRadius: BorderRadius.circular(8),
+                  //     ),
+                  //     filled: true,
+                  //     fillColor: Theme.of(context).cardColor,
+                  //   ),
+                  //   onChanged: _filterShippingCosts,
+                  // ),
                   const SizedBox(height: 8),
                   // Courier Selection Dropdown
                   DropdownButtonFormField<ShippingCost>(
