@@ -16,9 +16,13 @@ class Order {
   final String? receiverPhone;
   final double? additionalCosts;
   final String? additionalCostsNotes;
+  final double? subtotalAmount;
+  final double? uniqueIdentifier;
   final bool isDropship;
   final String? senderName;
   final String? senderPhone;
+  final String? originCity;
+  final String? destinationCity;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<OrderItem> items;
@@ -38,9 +42,13 @@ class Order {
     this.receiverPhone,
     this.additionalCosts,
     this.additionalCostsNotes,
+    this.subtotalAmount,
+    this.uniqueIdentifier,
     this.isDropship = false,
     this.senderName,
     this.senderPhone,
+    this.originCity,
+    this.destinationCity,
     required this.createdAt,
     required this.updatedAt,
     required this.items,
@@ -74,9 +82,13 @@ class Order {
       receiverPhone: json['receiver_phone'],
       additionalCosts: (json['additional_costs'] as num?)?.toDouble(),
       additionalCostsNotes: json['additional_costs_notes'],
+      subtotalAmount: (json['subtotal_amount'] as num?)?.toDouble(),
+      uniqueIdentifier: (json['unique_identifier'] as num?)?.toDouble(),
       isDropship: json['is_dropship'] ?? false,
       senderName: json['sender_name'],
       senderPhone: json['sender_phone'],
+      originCity: json['origin_city'],
+      destinationCity: json['destination_city'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       items: items,
@@ -130,9 +142,13 @@ class Order {
     String? receiverPhone,
     double? additionalCosts,
     String? additionalCostsNotes,
+    double? subtotalAmount,
+    double? uniqueIdentifier,
     bool? isDropship,
     String? senderName,
     String? senderPhone,
+    String? originCity,
+    String? destinationCity,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<OrderItem>? items,
@@ -152,9 +168,13 @@ class Order {
       receiverPhone: receiverPhone ?? this.receiverPhone,
       additionalCosts: additionalCosts ?? this.additionalCosts,
       additionalCostsNotes: additionalCostsNotes ?? this.additionalCostsNotes,
+      subtotalAmount: subtotalAmount ?? this.subtotalAmount,
+      uniqueIdentifier: uniqueIdentifier ?? this.uniqueIdentifier,
       isDropship: isDropship ?? this.isDropship,
       senderName: senderName ?? this.senderName,
       senderPhone: senderPhone ?? this.senderPhone,
+      originCity: originCity ?? this.originCity,
+      destinationCity: destinationCity ?? this.destinationCity,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       items: items ?? this.items,

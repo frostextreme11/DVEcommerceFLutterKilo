@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 import '../../providers/cart_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../models/order.dart';
+import '../../services/rajaongkir_service.dart';
 import '../payment/payment_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -25,6 +27,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _notesController = TextEditingController();
   final _senderNameController = TextEditingController();
   final _senderPhoneController = TextEditingController();
+
+  // RajaOngkir integration fields
+  final _originController = TextEditingController();
+  final _destinationController = TextEditingController();
+  final _courierSearchController = TextEditingController();
+  Timer? _originDebounceTimer;
+  Timer? _destinationDebounceTimer;
+  List<Destination> _originResults = [];
+  List<Destination> _destinationResults = [];
+  List<ShippingCost> _shippingCosts = [];
+  List<ShippingCost> _filteredShippingCosts = [];
+  bool _isLoadingOrigin = false;
+  bool _isLoadingDestination = false;
+  bool _isLoadingShippingCost = false;
+  Destination? _selectedOrigin;
+  Destination? _selectedDestination;
+  ShippingCost? _selectedShippingCost;
+  double _shippingCost = 0.0;
 
   String _selectedPaymentMethod = 'Bank Transfer';
   String? _selectedCourier;
@@ -61,6 +81,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         authProvider.userProfile?['phone_number'] ?? '';
     _receiverAddressController.text =
         authProvider.userProfile?['full_address'] ?? '';
+
+    // Set default origin to Cimahi, Jawa Barat
+    _setDefaultOrigin();
+  }
+
+  Future<void> _setDefaultOrigin() async {
+    try {
+      // Set the default origin from Cimahi, Jawa Barat
+      final defaultOrigin = Destination(
+        id: 5250,
+        label: "CIBEUREUM, CIMAHI SELATAN, CIMAHI, JAWA BARAT, 40535",
+        provinceName: "JAWA BARAT",
+        cityName: "CIMAHI",
+        districtName: "CIMAHI SELATAN",
+        subdistrictName: "CIBEUREUM",
+        zipCode: "40535",
+      );
+
+      setState(() {
+        _selectedOrigin = defaultOrigin;
+        _originController.text = defaultOrigin.label;
+      });
+    } catch (e) {
+      print('Error setting default origin: $e');
+    }
   }
 
   @override
@@ -72,7 +117,234 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _notesController.dispose();
     _senderNameController.dispose();
     _senderPhoneController.dispose();
+    _originController.dispose();
+    _destinationController.dispose();
+    _courierSearchController.dispose();
+    _originDebounceTimer?.cancel();
+    _destinationDebounceTimer?.cancel();
     super.dispose();
+  }
+
+  // RajaOngkir integration methods
+  void _onOriginSearchChanged(String query) {
+    _originDebounceTimer?.cancel();
+    _originDebounceTimer = Timer(const Duration(seconds: 1), () {
+      _searchOrigins(query);
+    });
+  }
+
+  void _onDestinationSearchChanged(String query) {
+    _destinationDebounceTimer?.cancel();
+    _destinationDebounceTimer = Timer(const Duration(seconds: 1), () {
+      _searchDestinations(query);
+    });
+  }
+
+  Future<void> _searchOrigins(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _originResults = [];
+        _isLoadingOrigin = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingOrigin = true;
+    });
+
+    try {
+      print('Searching origins for query: $query');
+      final results = await RajaOngkirService.searchDestinations(query);
+      print('Found ${results.length} origins');
+      if (mounted) {
+        setState(() {
+          _originResults = results;
+          _isLoadingOrigin = false;
+        });
+      }
+    } catch (e) {
+      print('Error searching origins: $e');
+      if (mounted) {
+        setState(() {
+          _originResults = [];
+          _isLoadingOrigin = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error searching origins: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _searchDestinations(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _destinationResults = [];
+        _isLoadingDestination = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingDestination = true;
+    });
+
+    try {
+      print('Searching destinations for query: $query');
+      final results = await RajaOngkirService.searchDestinations(query);
+      print('Found ${results.length} destinations');
+      if (mounted) {
+        setState(() {
+          _destinationResults = results;
+          _isLoadingDestination = false;
+        });
+      }
+    } catch (e) {
+      print('Error searching destinations: $e');
+      if (mounted) {
+        setState(() {
+          _destinationResults = [];
+          _isLoadingDestination = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error searching destinations: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _filterShippingCosts(String query) {
+    setState(() {
+      if (query.trim().isEmpty) {
+        _filteredShippingCosts = _shippingCosts;
+      } else {
+        _filteredShippingCosts = _shippingCosts.where((shippingCost) {
+          final courierName = shippingCost.name.toLowerCase();
+          final serviceName = shippingCost.service.toLowerCase();
+          final searchQuery = query.toLowerCase();
+          return courierName.contains(searchQuery) ||
+              serviceName.contains(searchQuery);
+        }).toList();
+      }
+    });
+  }
+
+  void _clearOriginSelection() {
+    setState(() {
+      _selectedOrigin = null;
+      _originController.clear();
+      _originResults = [];
+      _shippingCosts = [];
+      _filteredShippingCosts = [];
+      _selectedShippingCost = null;
+      _shippingCost = 0.0;
+    });
+  }
+
+  void _clearDestinationSelection() {
+    setState(() {
+      _selectedDestination = null;
+      _destinationController.clear();
+      _destinationResults = [];
+      _shippingCosts = [];
+      _filteredShippingCosts = [];
+      _selectedShippingCost = null;
+      _shippingCost = 0.0;
+    });
+  }
+
+  void _updateAddressWithDestination() {
+    if (_selectedDestination != null) {
+      final currentAddress = _receiverAddressController.text.trim();
+      final destinationInfo =
+          '\n📍 Tujuan: ${_selectedDestination!.cityName}, ${_selectedDestination!.provinceName}';
+
+      // Only add destination info if it's not already in the address
+      if (!currentAddress.contains(destinationInfo)) {
+        _receiverAddressController.text = currentAddress + destinationInfo;
+      }
+    }
+  }
+
+  Future<void> _calculateShippingCost() async {
+    if (_selectedOrigin == null || _selectedDestination == null) {
+      setState(() {
+        _shippingCosts = [];
+        _selectedShippingCost = null;
+        _shippingCost = 0.0;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingShippingCost = true;
+      _shippingCosts = [];
+      _selectedShippingCost = null;
+      _shippingCost = 0.0;
+    });
+
+    try {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      final totalWeight = cartProvider.items.fold<int>(
+        0,
+        (sum, item) => sum + (item.quantity * 800), // 800 grams per item
+      );
+
+      final courierCodes = RajaOngkirService.getAvailableCouriers()
+          .map((courier) => courier.code)
+          .join(':');
+
+      print('Calculating shipping cost:');
+      print('Origin: ${_selectedOrigin!.id} (${_selectedOrigin!.cityName})');
+      print(
+        'Destination: ${_selectedDestination!.id} (${_selectedDestination!.cityName})',
+      );
+      print('Weight: $totalWeight grams');
+      print('Couriers: $courierCodes');
+
+      final results = await RajaOngkirService.calculateShippingCost(
+        origin: _selectedOrigin!.id.toString(),
+        destination: _selectedDestination!.id.toString(),
+        weight: totalWeight,
+        couriers: courierCodes,
+      );
+
+      print('Shipping cost calculation returned ${results.length} results');
+
+      if (mounted) {
+        // Add hardcoded zero-cost couriers to the results
+        final allShippingCosts = [
+          ...results,
+          ...RajaOngkirService.getHardcodedZeroCostCouriers(),
+        ];
+
+        setState(() {
+          _shippingCosts = allShippingCosts;
+          _filteredShippingCosts = allShippingCosts;
+          _isLoadingShippingCost = false;
+        });
+      }
+    } catch (e) {
+      print('Error calculating shipping cost: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingShippingCost = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error calculating shipping cost: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -181,7 +453,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           )
                         : Text(
-                            'Checkout Sekarang - Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                            'Checkout Sekarang - Rp ${(cartProvider.total.toInt() + _shippingCost).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -402,7 +674,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               controller: _receiverAddressController,
               decoration: InputDecoration(
                 labelText: 'Alamat Lengkap Pengiriman',
-                hintText: 'Alamat jalan, kecamatan, kota, provinsi, kode pos',
+                hintText: _selectedDestination != null
+                    ? 'Alamat jalan, kecamatan, kota, provinsi, kode pos\n📍 Tujuan: ${_selectedDestination!.cityName}, ${_selectedDestination!.provinceName}'
+                    : 'Alamat jalan, kecamatan, kota, provinsi, kode pos',
                 prefixIcon: const Icon(Icons.location_on),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -422,39 +696,299 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               },
             ),
 
+            const SizedBox(height: 24),
+
+            // Origin and Destination Section
+            Text(
+              'Lokasi Pengiriman',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Origin Selection with Search
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: _originController,
+                  decoration: InputDecoration(
+                    labelText: 'Kota Asal',
+                    hintText: 'Cari kota asal pengiriman...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _isLoadingOrigin
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.location_city),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                  ),
+                  onChanged: (value) {
+                    if (value.isEmpty) {
+                      _clearOriginSelection();
+                    } else {
+                      _onOriginSearchChanged(value);
+                    }
+                  },
+                ),
+                if (_originResults.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _originResults.length,
+                      itemBuilder: (context, index) {
+                        final origin = _originResults[index];
+                        return ListTile(
+                          title: Text(origin.label),
+                          subtitle: Text(
+                            '${origin.cityName}, ${origin.provinceName}',
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _selectedOrigin = origin;
+                              _originController.text = origin.label;
+                              _originResults = [];
+                              _calculateShippingCost();
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Destination Selection with Search
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: _destinationController,
+                  decoration: InputDecoration(
+                    labelText: 'Kota Tujuan',
+                    hintText: 'Cari kota tujuan pengiriman...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _isLoadingDestination
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.location_on),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                  ),
+                  onChanged: (value) {
+                    if (value.isEmpty) {
+                      _clearDestinationSelection();
+                    } else {
+                      _onDestinationSearchChanged(value);
+                    }
+                  },
+                ),
+                if (_destinationResults.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _destinationResults.length,
+                      itemBuilder: (context, index) {
+                        final destination = _destinationResults[index];
+                        return ListTile(
+                          title: Text(destination.label),
+                          subtitle: Text(
+                            '${destination.cityName}, ${destination.provinceName}',
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _selectedDestination = destination;
+                              _destinationController.text = destination.label;
+                              _destinationResults = [];
+                              _calculateShippingCost();
+                              _updateAddressWithDestination();
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+
             const SizedBox(height: 16),
 
             // Courier Selection
-            DropdownButtonFormField<String>(
-              value: _selectedCourier,
-              decoration: InputDecoration(
-                labelText: 'Kurir Pengiriman',
-                hintText: 'Pilih layanan kurir',
-                prefixIcon: const Icon(Icons.local_shipping),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).cardColor,
+            if (_shippingCosts.isNotEmpty) ...[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Courier Search Field
+                  TextFormField(
+                    controller: _courierSearchController,
+                    decoration: InputDecoration(
+                      labelText: 'Cari Kurir',
+                      hintText: 'Cari kurir lalu pilih di bawah...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _courierSearchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _courierSearchController.clear();
+                                _filterShippingCosts('');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).cardColor,
+                    ),
+                    onChanged: _filterShippingCosts,
+                  ),
+                  const SizedBox(height: 8),
+                  // Courier Selection Dropdown
+                  DropdownButtonFormField<ShippingCost>(
+                    value: _selectedShippingCost,
+                    decoration: InputDecoration(
+                      labelText: 'Kurir Pengiriman',
+                      hintText:
+                          _filteredShippingCosts.isEmpty &&
+                              _courierSearchController.text.isNotEmpty
+                          ? 'Tidak ada kurir ditemukan'
+                          : 'Pilih layanan kurir',
+                      prefixIcon: const Icon(Icons.local_shipping),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).cardColor,
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 30,
+                        horizontal: 16,
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem<ShippingCost>(
+                        value: null,
+                        child: Text('Pilih layanan kurir...'),
+                      ),
+                      ..._filteredShippingCosts.map((shippingCost) {
+                        return DropdownMenuItem<ShippingCost>(
+                          value: shippingCost,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${shippingCost.name} ${shippingCost.service}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Rp ${shippingCost.cost.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} - ${shippingCost.etd}',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.7),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedShippingCost = value;
+                        _shippingCost = value?.cost.toDouble() ?? 0.0;
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Tolong pilih layanan kurir';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
               ),
-              items: _courierOptions.map((courier) {
-                return DropdownMenuItem<String>(
-                  value: courier,
-                  child: Text(courier),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedCourier = value;
-                });
-              },
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Tolong pilih layanan kurir';
-                }
-                return null;
-              },
-            ),
+            ] else if (_isLoadingShippingCost) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: const Row(
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 12),
+                    Text('Menghitung biaya pengiriman...'),
+                  ],
+                ),
+              ),
+            ] else if (_selectedOrigin != null &&
+                _selectedDestination != null) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: const Text(
+                  'Pilih asal dan tujuan pengiriman untuk melihat opsi kurir',
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: const Text(
+                  'Pilih kota asal dan tujuan untuk melihat opsi kurir',
+                ),
+              ),
+            ],
 
             const SizedBox(height: 16),
 
@@ -656,6 +1190,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildOrderTotal(CartProvider cartProvider) {
+    final subtotal = cartProvider.subtotal;
+    final discount = cartProvider.totalDiscount;
+    final total = subtotal + _shippingCost;
+
     return Card(
       color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
       child: Padding(
@@ -667,12 +1205,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               children: [
                 Text('Subtotal:', style: Theme.of(context).textTheme.bodyLarge),
                 Text(
-                  'Rp ${cartProvider.subtotal.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                  'Rp ${subtotal.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ],
             ),
-            if (cartProvider.totalDiscount > 0) ...[
+            if (discount > 0) ...[
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -684,9 +1222,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ).textTheme.bodyLarge?.copyWith(color: Colors.green),
                   ),
                   Text(
-                    '-Rp ${cartProvider.totalDiscount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                    '-Rp ${discount.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (_shippingCost > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ongkos Kirim:',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  Text(
+                    'Rp ${_shippingCost.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -704,7 +1260,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  'Rp ${cartProvider.total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                  'Rp ${total.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.primary,
@@ -863,10 +1419,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             : null,
         receiverName: _receiverNameController.text.trim(),
         receiverPhone: _receiverPhoneController.text.trim(),
-        courierInfo: _selectedCourier ?? '',
+        courierInfo: _selectedShippingCost != null
+            ? '${_selectedShippingCost!.name} ${_selectedShippingCost!.service}'
+            : '',
         isDropship: _isDropship,
         senderName: _isDropship ? _senderNameController.text.trim() : null,
         senderPhone: _isDropship ? _senderPhoneController.text.trim() : null,
+        additionalCosts: _shippingCost,
+        originCity: _selectedOrigin?.cityName ?? '',
+        destinationCity: _selectedDestination?.cityName ?? '',
       );
 
       if (order != null && mounted) {

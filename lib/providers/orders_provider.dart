@@ -255,6 +255,9 @@ class OrdersProvider extends ChangeNotifier {
     bool isDropship = false,
     String? senderName,
     String? senderPhone,
+    double additionalCosts = 0.0,
+    String? originCity,
+    String? destinationCity,
   }) async {
     _isLoading = true;
     _error = null;
@@ -266,21 +269,32 @@ class OrdersProvider extends ChangeNotifier {
         throw Exception('User not authenticated');
       }
 
-      // Calculate total amount
-      final totalAmount = cartItems.fold<double>(
+      // Calculate subtotal amount
+      final subtotalAmount = cartItems.fold<double>(
         0,
         (sum, item) => sum + item.totalPrice,
       );
 
-      // Generate order number
+      // Generate order number first
       final orderNumber = Order.generateOrderNumber();
+
+      // Extract last 3 digits from order number for unique identifier
+      final orderNumberLast3Digits = _extractLast3DigitsFromOrderNumber(
+        orderNumber,
+      );
+
+      // Calculate final total including additional costs (shipping) and unique identifier
+      final totalAmount =
+          subtotalAmount + additionalCosts + orderNumberLast3Digits;
 
       // Create order data
       final orderData = {
         'user_id': userId,
         'order_number': orderNumber,
-        'status': 'menunggu_ongkir',
+        'status': 'menunggu_pembayaran',
         'total_amount': totalAmount,
+        'subtotal_amount': subtotalAmount,
+        'additional_costs': additionalCosts,
         'shipping_address': shippingAddress,
         'payment_method': paymentMethod,
         'payment_status': 'pending',
@@ -291,6 +305,8 @@ class OrdersProvider extends ChangeNotifier {
         'is_dropship': isDropship,
         'sender_name': senderName,
         'sender_phone': senderPhone,
+        'origin_city': originCity,
+        'destination_city': destinationCity,
       };
 
       // Insert order
@@ -340,8 +356,11 @@ class OrdersProvider extends ChangeNotifier {
         id: orderId,
         userId: userId,
         orderNumber: orderNumber,
-        status: OrderStatus.menungguOngkir,
+        status: OrderStatus.menungguPembayaran,
         totalAmount: totalAmount,
+        subtotalAmount: subtotalAmount,
+        additionalCosts: additionalCosts,
+        uniqueIdentifier: orderNumberLast3Digits,
         shippingAddress: shippingAddress,
         paymentMethod: paymentMethod,
         paymentStatus: PaymentStatus.pending,
@@ -352,6 +371,8 @@ class OrdersProvider extends ChangeNotifier {
         isDropship: isDropship,
         senderName: senderName,
         senderPhone: senderPhone,
+        originCity: originCity,
+        destinationCity: destinationCity,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         items: orderItemsObjects,
@@ -513,6 +534,29 @@ class OrdersProvider extends ChangeNotifier {
   bool shouldLoadOrders() {
     final currentUser = _supabase.auth.currentUser;
     return currentUser != null && !_isInitialized && !_isLoading;
+  }
+
+  double _extractLast3DigitsFromOrderNumber(String orderNumber) {
+    try {
+      // Extract the last part after ORD- (e.g., "545E" from "ORD-47520-545E")
+      final parts = orderNumber.split('-');
+      if (parts.length >= 3) {
+        final lastPart = parts[1]; // "545E"
+        // Extract only the numeric digits from the last part
+        final digits = lastPart.replaceAll(RegExp(r'[^0-9]'), '');
+        if (digits.length >= 3) {
+          // Take last 3 digits and convert to double
+          final last3Digits = digits.substring(digits.length - 3);
+          return double.parse(
+            last3Digits,
+          ); // Divide by 100 to make it reasonable (e.g., 545 -> 5.45)
+        }
+      }
+      return 0.0; // Default to 0 if extraction fails
+    } catch (e) {
+      print('Error extracting digits from order number: $e');
+      return 0.0;
+    }
   }
 
   Future<void> _sendNotificationToAdmin(
