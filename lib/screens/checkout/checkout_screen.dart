@@ -292,10 +292,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      final totalWeight = cartProvider.items.fold<int>(
-        0,
-        (sum, item) => sum + (item.quantity * 800), // 800 grams per item
-      );
+
+      // Calculate total weight by fetching from kl_products, default to 800g if empty
+      int totalWeight = 0;
+      for (final item in cartProvider.items) {
+        try {
+          final productResponse = await Supabase.instance.client
+              .from('kl_products')
+              .select('weight')
+              .eq('id', item.productId)
+              .single();
+
+          int weight = 800; // default
+          final weightValue = productResponse['weight'];
+          if (weightValue != null && weightValue.toString().trim().isNotEmpty) {
+            weight = int.tryParse(weightValue.toString()) ?? 800;
+          }
+          totalWeight += weight * item.quantity;
+        } catch (e) {
+          print('Error fetching weight for product ${item.productId}: $e');
+          // Use default 800 grams on error
+          totalWeight += 800 * item.quantity;
+        }
+      }
 
       // Only request allowed courier codes: jne, sicepat, ide, jnt, sentral, lion (baraka is not valid)
       final courierCodes = 'jne:sicepat:ide:jnt:sentral:lion';
