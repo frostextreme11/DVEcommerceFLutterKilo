@@ -270,6 +270,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ],
                     ),
 
+                    const SizedBox(height: 16),
+
+                    // Weight Information
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.scale,
+                          size: 16,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${widget.product.weightInGrams}g',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Description

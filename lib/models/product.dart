@@ -8,6 +8,7 @@ class Product {
   final String? imageUrl;
   final String? category;
   final int stockQuantity;
+  final int? weight;
   final bool isActive;
   final bool isFeatured;
   final bool isBestSeller;
@@ -24,12 +25,15 @@ class Product {
     this.imageUrl,
     this.category,
     required this.stockQuantity,
+    this.weight,
     required this.isActive,
     required this.isFeatured,
     required this.isBestSeller,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  int get weightInGrams => weight ?? 800;
 
   double get currentPrice => discountPrice ?? price;
   bool get hasDiscount => discountPrice != null && discountPrice! < price;
@@ -41,11 +45,16 @@ class Product {
       name: json['name'],
       description: json['description'] ?? '',
       price: (json['price'] as num).toDouble(),
-      discountPrice: json['discount_price'] != null ? (json['discount_price'] as num).toDouble() : null,
-      discountPercentage: json['discount_percentage'] != null ? (json['discount_percentage'] as num).toDouble() : null,
+      discountPrice: json['discount_price'] != null
+          ? (json['discount_price'] as num).toDouble()
+          : null,
+      discountPercentage: json['discount_percentage'] != null
+          ? (json['discount_percentage'] as num).toDouble()
+          : null,
       imageUrl: json['image_url'],
       category: json['category'],
       stockQuantity: json['stock_quantity'] ?? 0,
+      weight: json['weight'] as int?,
       isActive: json['is_active'] ?? true,
       isFeatured: json['is_featured'] ?? false,
       isBestSeller: json['is_best_seller'] ?? false,
@@ -65,6 +74,7 @@ class Product {
       'image_url': imageUrl,
       'category': category,
       'stock_quantity': stockQuantity,
+      'weight': weight,
       'is_active': isActive,
       'is_featured': isFeatured,
       'is_best_seller': isBestSeller,
@@ -83,6 +93,7 @@ class Product {
     String? imageUrl,
     String? category,
     int? stockQuantity,
+    int? weight,
     bool? isActive,
     bool? isFeatured,
     bool? isBestSeller,
@@ -99,6 +110,7 @@ class Product {
       imageUrl: imageUrl ?? this.imageUrl,
       category: category ?? this.category,
       stockQuantity: stockQuantity ?? this.stockQuantity,
+      weight: weight ?? this.weight,
       isActive: isActive ?? this.isActive,
       isFeatured: isFeatured ?? this.isFeatured,
       isBestSeller: isBestSeller ?? this.isBestSeller,

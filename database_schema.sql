@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.kl_products (
     image_url TEXT,
     category TEXT,
     stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    weight INTEGER DEFAULT 800,
     is_active BOOLEAN NOT NULL DEFAULT true,
     is_featured BOOLEAN NOT NULL DEFAULT false,
     is_best_seller BOOLEAN NOT NULL DEFAULT false,
@@ -306,13 +307,13 @@ INSERT INTO public.kl_categories (name, description, is_active) VALUES
 ('Accessories', 'Hijab accessories and complementary items', true)
 ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO public.kl_products (name, description, price, category, stock_quantity, is_active, is_featured, is_best_seller, created_at, updated_at) VALUES
-('Premium Chiffon Hijab', 'Soft and breathable chiffon hijab in elegant designs', 75000, 'Hijab', 50, true, true, true, NOW(), NOW()),
-('Modern Abaya Dress', 'Contemporary abaya with modern cuts and designs', 250000, 'Abaya', 25, true, true, false, NOW(), NOW()),
-('Elegant Maxi Dress', 'Flowing maxi dress perfect for special occasions', 180000, 'Dress', 30, true, false, true, NOW(), NOW()),
-('Hijab Pins Set', 'Beautiful hijab pins and brooches', 25000, 'Accessories', 100, true, false, false, NOW(), NOW()),
-('Silk Scarf Collection', 'Premium silk scarves in various colors', 95000, 'Hijab', 75, true, true, false, NOW(), NOW()),
-('Embroidered Abaya', 'Beautifully embroidered traditional abaya', 320000, 'Abaya', 15, true, false, true, NOW(), NOW())
+INSERT INTO public.kl_products (name, description, price, category, stock_quantity, weight, is_active, is_featured, is_best_seller, created_at, updated_at) VALUES
+('Premium Chiffon Hijab', 'Soft and breathable chiffon hijab in elegant designs', 75000, 'Hijab', 50, 800, true, true, true, NOW(), NOW()),
+('Modern Abaya Dress', 'Contemporary abaya with modern cuts and designs', 250000, 'Abaya', 25, 800, true, true, false, NOW(), NOW()),
+('Elegant Maxi Dress', 'Flowing maxi dress perfect for special occasions', 180000, 'Dress', 30, 800, true, false, true, NOW(), NOW()),
+('Hijab Pins Set', 'Beautiful hijab pins and brooches', 25000, 'Accessories', 100, 800, true, false, false, NOW(), NOW()),
+('Silk Scarf Collection', 'Premium silk scarves in various colors', 95000, 'Hijab', 75, 800, true, true, false, NOW(), NOW()),
+('Embroidered Abaya', 'Beautifully embroidered traditional abaya', 320000, 'Abaya', 15, 800, true, false, true, NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.kl_banners (title, description, image_url, is_active, display_order, created_at, updated_at) VALUES

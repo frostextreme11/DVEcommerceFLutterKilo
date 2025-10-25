@@ -26,6 +26,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _priceController = TextEditingController();
   final _discountPriceController = TextEditingController();
   final _stockController = TextEditingController();
+  final _weightController = TextEditingController();
   final _imageUrlController = TextEditingController();
 
   String? _selectedCategory;
@@ -62,6 +63,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _priceController.text = product.price.toString();
     _discountPriceController.text = product.discountPrice?.toString() ?? '';
     _stockController.text = product.stockQuantity.toString();
+    _weightController.text = product.weight?.toString() ?? '800';
     _imageUrlController.text = product.imageUrl ?? '';
     _currentImageUrl = product.imageUrl;
     _selectedCategory = product.category;
@@ -77,6 +79,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _priceController.dispose();
     _discountPriceController.dispose();
     _stockController.dispose();
+    _weightController.dispose();
     _imageUrlController.dispose();
     super.dispose();
   }
@@ -267,6 +270,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             : null,
         category: _selectedCategory,
         stockQuantity: int.parse(_stockController.text),
+        weight: int.parse(
+          _weightController.text.isNotEmpty ? _weightController.text : '800',
+        ),
         isActive: _isActive,
         isFeatured: _isFeatured,
         isBestSeller: _isBestSeller,
@@ -482,6 +488,25 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   final stock = int.tryParse(value!);
                   if (stock == null || stock < 0) {
                     return 'Invalid stock quantity';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              CustomTextField(
+                controller: _weightController,
+                labelText: 'Weight (grams)',
+                hintText: '800',
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value?.isEmpty ?? true) {
+                    return 'Weight is required';
+                  }
+                  final weight = int.tryParse(value!);
+                  if (weight == null || weight <= 0) {
+                    return 'Weight must be greater than 0';
                   }
                   return null;
                 },
