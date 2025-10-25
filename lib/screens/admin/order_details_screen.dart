@@ -532,36 +532,67 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    if (order.paymentStatus ==
-                        order_model.PaymentStatus.pending) ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomButton(
-                              text: 'Notify Customer',
-                              onPressed: () {
-                                _showNotifyCustomerDialog(context);
-                              },
-                              backgroundColor: Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomButton(
-                              text: 'Send Payment Notification',
-                              onPressed: () {
-                                _showPaymentNotificationDialog(context);
-                              },
-                              backgroundColor: Colors.purple,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    FutureBuilder<bool>(
+                      future: _hasPaymentsForOrder(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const SizedBox.shrink();
+                        }
+                        final hasPayments = snapshot.data ?? false;
+                        if (hasPayments &&
+                            order.paymentStatus ==
+                                order_model.PaymentStatus.pending) {
+                          return Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: CustomButton(
+                                      text: 'Mark as Paid',
+                                      onPressed: () {
+                                        _markOrderAsPaid(context);
+                                      },
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: CustomButton(
+                                      text: 'Send Payment Notification',
+                                      onPressed: () {
+                                        _showPaymentNotificationDialog(context);
+                                      },
+                                      backgroundColor: Colors.purple,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        } else if (order.paymentStatus ==
+                            order_model.PaymentStatus.pending) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: CustomButton(
+                                  text: 'Send Payment Notification',
+                                  onPressed: () {
+                                    _showPaymentNotificationDialog(context);
+                                  },
+                                  backgroundColor: Colors.purple,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
                   ],
                 );
               },
@@ -1078,6 +1109,57 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
     }
   }
 
+  Future<bool> _hasPaymentsForOrder() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('kl_payments')
+          .select('id')
+          .eq('order_id', _currentOrder!.id)
+          .limit(1);
+      return (response as List).isNotEmpty;
+    } catch (e) {
+      print('Error checking payments for order: $e');
+      return false;
+    }
+  }
+
+  void _markOrderAsPaid(BuildContext context) async {
+    try {
+      final adminOrdersProvider = context.read<AdminOrdersProvider>();
+      final success = await adminOrdersProvider.updatePaymentStatus(
+        _currentOrder!.id,
+        order_model.PaymentStatus.paid,
+      );
+      if (context.mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Order marked as paid successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to mark order as paid'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error marking order as paid: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildPaymentCard(BuildContext context, Payment payment) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1096,7 +1178,34 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                 'Payment #${payment.id.substring(0, 8)}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              _buildPaymentStatusBadge(payment.status),
+              Row(
+                children: [
+                  _buildPaymentStatusBadge(payment.status),
+                  if (payment.status == PaymentStatus.completed) ...[
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 120,
+                      height: 32,
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            _markPaymentAsPending(context, payment),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        child: const Text(
+                          'Mark Pending',
+                          style: TextStyle(fontSize: 10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
 
@@ -1208,6 +1317,55 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
     );
   }
 
+  void _markPaymentAsPending(BuildContext context, Payment payment) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark Payment as Pending'),
+        content: const Text(
+          'Mark this payment as pending? This will update the payment status.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await _updatePaymentStatus(payment.id, PaymentStatus.pending);
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Payment marked as pending successfully'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              } catch (e) {
+                Navigator.pop(context);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to mark payment as pending: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Mark Pending'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _updatePaymentStatus(
     String paymentId,
     PaymentStatus status,
@@ -1223,6 +1381,33 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', paymentId);
+
+      // Update order payment status to match
+      final paymentResponse = await supabase
+          .from('kl_payments')
+          .select('order_id')
+          .eq('id', paymentId)
+          .single();
+
+      if (paymentResponse != null) {
+        final orderId = paymentResponse['order_id'] as String?;
+        if (orderId != null) {
+          // Map payment status to order payment status
+          order_model.PaymentStatus orderStatus;
+          if (status == PaymentStatus.completed) {
+            orderStatus = order_model.PaymentStatus.paid;
+          } else if (status == PaymentStatus.pending) {
+            orderStatus = order_model.PaymentStatus.pending;
+          } else {
+            // For failed or cancelled, set to failed
+            orderStatus = order_model.PaymentStatus.failed;
+          }
+
+          // Update order payment status via provider for consistency
+          final adminOrdersProvider = context.read<AdminOrdersProvider>();
+          await adminOrdersProvider.updatePaymentStatus(orderId, orderStatus);
+        }
+      }
 
       // If payment is completed, send notifications
       if (status == PaymentStatus.completed) {
@@ -1929,58 +2114,6 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
               }
             },
             child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showNotifyCustomerDialog(BuildContext context) {
-    final messageController = TextEditingController(
-      text:
-          'Mohon selesaikan pembayaran untuk pesanan ${_currentOrder!.orderNumber}. Total: Rp ${_currentOrder!.totalAmount.toStringAsFixed(0)}',
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Notify Customer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Order: ${_currentOrder!.orderNumber}'),
-            Text('Customer: ${_currentOrder!.receiverName ?? 'N/A'}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: messageController,
-              decoration: const InputDecoration(
-                labelText: 'Message',
-                hintText: 'Enter notification message...',
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final message = messageController.text.trim();
-              if (message.isNotEmpty) {
-                await _sendNotificationToCustomer(
-                  context,
-                  _currentOrder!.userId,
-                  _currentOrder!.id,
-                  'Pembayaran Diingatkan',
-                  message,
-                );
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Send'),
           ),
         ],
       ),
