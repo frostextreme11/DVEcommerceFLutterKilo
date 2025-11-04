@@ -91,7 +91,7 @@ class RajaOngkirService {
           // Filter only allowed courier codes (based on API response)
           final allowedCodes = [
             'jne',
-            'sicepat',
+            //'sicepat',
             //'ide',
             'jnt',
             'sentral',
@@ -209,6 +209,14 @@ class RajaOngkirService {
         etd: '1-2 hari',
       ),
       ShippingCost(
+        name: 'JNE',
+        code: 'jne',
+        service: 'Resi Otomatis',
+        description: 'JNE Resi Otomatis',
+        cost: 0,
+        etd: '1-2 hari',
+      ),
+      ShippingCost(
         name: 'SPX',
         code: 'spx',
         service: 'Resi Otomatis',
@@ -229,6 +237,14 @@ class RajaOngkirService {
         code: 'barakaexpresscod',
         service: 'COD',
         description: 'Baraka Express COD',
+        cost: 0,
+        etd: '2-4 hari',
+      ),
+      ShippingCost(
+        name: 'Central Cargo',
+        code: 'centralcargocod',
+        service: 'COD',
+        description: 'Central Cargo COD',
         cost: 0,
         etd: '2-4 hari',
       ),
