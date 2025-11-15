@@ -462,7 +462,89 @@ class AdminOrdersProvider extends ChangeNotifier {
         print('AdminOrdersProvider: Error in order number search: $e');
       }
 
-      // Strategy 2: Search by customer name
+      // Strategy 2: Search by receiver name (DIRECT DATABASE SEARCH)
+      try {
+        var receiverNameQuery = _supabase
+            .from('kl_orders')
+            .select('''
+          *,
+          kl_order_items(*),
+          kl_users!kl_orders_user_id_fkey(full_name, email)
+        ''')
+            .ilike('receiver_name', '%$searchTerm%');
+
+        // Apply basic filters
+        if (_selectedStatus != null) {
+          receiverNameQuery = receiverNameQuery.eq(
+            'status',
+            _selectedStatus!.databaseValue,
+          );
+        }
+
+        final receiverNameResponse = await receiverNameQuery.limit(200);
+        final receiverNameData = receiverNameResponse as List;
+
+        for (final orderData in receiverNameData) {
+          try {
+            final orderItemsData = orderData['kl_order_items'] as List? ?? [];
+            final items = orderItemsData
+                .map((item) => OrderItem.fromJson(item))
+                .toList();
+            allMatchingOrders.add(Order.fromJson(orderData, items));
+          } catch (e) {
+            print(
+              'AdminOrdersProvider: Error processing receiver name result: $e',
+            );
+          }
+        }
+        print(
+          'AdminOrdersProvider: Found ${receiverNameData.length} orders by receiver name',
+        );
+      } catch (e) {
+        print('AdminOrdersProvider: Error in receiver name search: $e');
+      }
+
+      // Strategy 3: Search by shipping address (DIRECT DATABASE SEARCH)
+      try {
+        var addressQuery = _supabase
+            .from('kl_orders')
+            .select('''
+          *,
+          kl_order_items(*),
+          kl_users!kl_orders_user_id_fkey(full_name, email)
+        ''')
+            .ilike('shipping_address', '%$searchTerm%');
+
+        // Apply basic filters
+        if (_selectedStatus != null) {
+          addressQuery = addressQuery.eq(
+            'status',
+            _selectedStatus!.databaseValue,
+          );
+        }
+
+        final addressResponse = await addressQuery.limit(200);
+        final addressData = addressResponse as List;
+
+        for (final orderData in addressData) {
+          try {
+            final orderItemsData = orderData['kl_order_items'] as List? ?? [];
+            final items = orderItemsData
+                .map((item) => OrderItem.fromJson(item))
+                .toList();
+            allMatchingOrders.add(Order.fromJson(orderData, items));
+          } catch (e) {
+            print('AdminOrdersProvider: Error processing address result: $e');
+          }
+        }
+        print(
+          'AdminOrdersProvider: Found ${addressData.length} orders by address',
+        );
+      } catch (e) {
+        print('AdminOrdersProvider: Error in address search: $e');
+      }
+
+      // Strategy 4: Search by customer name
       try {
         final nameQuery = _supabase
             .from('kl_users')
@@ -516,7 +598,7 @@ class AdminOrdersProvider extends ChangeNotifier {
         print('AdminOrdersProvider: Error in name search: $e');
       }
 
-      // Strategy 3: Search by email
+      // Strategy 5: Search by email
       try {
         final emailQuery = _supabase
             .from('kl_users')
@@ -572,16 +654,16 @@ class AdminOrdersProvider extends ChangeNotifier {
         print('AdminOrdersProvider: Error in email search: $e');
       }
 
-      // Remove duplicates and apply client-side filtering
+      // Remove duplicates and apply additional client-side filtering
       final uniqueOrders = allMatchingOrders.toSet().toList();
 
-      // Apply client-side filtering for receiver names and addresses
+      // Apply additional client-side filtering for any missed receiver names and addresses
       final clientSideFilteredOrders = uniqueOrders.where((order) {
         return order.receiverName?.toLowerCase().contains(searchTerm) == true ||
             order.shippingAddress.toLowerCase().contains(searchTerm);
       }).toList();
 
-      // Combine results
+      // Combine results (database results + additional client-side results)
       final combinedResults = {
         ...uniqueOrders,
         ...clientSideFilteredOrders,

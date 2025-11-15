@@ -736,7 +736,7 @@ class _AllUsersOrderSummaryScreenState
           user_id,
           status,
           additional_costs,
-          kl_order_items (
+          order_items (
             quantity,
             total_price
           )
@@ -750,7 +750,7 @@ class _AllUsersOrderSummaryScreenState
 
     for (final order in ordersData) {
       final userId = order['user_id'] as String;
-      final orderItems = (order['kl_order_items'] as List?) ?? [];
+      final orderItems = (order['order_items'] as List?) ?? [];
 
       final summary =
           summaries[userId] ??
