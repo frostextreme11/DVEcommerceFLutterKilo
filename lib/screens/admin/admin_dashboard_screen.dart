@@ -411,15 +411,6 @@ class DashboardOverviewScreen extends StatelessWidget {
                                 .length
                       : 0;
 
-                  final completedOrders = ordersProvider.orders.isNotEmpty
-                      ? ordersProvider
-                                .getOrdersByStatus(OrderStatus.lunas)
-                                .length +
-                            ordersProvider
-                                .getOrdersByStatus(OrderStatus.barangDikirim)
-                                .length
-                      : 0;
-
                   final activeProducts = productsProvider.products
                       .where((p) => p.isActive)
                       .length;
@@ -562,6 +553,33 @@ class DashboardOverviewScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Generate Overall Order Button at the very bottom
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/overall-order-report');
+              },
+              icon: const Icon(Icons.analytics, size: 28),
+              label: const Text(
+                'Generate Overall Order',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
+            ),
           ),
         ],
       ),

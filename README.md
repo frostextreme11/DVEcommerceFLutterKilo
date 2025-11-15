@@ -1,4 +1,4 @@
-# Dalanova Ecommerce App
+ # Dalanova Ecommerce App
 
 A modern, fully-animated Flutter e-commerce application for Muslim fashion with Google authentication, Supabase backend, and beautiful UI themes.
 

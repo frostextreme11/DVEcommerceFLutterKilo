@@ -2,8 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:intl/intl.dart';
 import 'dart:typed_data';
+import 'dart:convert';
 import '../models/order.dart';
+
+// Define OverallOrderData class here since it's not imported
+class OverallOrderData {
+  final int rowNumber;
+  final DateTime orderDate;
+  final String userEmail;
+  final String userName;
+  final String receiverName;
+  final String status;
+  final String orderNumber;
+  final String productName;
+  final int quantity;
+  final double unitPrice;
+  final double itemTotal;
+
+  OverallOrderData({
+    required this.rowNumber,
+    required this.orderDate,
+    required this.userEmail,
+    required this.userName,
+    required this.receiverName,
+    required this.status,
+    required this.orderNumber,
+    required this.productName,
+    required this.quantity,
+    required this.unitPrice,
+    required this.itemTotal,
+  });
+}
 
 class PrintService {
   static const String _separator =
@@ -423,6 +454,366 @@ class PrintService {
             PrintPreviewScreen(pdfData: pdfData, orders: orders),
       ),
     );
+  }
+
+  /// Generate PDF for overall order report
+  static Future<void> generateOrderReportPDF(
+    List<OverallOrderData> orderData,
+    DateTime startDate,
+    DateTime endDate,
+    int totalQuantity,
+    double totalAmount,
+  ) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(15),
+        header: (context) => _buildOrderReportHeader(startDate, endDate),
+        build: (context) => [
+          pw.SizedBox(height: 10),
+          _buildOrderReportSummary(totalQuantity, totalAmount),
+          pw.SizedBox(height: 20),
+          _buildOrderReportTable(orderData),
+        ],
+      ),
+    );
+
+    // Save and share the PDF
+    final pdfData = await pdf.save();
+    await Printing.sharePdf(
+      bytes: pdfData,
+      filename:
+          'overall_order_report_${startDate.toIso8601String().substring(0, 10)}_${endDate.toIso8601String().substring(0, 10)}.pdf',
+    );
+  }
+
+  /// Generate CSV for overall order report
+  static Future<void> generateOrderReportCSV(
+    List<OverallOrderData> orderData,
+    DateTime startDate,
+    DateTime endDate,
+    int totalQuantity,
+    double totalAmount,
+  ) async {
+    final csv = StringBuffer();
+
+    // Add header
+    csv.writeln('Overall Order Report');
+    csv.writeln(
+      'Period: ${startDate.toIso8601String().substring(0, 10)} to ${endDate.toIso8601String().substring(0, 10)}',
+    );
+    csv.writeln('');
+
+    // Add summary
+    csv.writeln('Total Orders,${orderData.length}');
+    csv.writeln('Total Quantity,$totalQuantity');
+    csv.writeln('Total Amount,Rp ${totalAmount.toStringAsFixed(0)}');
+    csv.writeln('');
+
+    // Add table headers
+    csv.writeln(
+      'Row Number,Order Date,User Email,User Name,Receiver Name,Status,Order Number,Product Name,Quantity,Unit Price,Item Total',
+    );
+
+    // Add data rows
+    final processedOrders = <String>{}; // Track which orders we've processed
+
+    for (final data in orderData) {
+      // Only show row number and order info for the first occurrence of each order number
+      final shouldShowOrderInfo = !processedOrders.contains(data.orderNumber);
+      processedOrders.add(data.orderNumber);
+
+      csv.writeln(
+        '${shouldShowOrderInfo ? data.rowNumber : ''},'
+        '${shouldShowOrderInfo ? DateFormat('yyyy-MM-dd HH:mm:ss').format(data.orderDate) : ''},'
+        '${shouldShowOrderInfo ? data.userEmail : ''},'
+        '${shouldShowOrderInfo ? data.userName : ''},'
+        '${shouldShowOrderInfo ? data.receiverName : ''},'
+        '${shouldShowOrderInfo ? data.status : ''},'
+        '${data.orderNumber},'
+        '${data.productName},'
+        '${data.quantity},'
+        '${data.unitPrice.toStringAsFixed(0)},'
+        '${data.itemTotal.toStringAsFixed(0)}',
+      );
+    }
+
+    // Add total row
+    csv.writeln(
+      'TOTAL,,,,,,,${totalQuantity},,${totalAmount.toStringAsFixed(0)}',
+    );
+
+    // Save to file using CSV sharing (using utf8 encoding)
+    final csvData = utf8.encode(csv.toString());
+    await Printing.sharePdf(
+      bytes: csvData,
+      filename:
+          'overall_order_report_${startDate.toIso8601String().substring(0, 10)}_${endDate.toIso8601String().substring(0, 10)}.csv',
+    );
+  }
+
+  /// Build header for order report
+  static pw.Widget _buildOrderReportHeader(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.only(bottom: 10),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(
+          bottom: pw.BorderSide(width: 1, color: PdfColors.grey400),
+        ),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Text(
+            'Overall Order Report',
+            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 5),
+          pw.Text(
+            'Period: ${startDate.toIso8601String().substring(0, 10)} to ${endDate.toIso8601String().substring(0, 10)}',
+            style: pw.TextStyle(fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build summary section for order report
+  static pw.Widget _buildOrderReportSummary(
+    int totalQuantity,
+    double totalAmount,
+  ) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(vertical: 10),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+        children: [
+          pw.Column(
+            children: [
+              pw.Text(
+                '$totalQuantity',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text('Total Quantity'),
+            ],
+          ),
+          pw.Column(
+            children: [
+              pw.Text(
+                'Rp ${totalAmount.toStringAsFixed(0)}',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text('Total Amount'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build data table for order report
+  static pw.Widget _buildOrderReportTable(List<OverallOrderData> orderData) {
+    final headers = [
+      'Row #',
+      'Order Date',
+      'User Email',
+      'User Name',
+      'Receiver Name',
+      'Status',
+      'Order #',
+      'Product Name',
+      'Qty',
+      'Unit Price',
+      'Item Total',
+    ];
+
+    final tableRows = <pw.TableRow>[];
+
+    // Header row
+    tableRows.add(
+      pw.TableRow(
+        decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+        children: headers
+            .map(
+              (header) => pw.Padding(
+                padding: const pw.EdgeInsets.all(4),
+                child: pw.Text(
+                  header,
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+
+    // Data rows
+    final processedOrders =
+        <String>{}; // Track which orders we've processed for row numbering
+
+    for (final data in orderData) {
+      // Only show row number and order info for the first occurrence of each order number
+      final shouldShowOrderInfo = !processedOrders.contains(data.orderNumber);
+      processedOrders.add(data.orderNumber);
+
+      tableRows.add(
+        pw.TableRow(
+          children: [
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(
+                shouldShowOrderInfo ? data.rowNumber.toString() : '',
+              ),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(
+                shouldShowOrderInfo
+                    ? DateFormat('yyyy-MM-dd HH:mm:ss').format(data.orderDate)
+                    : '',
+              ),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(shouldShowOrderInfo ? data.userEmail : ''),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(shouldShowOrderInfo ? data.userName : ''),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(shouldShowOrderInfo ? data.receiverName : ''),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(shouldShowOrderInfo ? data.status : ''),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(data.orderNumber),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(data.productName),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text(data.quantity.toString()),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text('Rp ${data.unitPrice.toStringAsFixed(0)}'),
+            ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Text('Rp ${data.itemTotal.toStringAsFixed(0)}'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Total row
+    final totalQuantity = orderData.fold<int>(
+      0,
+      (sum, data) => sum + data.quantity,
+    );
+    final totalAmount = orderData.fold<double>(
+      0.0,
+      (sum, data) => sum + data.itemTotal,
+    );
+
+    tableRows.add(
+      pw.TableRow(
+        decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+        children: [
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              '',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              '',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              '',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              '',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              '',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              '',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              'TOTAL QUANTITY:',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              totalQuantity.toString(),
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              '',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(4),
+            child: pw.Text(
+              'Rp ${totalAmount.toStringAsFixed(0)}',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return pw.Table(children: tableRows);
   }
 }
 
