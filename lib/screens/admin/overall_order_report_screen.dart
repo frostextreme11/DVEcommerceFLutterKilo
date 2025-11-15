@@ -120,7 +120,7 @@ class _OverallOrderReportScreenState extends State<OverallOrderReportScreen> {
           ''')
           .gte('created_at', startDateTime.toIso8601String())
           .lte('created_at', endDateTime.toIso8601String())
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: true); // Show earliest orders first
 
       final ordersResponse = await query;
       final ordersData = ordersResponse as List;
@@ -152,7 +152,9 @@ class _OverallOrderReportScreenState extends State<OverallOrderReportScreen> {
               OverallOrderData(
                 rowNumber:
                     rowNumber, // Same row number for all items in same order
-                orderDate: order.createdAt,
+                orderDate: order.createdAt.add(
+                  const Duration(hours: 7),
+                ), // Convert to Jakarta time (UTC+7)
                 userEmail: userEmail,
                 userName: userName,
                 receiverName: order.receiverName ?? 'N/A',

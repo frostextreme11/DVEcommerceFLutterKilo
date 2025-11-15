@@ -527,7 +527,7 @@ class PrintService {
 
       csv.writeln(
         '${shouldShowOrderInfo ? data.rowNumber : ''},'
-        '${shouldShowOrderInfo ? DateFormat('yyyy-MM-dd HH:mm:ss').format(data.orderDate) : ''},'
+        '${shouldShowOrderInfo ? DateFormat('yyyy-MM-dd HH:mm:ss').format(data.orderDate.add(const Duration(hours: 7))) : ''},'
         '${shouldShowOrderInfo ? data.userEmail : ''},'
         '${shouldShowOrderInfo ? data.userName : ''},'
         '${shouldShowOrderInfo ? data.receiverName : ''},'
@@ -680,7 +680,9 @@ class PrintService {
               padding: const pw.EdgeInsets.all(4),
               child: pw.Text(
                 shouldShowOrderInfo
-                    ? DateFormat('yyyy-MM-dd HH:mm:ss').format(data.orderDate)
+                    ? DateFormat(
+                        'yyyy-MM-dd HH:mm:ss',
+                      ).format(data.orderDate.add(const Duration(hours: 7)))
                     : '',
               ),
             ),
