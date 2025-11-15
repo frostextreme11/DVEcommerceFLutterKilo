@@ -52,17 +52,18 @@ class PrintService {
         header: (context) => _buildHeader(),
         build: (context) => [
           pw.SizedBox(height: 10),
-          ...orders.asMap().entries.map(
-            (entry) => pw.Container(
+          ...orders.asMap().entries.map((entry) {
+            final reverseOrderNumber = orders.length - entry.key;
+            return pw.Container(
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: _buildOrderDeliveryLayoutNew(
                   entry.value,
-                  entry.key + 1,
+                  reverseOrderNumber,
                 ),
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
