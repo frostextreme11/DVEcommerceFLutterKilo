@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/products_provider.dart';
@@ -11,11 +12,13 @@ class SearchFilterWidget extends StatefulWidget {
 
 class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
   bool _showFilters = false;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -42,7 +45,14 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
           child: TextField(
             controller: _searchController,
             onChanged: (value) {
-              productsProvider.setSearchQuery(value);
+              // Cancel previous timer
+              _debounceTimer?.cancel();
+
+              // Create new timer for 1 second delay
+              _debounceTimer = Timer(const Duration(seconds: 1), () {
+                // Only execute search after 1 second of no typing
+                productsProvider.setSearchQuery(value);
+              });
             },
             decoration: InputDecoration(
               hintText: 'Cari Produk...',
@@ -56,6 +66,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                       onPressed: () {
                         _searchController.clear();
                         productsProvider.setSearchQuery('');
+                        // Cancel debounce timer when clearing
+                        _debounceTimer?.cancel();
                       },
                     ),
                   IconButton(
@@ -210,6 +222,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     onPressed: () {
                       productsProvider.clearFilters();
                       _searchController.clear();
+                      // Cancel debounce timer when clearing all filters
+                      _debounceTimer?.cancel();
                       setState(() {
                         _showFilters = false;
                       });

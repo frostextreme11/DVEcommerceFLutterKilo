@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,15 +19,11 @@ class OrdersAdminScreen extends StatefulWidget {
 
 class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      context.read<AdminOrdersProvider>().setSearchQuery(
-        _searchController.text,
-      );
-    });
 
     // Load orders when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -47,6 +44,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -66,12 +64,43 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
+                        onChanged: (value) {
+                          // Cancel previous timer
+                          _debounceTimer?.cancel();
+
+                          // Use shorter debounce for better UX but efficient search
+                          _debounceTimer = Timer(
+                            const Duration(milliseconds: 500),
+                            () {
+                              // Only execute search after 500ms of no typing
+                              context
+                                  .read<AdminOrdersProvider>()
+                                  .setSearchQuery(value);
+                            },
+                          );
+                        },
                         decoration: InputDecoration(
                           hintText: 'Search orders...',
                           prefixIcon: const Icon(
                             Icons.search,
                             color: Colors.white,
                           ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    context
+                                        .read<AdminOrdersProvider>()
+                                        .setSearchQuery('');
+                                    // Cancel debounce timer when clearing
+                                    _debounceTimer?.cancel();
+                                  },
+                                )
+                              : null,
                           filled: true,
                           fillColor:
                               Theme.of(context).brightness == Brightness.dark
@@ -623,7 +652,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
 
             // Date
             Text(
-              'Created: ${order.createdAt.toString().substring(0, 16)}',
+              'Created: ${order.createdAt.add(const Duration(hours: 7)).toString().substring(0, 16)}',
               style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
 
@@ -1005,6 +1034,8 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
             onPressed: () {
               context.read<AdminOrdersProvider>().clearFilters();
               Navigator.pop(context);
+              // Cancel debounce timer when clearing all filters
+              _debounceTimer?.cancel();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('All filters cleared'),

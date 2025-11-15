@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/order.dart';
 import 'dart:async';
+import 'dart:math';
 
 class AdminOrdersProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -29,22 +30,12 @@ class AdminOrdersProvider extends ChangeNotifier {
   // Stream for listening to orders changes
   Stream<List<Order>> get ordersStream => Stream.value(_orders);
 
+  // Cache for search results to avoid redundant database queries
+  final Duration _cacheExpiry = const Duration(seconds: 30);
+
   // Filtered orders based on search, status, courier filter, and date range
   List<Order> get filteredOrders {
     return _orders.where((order) {
-      final matchesSearch =
-          _searchQuery.isEmpty ||
-          order.orderNumber.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ) ||
-          order.shippingAddress.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ) ||
-          (order.receiverName?.toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              ) ??
-              false);
-
       final matchesStatus =
           _selectedStatus == null || order.status == _selectedStatus;
 
@@ -59,11 +50,9 @@ class AdminOrdersProvider extends ChangeNotifier {
 
       final matchesPayment = _matchesPaymentFilterSync(order);
 
-      return matchesSearch &&
-          matchesStatus &&
-          matchesCourier &&
-          matchesDate &&
-          matchesPayment;
+      // For search, we rely on database-level search that's already applied
+      // so we don't need to filter here anymore
+      return matchesStatus && matchesCourier && matchesDate && matchesPayment;
     }).toList();
   }
 
@@ -207,12 +196,8 @@ class AdminOrdersProvider extends ChangeNotifier {
         return; // Exit early if database is not available
       }
 
-      // Use filtered loading if any filters are applied, otherwise load all orders
-      if (_hasActiveFilters()) {
-        await _loadFilteredOrders();
-      } else {
-        await _loadAllOrdersFromDatabase();
-      }
+      // Always use optimized filtered loading for better performance
+      await _loadOptimizedOrders();
     } catch (e) {
       print(
         'AdminOrdersProvider: Error loading orders (continuing with empty list): $e',
@@ -278,12 +263,39 @@ class AdminOrdersProvider extends ChangeNotifier {
     }
   }
 
-  // Load only filtered orders from database (optimized)
-  Future<void> _loadFilteredOrders() async {
-    print('AdminOrdersProvider: Loading filtered orders...');
+  // Optimized method that handles search, filtering, and pagination at database level
+  Future<void> _loadOptimizedOrders() async {
+    print('AdminOrdersProvider: Loading optimized orders...');
 
-    // Build the base query
-    var query = _supabase.from('kl_orders').select();
+    // Clear cache when new filters are applied
+    _clearExpiredCache();
+
+    // Check if we have a cached result for this query
+    final cacheKey = _generateCacheKey();
+    final cachedResult = _cacheWithTimestamp[cacheKey]?.orders;
+    if (cachedResult != null && _isCacheValid(cacheKey)) {
+      print('AdminOrdersProvider: Using cached result for: $cacheKey');
+      _orders = cachedResult;
+      return;
+    }
+
+    // Handle search with comprehensive user data search
+    if (_searchQuery.isNotEmpty) {
+      await _searchWithUserData(_searchQuery);
+      return;
+    }
+
+    // Build the base query with order items and user info
+    var query = _supabase.from('kl_orders').select('''
+      *,
+      kl_order_items(*),
+      kl_users!kl_orders_user_id_fkey(full_name, email)
+    ''');
+
+    // Apply filters for non-search queries
+    if (_selectedStatus != null) {
+      query = query.eq('status', _selectedStatus!.databaseValue);
+    }
 
     // Apply status filter
     if (_selectedStatus != null) {
@@ -325,42 +337,43 @@ class AdminOrdersProvider extends ChangeNotifier {
       print('AdminOrdersProvider: Applied resi otomatis filter');
     }
 
-    // Apply payment filter - this requires checking kl_payments table
-    if (_paymentFilter == 'pending_payment') {
-      // For pending payment filter, we need to get order IDs that have pending payments
-      // This is complex in the current architecture, so we'll handle it after loading orders
-      print(
-        'AdminOrdersProvider: Payment filter will be applied after loading orders',
-      );
-    }
+    // Add ordering and limit for better performance
+    final orderedQuery = query.order('created_at', ascending: false);
+    final finalQuery = orderedQuery.limit(500);
 
-    // Execute the filtered query
-    final ordersResponse = await query.order('created_at', ascending: false);
+    // Execute the optimized query
+    final ordersResponse = await finalQuery;
     final ordersData = ordersResponse as List;
 
     print(
-      'AdminOrdersProvider: Found ${ordersData.length} filtered orders in database',
+      'AdminOrdersProvider: Found ${ordersData.length} orders from database query',
     );
 
-    // Load order items for each filtered order
+    // Convert to Order objects with order items
     final orders = <Order>[];
     for (final orderData in ordersData) {
-      final orderId = orderData['id'];
-
       try {
-        final itemsResponse = await _supabase
-            .from('kl_order_items')
-            .select()
-            .eq('order_id', orderId);
-
-        final items = (itemsResponse as List)
+        // Extract order items from the joined data
+        final orderItemsData = orderData['kl_order_items'] as List? ?? [];
+        final items = orderItemsData
             .map((item) => OrderItem.fromJson(item))
             .toList();
 
-        orders.add(Order.fromJson(orderData, items));
+        // Add user info if available for search purposes
+        final userData = orderData['kl_users'] as Map<String, dynamic>?;
+        if (userData != null) {
+          // Create enhanced order data with user information for search
+          final enhancedOrderData = Map<String, dynamic>.from(orderData);
+          enhancedOrderData['user_full_name'] = userData['full_name'];
+          enhancedOrderData['user_email'] = userData['email'];
+
+          orders.add(Order.fromJson(enhancedOrderData, items));
+        } else {
+          orders.add(Order.fromJson(orderData, items));
+        }
       } catch (e) {
         print(
-          'AdminOrdersProvider: Error loading items for order $orderId: $e',
+          'AdminOrdersProvider: Error processing order ${orderData['id']}: $e',
         );
         // Still add the order even if items fail to load
         orders.add(Order.fromJson(orderData, []));
@@ -369,32 +382,267 @@ class AdminOrdersProvider extends ChangeNotifier {
 
     _orders = orders;
     print(
-      'AdminOrdersProvider: Successfully loaded ${orders.length} filtered orders',
+      'AdminOrdersProvider: Successfully loaded ${orders.length} optimized orders',
     );
 
-    // Apply client-side search filter if search query exists
+    // Apply client-side search filter for additional fields (receiver name, address)
     if (_searchQuery.isNotEmpty) {
-      _orders = _orders.where((order) {
-        return order.orderNumber.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            ) ||
-            order.shippingAddress.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            ) ||
-            (order.receiverName?.toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ??
-                false);
+      final searchTerm = _searchQuery.toLowerCase();
+      final clientSideFilteredOrders = orders.where((order) {
+        return order.receiverName?.toLowerCase().contains(searchTerm) == true ||
+            order.shippingAddress.toLowerCase().contains(searchTerm);
       }).toList();
-      print(
-        'AdminOrdersProvider: Applied client-side search filter for: $_searchQuery',
-      );
+
+      if (clientSideFilteredOrders.isNotEmpty) {
+        _orders = clientSideFilteredOrders;
+        print(
+          'AdminOrdersProvider: Applied additional client-side search filter',
+        );
+      }
     }
 
-    // Apply payment filter if active
+    // Apply payment filter if active (this is done after loading due to complexity)
     if (_paymentFilter == 'pending_payment') {
       _orders = await _applyPaymentFilter(_orders);
     }
+
+    // Cache the result
+    _cacheSearchResult(cacheKey, List.from(_orders));
+  }
+
+  // Comprehensive search method including customer names and emails - FIXED VERSION
+  Future<void> _searchWithUserData(String searchQuery) async {
+    print(
+      'AdminOrdersProvider: Starting comprehensive search for: $searchQuery',
+    );
+    final searchTerm = searchQuery.toLowerCase();
+
+    try {
+      List<Order> allMatchingOrders = [];
+
+      // Strategy 1: Search by order number
+      try {
+        var orderNumberQuery = _supabase
+            .from('kl_orders')
+            .select('''
+          *,
+          kl_order_items(*),
+          kl_users!kl_orders_user_id_fkey(full_name, email)
+        ''')
+            .ilike('order_number', '%$searchTerm%');
+
+        // Apply basic filters
+        if (_selectedStatus != null) {
+          orderNumberQuery = orderNumberQuery.eq(
+            'status',
+            _selectedStatus!.databaseValue,
+          );
+        }
+
+        final orderNumberResponse = await orderNumberQuery.limit(200);
+        final orderNumberData = orderNumberResponse as List;
+
+        for (final orderData in orderNumberData) {
+          try {
+            final orderItemsData = orderData['kl_order_items'] as List? ?? [];
+            final items = orderItemsData
+                .map((item) => OrderItem.fromJson(item))
+                .toList();
+            allMatchingOrders.add(Order.fromJson(orderData, items));
+          } catch (e) {
+            print(
+              'AdminOrdersProvider: Error processing order number result: $e',
+            );
+          }
+        }
+        print(
+          'AdminOrdersProvider: Found ${allMatchingOrders.length} orders by order number',
+        );
+      } catch (e) {
+        print('AdminOrdersProvider: Error in order number search: $e');
+      }
+
+      // Strategy 2: Search by customer name
+      try {
+        final nameQuery = _supabase
+            .from('kl_users')
+            .select('id')
+            .ilike('full_name', '%$searchTerm%');
+
+        final nameResponse = await nameQuery;
+        final nameData = nameResponse as List;
+        final nameUserIds = nameData
+            .map((user) => user['id'] as String)
+            .toList();
+
+        // Search orders for these users
+        for (final userId in nameUserIds) {
+          var userOrdersQuery = _supabase
+              .from('kl_orders')
+              .select('''
+            *,
+            kl_order_items(*),
+            kl_users!kl_orders_user_id_fkey(full_name, email)
+          ''')
+              .eq('user_id', userId);
+
+          // Apply filters
+          if (_selectedStatus != null) {
+            userOrdersQuery = userOrdersQuery.eq(
+              'status',
+              _selectedStatus!.databaseValue,
+            );
+          }
+
+          final userOrdersResponse = await userOrdersQuery;
+          final userOrdersData = userOrdersResponse as List;
+
+          for (final orderData in userOrdersData) {
+            try {
+              final orderItemsData = orderData['kl_order_items'] as List? ?? [];
+              final items = orderItemsData
+                  .map((item) => OrderItem.fromJson(item))
+                  .toList();
+              allMatchingOrders.add(Order.fromJson(orderData, items));
+            } catch (e) {
+              print(
+                'AdminOrdersProvider: Error processing user order result: $e',
+              );
+            }
+          }
+        }
+        print('AdminOrdersProvider: Found ${nameUserIds.length} users by name');
+      } catch (e) {
+        print('AdminOrdersProvider: Error in name search: $e');
+      }
+
+      // Strategy 3: Search by email
+      try {
+        final emailQuery = _supabase
+            .from('kl_users')
+            .select('id')
+            .ilike('email', '%$searchTerm%');
+
+        final emailResponse = await emailQuery;
+        final emailData = emailResponse as List;
+        final emailUserIds = emailData
+            .map((user) => user['id'] as String)
+            .toList();
+
+        // Search orders for these users
+        for (final userId in emailUserIds) {
+          var userOrdersQuery = _supabase
+              .from('kl_orders')
+              .select('''
+            *,
+            kl_order_items(*),
+            kl_users!kl_orders_user_id_fkey(full_name, email)
+          ''')
+              .eq('user_id', userId);
+
+          // Apply filters
+          if (_selectedStatus != null) {
+            userOrdersQuery = userOrdersQuery.eq(
+              'status',
+              _selectedStatus!.databaseValue,
+            );
+          }
+
+          final userOrdersResponse = await userOrdersQuery;
+          final userOrdersData = userOrdersResponse as List;
+
+          for (final orderData in userOrdersData) {
+            try {
+              final orderItemsData = orderData['kl_order_items'] as List? ?? [];
+              final items = orderItemsData
+                  .map((item) => OrderItem.fromJson(item))
+                  .toList();
+              allMatchingOrders.add(Order.fromJson(orderData, items));
+            } catch (e) {
+              print(
+                'AdminOrdersProvider: Error processing email user order result: $e',
+              );
+            }
+          }
+        }
+        print(
+          'AdminOrdersProvider: Found ${emailUserIds.length} users by email',
+        );
+      } catch (e) {
+        print('AdminOrdersProvider: Error in email search: $e');
+      }
+
+      // Remove duplicates and apply client-side filtering
+      final uniqueOrders = allMatchingOrders.toSet().toList();
+
+      // Apply client-side filtering for receiver names and addresses
+      final clientSideFilteredOrders = uniqueOrders.where((order) {
+        return order.receiverName?.toLowerCase().contains(searchTerm) == true ||
+            order.shippingAddress.toLowerCase().contains(searchTerm);
+      }).toList();
+
+      // Combine results
+      final combinedResults = {
+        ...uniqueOrders,
+        ...clientSideFilteredOrders,
+      }.toList();
+
+      _orders = combinedResults;
+
+      // Apply courier filter if active
+      if (_courierFilter == 'resi_otomatis') {
+        _orders = _orders.where((order) {
+          return order.courierInfo?.toLowerCase().contains('resi otomatis') ==
+              true;
+        }).toList();
+      }
+
+      // Apply payment filter if active
+      if (_paymentFilter == 'pending_payment') {
+        _orders = await _applyPaymentFilter(_orders);
+      }
+
+      // Limit results
+      _orders = _orders.take(500).toList();
+
+      // Cache the result
+      final cacheKey = _generateCacheKey();
+      _cacheSearchResult(cacheKey, List.from(_orders));
+
+      print(
+        'AdminOrdersProvider: Comprehensive search completed with ${_orders.length} results',
+      );
+    } catch (e) {
+      print('AdminOrdersProvider: Error in comprehensive search: $e');
+      // Fallback to empty result
+      _orders = [];
+    }
+  }
+
+  // Generate cache key based on current filters
+  String _generateCacheKey() {
+    return '${_searchQuery}_${_selectedStatus?.databaseValue ?? "null"}_${_courierFilter ?? "null"}_${_dateFilter ?? "null"}_${_dateRange?.start.toString() ?? "null"}_${_dateRange?.end.toString() ?? "null"}_${_paymentFilter ?? "null"}';
+  }
+
+  // Cache management
+  final Map<String, ({List<Order> orders, DateTime timestamp})>
+  _cacheWithTimestamp = {};
+
+  void _cacheSearchResult(String key, List<Order> orders) {
+    _cacheWithTimestamp[key] = (orders: orders, timestamp: DateTime.now());
+  }
+
+  bool _isCacheValid(String key) {
+    final cached = _cacheWithTimestamp[key];
+    if (cached == null) return false;
+    return DateTime.now().difference(cached.timestamp) < _cacheExpiry;
+  }
+
+  void _clearExpiredCache() {
+    final now = DateTime.now();
+    _cacheWithTimestamp.removeWhere(
+      (key, value) => now.difference(value.timestamp) >= _cacheExpiry,
+    );
   }
 
   Future<bool> updateOrderStatus(String orderId, OrderStatus newStatus) async {

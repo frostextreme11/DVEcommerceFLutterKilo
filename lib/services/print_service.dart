@@ -52,11 +52,14 @@ class PrintService {
         header: (context) => _buildHeader(),
         build: (context) => [
           pw.SizedBox(height: 10),
-          ...orders.map(
-            (order) => pw.Container(
+          ...orders.asMap().entries.map(
+            (entry) => pw.Container(
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: _buildOrderDeliveryLayoutNew(order),
+                children: _buildOrderDeliveryLayoutNew(
+                  entry.value,
+                  entry.key + 1,
+                ),
               ),
             ),
           ),
@@ -187,7 +190,10 @@ class PrintService {
   }
 
   /// Generate print layout for delivery addresses with new format
-  static List<pw.Widget> _buildOrderDeliveryLayoutNew(Order order) {
+  static List<pw.Widget> _buildOrderDeliveryLayoutNew(
+    Order order,
+    int orderNumber,
+  ) {
     final totalQuantity = order.items.fold<int>(
       0,
       (sum, item) => sum + item.quantity,
@@ -213,6 +219,25 @@ class PrintService {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             // Header line
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    'Order NO: $orderNumber',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+                pw.Text(
+                  'Order Date: ${order.createdAt != null ? '${order.createdAt!.add(const Duration(hours: 7))}' : 'No date'}',
+                  style: pw.TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 1),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
