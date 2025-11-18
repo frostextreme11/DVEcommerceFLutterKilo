@@ -32,6 +32,7 @@ import 'screens/admin/user_form_screen.dart';
 import 'screens/admin/category_form_screen.dart';
 import 'screens/admin/overall_order_report_screen.dart';
 import 'screens/admin/admin_notifications_screen.dart';
+import 'screens/admin/product_quantity_ordered_screen.dart';
 import 'screens/customer/customer_notifications_screen.dart';
 import 'screens/checkout/checkout_screen.dart';
 import 'screens/orders/order_history_screen.dart';
@@ -180,6 +181,10 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/admin/overall-order-report',
       builder: (context, state) => const OverallOrderReportScreen(),
+    ),
+    GoRoute(
+      path: '/admin/product-quantity-ordered',
+      builder: (context, state) => const ProductQuantityOrderedScreen(),
     ),
     GoRoute(
       path: '/notifications',

@@ -478,86 +478,85 @@ class DashboardOverviewScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  context,
-                  'Add Product',
-                  Icons.add,
-                  Colors.blue,
-                  () {
-                    context.push('/admin/products/add');
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildQuickActionButton(
-                  context,
-                  'Add Category',
-                  Icons.category,
-                  Colors.teal,
-                  () {
-                    context.push('/admin/categories/add');
-                  },
-                ),
-              ),
-            ],
-          ),
+          // Row(
+          //   children: [
+          //     Expanded(
+          //       child: _buildQuickActionButton(
+          //         context,
+          //         'Add Product',
+          //         Icons.add,
+          //         Colors.blue,
+          //         () {
+          //           context.push('/admin/products/add');
+          //         },
+          //       ),
+          //     ),
+          //     const SizedBox(width: 16),
+          //     Expanded(
+          //       child: _buildQuickActionButton(
+          //         context,
+          //         'Add Category',
+          //         Icons.category,
+          //         Colors.teal,
+          //         () {
+          //           context.push('/admin/categories/add');
+          //         },
+          //       ),
+          //     ),
+          //   ],
+          // ),
 
-          const SizedBox(height: 16),
+          // const SizedBox(height: 16),
 
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  context,
-                  'View Orders',
-                  Icons.list,
-                  Colors.orange,
-                  () {
-                    // Switch to orders tab and load orders
-                    final state = context
-                        .findAncestorStateOfType<_AdminDashboardScreenState>();
-                    state?.setState(() {
-                      state._selectedIndex = 2; // Orders tab index
-                    });
+          // Row(
+          //   children: [
+          //     Expanded(
+          //       child: _buildQuickActionButton(
+          //         context,
+          //         'View Orders',
+          //         Icons.list,
+          //         Colors.orange,
+          //         () {
+          //           // Switch to orders tab and load orders
+          //           final state = context
+          //               .findAncestorStateOfType<_AdminDashboardScreenState>();
+          //           state?.setState(() {
+          //             state._selectedIndex = 2; // Orders tab index
+          //           });
 
-                    // Load orders after switching to orders tab
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      final ordersProvider = context
-                          .read<AdminOrdersProvider>();
-                      if (ordersProvider.orders.isEmpty) {
-                        ordersProvider.loadAllOrders();
-                      }
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildQuickActionButton(
-                  context,
-                  'Manage Users',
-                  Icons.people,
-                  Colors.purple,
-                  () {
-                    // Switch to users tab
-                    final state = context
-                        .findAncestorStateOfType<_AdminDashboardScreenState>();
-                    state?.setState(() {
-                      state._selectedIndex = 3; // Users tab index
-                    });
-                  },
-                ),
-              ),
-            ],
-          ),
-
+          //           // Load orders after switching to orders tab
+          //           WidgetsBinding.instance.addPostFrameCallback((_) {
+          //             final ordersProvider = context
+          //                 .read<AdminOrdersProvider>();
+          //             if (ordersProvider.orders.isEmpty) {
+          //               ordersProvider.loadAllOrders();
+          //             }
+          //           });
+          //         },
+          //       ),
+          //     ),
+          //     const SizedBox(width: 16),
+          //     Expanded(
+          //       child: _buildQuickActionButton(
+          //         context,
+          //         'Manage Users',
+          //         Icons.people,
+          //         Colors.purple,
+          //         () {
+          //           // Switch to users tab
+          //           final state = context
+          //               .findAncestorStateOfType<_AdminDashboardScreenState>();
+          //           state?.setState(() {
+          //             state._selectedIndex = 3; // Users tab index
+          //           });
+          //         },
+          //       ),
+          //     ),
+          //   ],
+          // ),
           const SizedBox(height: 24),
 
-          // Generate Overall Order Button at the very bottom
+          // Generate Overall Order Button
           SizedBox(
             width: double.infinity,
             height: 60,
@@ -572,6 +571,33 @@ class DashboardOverviewScreen extends StatelessWidget {
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Product Quantity Ordered Button at the very bottom
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/product-quantity-ordered');
+              },
+              icon: const Icon(Icons.table_chart, size: 28),
+              label: const Text(
+                'Product Quantity Ordered',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
