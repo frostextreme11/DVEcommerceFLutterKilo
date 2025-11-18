@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/admin_orders_provider.dart';
@@ -568,7 +569,7 @@ class _OrdersAdminScreenState extends State<OrdersAdminScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Rp ${order.totalAmount.toStringAsFixed(0)}',
+                        '${NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0).format(order.totalAmount)}',
                         style: TextStyle(
                           color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.bold,

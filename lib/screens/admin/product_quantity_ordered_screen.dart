@@ -258,7 +258,7 @@ class _ProductQuantityOrderedScreenState
 
   Future<void> _exportToPDF() async {
     if (!mounted) return;
-
+    print("STARTING EXPORTING PDF: $_productData.length");
     if (_productData.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -272,177 +272,68 @@ class _ProductQuantityOrderedScreenState
     try {
       print('Starting PDF export with ${_productData.length} items');
 
+      for (final item in _productData) {
+        print(
+          'Product: ${item['product_name']}, Quantity: ${item['total_quantity']}, Orders: ${item['total_orders']}',
+        );
+      }
+      print('Finished logging all items for PDF export.');
+
       final pdf = pw.Document();
 
       pdf.addPage(
-        pw.Page(
-          margin: const pw.EdgeInsets.all(20),
-          build: (context) => pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: [
-              pw.Text(
-                'Product Quantity Ordered Report',
-                style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          header: (context) => pw.Container(
+            alignment: pw.Alignment.center,
+            child: pw.Column(
+              children: [
+                pw.Text(
+                  'Product Quantity Ordered Report',
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  textAlign: pw.TextAlign.center,
                 ),
-                textAlign: pw.TextAlign.center,
-              ),
-              pw.SizedBox(height: 10),
+                pw.SizedBox(height: 10),
 
-              pw.Text(
-                'Date Range: ${_formatDate(_startDate!)} to ${_formatDate(_endDate!)}',
-                style: const pw.TextStyle(fontSize: 12),
-                textAlign: pw.TextAlign.center,
-              ),
-              pw.SizedBox(height: 20),
-
-              // Summary section
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(),
-                  borderRadius: pw.BorderRadius.circular(5),
+                pw.Text(
+                  'Date Range: ${_formatDate(_startDate!)} to ${_formatDate(_endDate!)}',
+                  style: const pw.TextStyle(fontSize: 12),
+                  textAlign: pw.TextAlign.center,
                 ),
-                padding: const pw.EdgeInsets.all(10),
-                child: pw.Column(
-                  children: [
-                    pw.Text(
-                      'SUMMARY',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.SizedBox(height: 5),
-                    pw.Text('Total Products: ${_productData.length}'),
-                    pw.Text('Total Orders: $_totalOrders'),
-                    pw.Text('Total Quantity: $_totalQuantity'),
-                    pw.Text(
-                      'Data Source: All ${_allRawData.length} order items processed',
-                    ),
+                pw.SizedBox(height: 20),
+              ] /*  */,
+            ),
+          ),
+          build: (context) => [
+            pw.TableHelper.fromTextArray(
+              headers: ['Product Name', 'Quantity', 'Total Orders'],
+              data: [
+                // Customer data rows
+                ..._productData.map(
+                  (product) => [
+                    '${product['product_name']}',
+                    product['total_quantity'],
+                    product['total_orders'],
                   ],
                 ),
-              ),
-              pw.SizedBox(height: 20),
-
-              pw.Table(
-                border: pw.TableBorder.all(),
-                children: [
-                  pw.TableRow(
-                    decoration: const pw.BoxDecoration(
-                      color: PdfColors.grey300,
-                    ),
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'Product Name',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'Quantity Ordered',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'Total Orders',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
+                [
+                  'GRAND TOTAL',
+                  _productData.fold<int>(
+                    0,
+                    (sum, item) => sum + item['total_quantity'] as int,
                   ),
-
-                  ..._productData.map(
-                    (item) => pw.TableRow(
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(
-                            (item['product_name'] ?? '').toString(),
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(
-                            item['total_quantity']?.toString() ?? '0',
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(
-                            item['total_orders']?.toString() ?? '0',
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  pw.TableRow(
-                    decoration: const pw.BoxDecoration(
-                      color: PdfColors.grey200,
-                    ),
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'TOTALS',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          _totalQuantity.toString(),
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          _totalOrders.toString(),
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // _productData.fold<int>(
+                  //   0,
+                  //   (sum, item) => sum + item['total_orders'] as int,
+                  // ),
                 ],
-              ),
-
-              pw.SizedBox(height: 20),
-
-              pw.Text(
-                'Generated on: ${DateTime.now().toString().split(' ')[0]} | Total order items processed: ${_allRawData.length}',
-                style: const pw.TextStyle(fontSize: 8),
-                textAlign: pw.TextAlign.center,
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       );
 
@@ -497,11 +388,6 @@ class _ProductQuantityOrderedScreenState
     try {
       print('Starting CSV export with ${_productData.length} items');
 
-      final directory = await getApplicationDocumentsDirectory();
-      final fileName =
-          'Product_Quantity_Ordered_${_formatDate(_startDate!)}_${_formatDate(_endDate!)}.csv';
-      final file = File('${directory.path}/$fileName');
-
       final csvContent = StringBuffer();
 
       csvContent.writeln('Product Name,Total Orders,Quantity Ordered');
@@ -514,26 +400,50 @@ class _ProductQuantityOrderedScreenState
         final totalOrders = item['total_orders'] ?? 0;
         final quantity = item['total_quantity'] ?? 0;
 
-        csvContent.writeln('"$productName",$totalOrders,$quantity');
+        csvContent.writeln('"$productName",$quantity,$totalOrders');
       }
 
-      csvContent.writeln('TOTALS,$_totalOrders,$_totalQuantity');
+      csvContent.writeln('TOTALS,$_totalQuantity,$_totalOrders');
       csvContent.writeln(
         'Data Source: Processed ${_allRawData.length} total order items',
       );
 
-      await file.writeAsString(csvContent.toString());
+      // Create temporary file for sharing
+      final tempDir = await getTemporaryDirectory();
+      final fileName =
+          'Product_Quantity_Ordered_${_formatDate(_startDate!)}_${_formatDate(_endDate!)}.csv';
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsString(csvContent.toString());
 
-      print('CSV file created: ${file.path}');
+      print('CSV file created: ${tempFile.path}');
+
+      // Save to downloads directory for direct access
+      final downloadsDir = await _getDownloadsDirectory();
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+
+      final downloadsFile = File('${downloadsDir.path}/$fileName');
+      await tempFile.copy(downloadsFile.path);
+
+      // Clean up temporary file
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('CSV exported to: ${file.path}'),
+            content: Text(
+              'CSV exported to Downloads folder: ${downloadsFile.path}',
+            ),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
+
+      print('CSV file saved to: ${downloadsFile.path}');
     } catch (e) {
       print('CSV Export Error: $e');
       if (mounted) {
@@ -835,5 +745,19 @@ class _ProductQuantityOrderedScreenState
         Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
+  }
+
+  Future<Directory> _getDownloadsDirectory() async {
+    // For Android: use Downloads directory
+    if (Platform.isAndroid) {
+      final directory = await getExternalStorageDirectory();
+      if (directory != null) {
+        final downloadsPath = '${directory.path}/Download';
+        return Directory(downloadsPath);
+      }
+    }
+    // For iOS and other platforms: use documents directory
+    final directory = await getApplicationDocumentsDirectory();
+    return directory;
   }
 }
