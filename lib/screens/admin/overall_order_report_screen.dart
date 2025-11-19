@@ -29,6 +29,17 @@ class _OverallOrderReportScreenState extends State<OverallOrderReportScreen> {
   final TextEditingController _endDateController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Set default dates to today
+    final today = DateTime.now();
+    _startDate = today;
+    _endDate = today;
+    _startDateController.text = DateFormat('yyyy-MM-dd').format(today);
+    _endDateController.text = DateFormat('yyyy-MM-dd').format(today);
+  }
+
+  @override
   void dispose() {
     _startDateController.dispose();
     _endDateController.dispose();
@@ -120,6 +131,7 @@ class _OverallOrderReportScreenState extends State<OverallOrderReportScreen> {
           ''')
           .gte('created_at', startDateTime.toIso8601String())
           .lte('created_at', endDateTime.toIso8601String())
+          .neq('status', 'cancelled')
           .order('created_at', ascending: true); // Show earliest orders first
 
       final ordersResponse = await query;
