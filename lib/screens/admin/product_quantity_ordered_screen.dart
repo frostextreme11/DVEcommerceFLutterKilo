@@ -147,9 +147,11 @@ class _ProductQuantityOrderedScreenState
               quantity,
               order_id,
               kl_orders!inner(
-                created_at
+                created_at,
+                status
               )
             ''')
+            .neq('kl_orders.status', 'cancelled')
             .gte('kl_orders.created_at', _startDate!.toIso8601String())
             .lt(
               'kl_orders.created_at',

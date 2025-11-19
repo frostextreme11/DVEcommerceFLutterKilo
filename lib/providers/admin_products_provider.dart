@@ -20,25 +20,44 @@ class AdminProductsProvider extends ChangeNotifier {
   // Filtered products based on search and category
   List<Product> get filteredProducts {
     return _products.where((product) {
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           product.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          product.description.toLowerCase().contains(_searchQuery.toLowerCase());
+          product.description.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          );
 
-      final matchesCategory = _selectedCategory == null ||
-          product.category == _selectedCategory;
+      final matchesCategory =
+          _selectedCategory == null || product.category == _selectedCategory;
 
       return matchesSearch && matchesCategory;
     }).toList();
   }
 
-  // Get unique categories
+  // Get unique categories sorted by most recent product creation (latest first)
   List<String> get categories {
-    return _products
-        .map((product) => product.category)
-        .where((category) => category != null)
-        .toSet()
-        .cast<String>()
+    // Group products by category and find the most recent creation date for each
+    Map<String, DateTime> categoryLatestDate = {};
+
+    for (Product product in _products) {
+      if (product.category != null) {
+        String category = product.category!;
+        // Keep the most recent date for each category
+        if (!categoryLatestDate.containsKey(category) ||
+            product.createdAt.isAfter(categoryLatestDate[category]!)) {
+          categoryLatestDate[category] = product.createdAt;
+        }
+      }
+    }
+
+    // Sort categories by their most recent product creation date (latest first)
+    List<MapEntry<String, DateTime>> sortedEntries = categoryLatestDate.entries
         .toList();
+    sortedEntries.sort(
+      (a, b) => b.value.compareTo(a.value),
+    ); // Descending order (latest first)
+
+    return sortedEntries.map((entry) => entry.key).toList();
   }
 
   Future<void> loadProducts() async {
@@ -55,7 +74,9 @@ class AdminProductsProvider extends ChangeNotifier {
       final productsData = response as List;
       _products = productsData.map((data) => Product.fromJson(data)).toList();
 
-      print('AdminProductsProvider: Successfully loaded ${_products.length} products');
+      print(
+        'AdminProductsProvider: Successfully loaded ${_products.length} products',
+      );
     } catch (e) {
       _error = 'Failed to load products: ${e.toString()}';
       print('Error loading products: $e');
@@ -80,7 +101,9 @@ class AdminProductsProvider extends ChangeNotifier {
       _products.insert(0, newProduct);
       notifyListeners();
 
-      print('AdminProductsProvider: Product created successfully: ${newProduct.name}');
+      print(
+        'AdminProductsProvider: Product created successfully: ${newProduct.name}',
+      );
       return true;
     } catch (e) {
       _error = 'Failed to create product: ${e.toString()}';
@@ -106,7 +129,9 @@ class AdminProductsProvider extends ChangeNotifier {
         notifyListeners();
       }
 
-      print('AdminProductsProvider: Product updated successfully: ${product.name}');
+      print(
+        'AdminProductsProvider: Product updated successfully: ${product.name}',
+      );
       return true;
     } catch (e) {
       _error = 'Failed to update product: ${e.toString()}';
@@ -118,10 +143,7 @@ class AdminProductsProvider extends ChangeNotifier {
 
   Future<bool> deleteProduct(String productId) async {
     try {
-      await _supabase
-          .from('kl_products')
-          .delete()
-          .eq('id', productId);
+      await _supabase.from('kl_products').delete().eq('id', productId);
 
       _products.removeWhere((product) => product.id == productId);
       notifyListeners();
@@ -153,7 +175,9 @@ class AdminProductsProvider extends ChangeNotifier {
         notifyListeners();
       }
 
-      print('AdminProductsProvider: Product status updated successfully: $productId');
+      print(
+        'AdminProductsProvider: Product status updated successfully: $productId',
+      );
       return true;
     } catch (e) {
       _error = 'Failed to update product status: ${e.toString()}';

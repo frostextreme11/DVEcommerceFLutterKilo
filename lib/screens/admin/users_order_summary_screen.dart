@@ -438,79 +438,31 @@ class _UsersOrderSummaryScreenState extends State<UsersOrderSummaryScreen> {
     });
 
     try {
-      // Fetch orders for the user within date range (excluding cancelled orders)
-      final ordersResponse = await _supabase
-          .from('kl_orders')
-          .select('''
-            id,
-            order_number,
-            total_amount,
-            additional_costs,
-            created_at,
-            status
-          ''')
-          .eq('user_id', widget.user.id)
-          .neq('status', 'cancelled')
-          .gte('created_at', _startDate!.toIso8601String())
-          .lte(
-            'created_at',
-            _endDate!.add(const Duration(days: 1)).toIso8601String(),
-          )
-          .order('created_at', ascending: false);
+      // Use optimized RPC function to avoid N+1 queries
+      // This fetches all data in a single optimized query
+      final response = await _supabase.rpc(
+        'get_user_order_summary',
+        params: {
+          'p_user_id': widget.user.id,
+          'p_start_date': _startDate!.toIso8601String(),
+          'p_end_date': _endDate!
+              .add(const Duration(days: 1))
+              .toIso8601String(),
+        },
+      );
 
-      final ordersData = ordersResponse as List;
+      final data = response as List;
 
-      // Process each order to get summary data
-      final summaryData = <OrderSummaryData>[];
-
-      for (final orderData in ordersData) {
-        final orderId = orderData['id'];
-
-        // Get order items to calculate total quantity
-        final itemsResponse = await _supabase
-            .from('kl_order_items')
-            .select('quantity, total_price')
-            .eq('order_id', orderId);
-
-        final items = itemsResponse as List;
-        final totalQuantity = items.fold<int>(
-          0,
-          (sum, item) => sum + (item['quantity'] as int),
+      final summaryData = data.map((item) {
+        return OrderSummaryData(
+          orderDate: DateTime.parse(item['order_date']),
+          totalQuantity: (item['total_quantity'] as num).toInt(),
+          totalSales: (item['total_sales'] as num).toDouble(),
+          totalOngkir: (item['total_ongkir'] as num).toDouble(),
+          totalPayment: (item['total_payment'] as num).toDouble(),
+          totalDebt: (item['total_debt'] as num).toDouble(),
         );
-        final totalSales = items.fold<double>(
-          0,
-          (sum, item) => sum + (item['total_price'] as num).toDouble(),
-        );
-
-        // Get payments for this order
-        final paymentsResponse = await _supabase
-            .from('kl_payments')
-            .select('amount, status')
-            .eq('order_id', orderId)
-            .eq('status', 'completed');
-
-        final payments = paymentsResponse as List;
-        final totalPayment = payments.fold<double>(
-          0,
-          (sum, payment) => sum + (payment['amount'] as num).toDouble(),
-        );
-
-        // Calculate totals
-        final totalOngkir =
-            (orderData['additional_costs'] as num?)?.toDouble() ?? 0.0;
-        final totalDebt = (totalSales + totalOngkir) - totalPayment;
-
-        summaryData.add(
-          OrderSummaryData(
-            orderDate: DateTime.parse(orderData['created_at']),
-            totalQuantity: totalQuantity,
-            totalSales: totalSales,
-            totalOngkir: totalOngkir,
-            totalPayment: totalPayment,
-            totalDebt: totalDebt,
-          ),
-        );
-      }
+      }).toList();
 
       setState(() {
         _orderSummaryData = summaryData;
