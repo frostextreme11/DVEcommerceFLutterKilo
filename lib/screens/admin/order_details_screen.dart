@@ -1178,34 +1178,7 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
                 'Payment #${payment.id.substring(0, 8)}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              Row(
-                children: [
-                  _buildPaymentStatusBadge(payment.status),
-                  if (payment.status == PaymentStatus.completed) ...[
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 120,
-                      height: 32,
-                      child: ElevatedButton(
-                        onPressed: () =>
-                            _markPaymentAsPending(context, payment),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        child: const Text(
-                          'Mark Pending',
-                          style: TextStyle(fontSize: 10),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+              _buildPaymentStatusBadge(payment.status),
             ],
           ),
 
@@ -1227,9 +1200,33 @@ class _OrderDetailsContentState extends State<_OrderDetailsContent> {
 
           if (payment.paymentMethod != null) ...[
             const SizedBox(height: 4),
-            Text(
-              'Method: ${payment.paymentMethod}',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            Row(
+              children: [
+                Text(
+                  'Method: ${payment.paymentMethod}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                if (payment.status == PaymentStatus.completed) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: ElevatedButton(
+                      onPressed: () => _markPaymentAsPending(context, payment),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      child: const Text(
+                        'Mark Pending',
+                        style: TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
 

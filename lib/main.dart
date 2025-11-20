@@ -14,6 +14,7 @@ import 'providers/admin_orders_provider.dart';
 import 'providers/admin_users_provider.dart';
 import 'providers/admin_categories_provider.dart';
 import 'providers/admin_notification_provider.dart';
+import 'providers/admin_product_stock_log_provider.dart';
 import 'providers/customer_notification_provider.dart';
 import 'services/notification_service.dart';
 import 'screens/auth/login_screen.dart';
@@ -33,6 +34,7 @@ import 'screens/admin/category_form_screen.dart';
 import 'screens/admin/overall_order_report_screen.dart';
 import 'screens/admin/admin_notifications_screen.dart';
 import 'screens/admin/product_quantity_ordered_screen.dart';
+import 'screens/admin/product_stock_log_screen.dart';
 import 'screens/customer/customer_notifications_screen.dart';
 import 'screens/checkout/checkout_screen.dart';
 import 'screens/orders/order_history_screen.dart';
@@ -65,6 +67,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AdminUsersProvider()),
         ChangeNotifierProvider(create: (_) => AdminCategoriesProvider()),
         ChangeNotifierProvider(create: (_) => AdminNotificationProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProductStockLogProvider()),
         ChangeNotifierProvider(create: (_) => CustomerNotificationProvider()),
         Provider<NotificationService>.value(value: notificationService),
       ],
@@ -185,6 +188,10 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/admin/product-quantity-ordered',
       builder: (context, state) => const ProductQuantityOrderedScreen(),
+    ),
+    GoRoute(
+      path: '/admin/product-stock-log',
+      builder: (context, state) => const ProductStockLogScreen(),
     ),
     GoRoute(
       path: '/notifications',

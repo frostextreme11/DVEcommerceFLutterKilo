@@ -583,7 +583,7 @@ class DashboardOverviewScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Product Quantity Ordered Button at the very bottom
+          // Product Quantity Ordered Button
           SizedBox(
             width: double.infinity,
             height: 60,
@@ -598,6 +598,33 @@ class DashboardOverviewScreen extends StatelessWidget {
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Product Stock Log Button
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/product-stock-log');
+              },
+              icon: const Icon(Icons.history, size: 28),
+              label: const Text(
+                'Product Stock Log',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

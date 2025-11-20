@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import '../../providers/admin_products_provider.dart';
 import '../../providers/admin_categories_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/product.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
@@ -257,6 +259,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Store original stock quantity for logging
+      final originalStockQuantity = widget.product?.stockQuantity ?? 0;
+      final newStockQuantity = int.parse(_stockController.text);
+
       final product = Product(
         id: widget.product?.id ?? '',
         name: _nameController.text.trim(),
@@ -269,7 +275,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             ? _imageUrlController.text.trim()
             : null,
         category: _selectedCategory,
-        stockQuantity: int.parse(_stockController.text),
+        stockQuantity: newStockQuantity,
         weight: int.parse(
           _weightController.text.isNotEmpty ? _weightController.text : '800',
         ),
@@ -287,6 +293,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         success = await provider.createProduct(product);
       } else {
         success = await provider.updateProduct(product);
+      }
+
+      // Log stock quantity change if it occurred
+      if (success && originalStockQuantity != newStockQuantity) {
+        await _logStockChange(
+          product.id,
+          originalStockQuantity,
+          newStockQuantity,
+        );
       }
 
       if (success && mounted) {
@@ -313,6 +328,38 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _logStockChange(
+    String productId,
+    int lastValue,
+    int newValue,
+  ) async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final user = authProvider.user;
+      final userProfile = authProvider.userProfile;
+
+      if (user == null || userProfile == null) {
+        print('Cannot log stock change: User not authenticated');
+        return;
+      }
+
+      final supabase = Supabase.instance.client;
+      await supabase.from('kl_product_log').insert({
+        'product_id': productId,
+        'date_created': DateTime.now().toIso8601String(),
+        'last_value': lastValue,
+        'new_value': newValue,
+        'edited_by_email': user.email,
+        'edited_by_username': userProfile['full_name'] ?? user.email,
+      });
+
+      print('Stock change logged successfully for product: $productId');
+    } catch (e) {
+      print('Error logging stock change: $e');
+      // Don't show error to user as this is a secondary operation
     }
   }
 
