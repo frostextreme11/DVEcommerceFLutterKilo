@@ -57,6 +57,9 @@ dependencies:
   # Animations
   flutter_animate: ^4.5.0
 
+  # Charts
+  fl_chart: ^0.70.0
+
   # Navigation
   go_router: ^14.2.0
 

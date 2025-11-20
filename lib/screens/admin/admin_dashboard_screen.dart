@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../providers/admin_products_provider.dart';
 import '../../providers/admin_orders_provider.dart';
 import '../../providers/admin_users_provider.dart';
@@ -304,26 +305,28 @@ class DashboardOverviewScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Quantity Sales Chart - Moved to top
           const Text(
             'Admin Dashboard',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
           Text(
             'Overview of your e-commerce platform',
             style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
+          const SizedBox(height: 24),
+          const SalesChartWidget(),
           const SizedBox(height: 24),
 
           // Sales Statistics Cards
           Consumer<AdminOrdersProvider>(
             builder: (context, ordersProvider, child) {
               final monthlySalesText = ordersProvider.monthlySales > 0
-                  ? 'Rp ${ordersProvider.monthlySales.toStringAsFixed(0)}'
+                  ? _formatCurrency(ordersProvider.monthlySales)
                   : 'Tap to calculate';
 
               final yearlySalesText = ordersProvider.yearlySales > 0
-                  ? 'Rp ${ordersProvider.yearlySales.toStringAsFixed(0)}'
+                  ? _formatCurrency(ordersProvider.yearlySales)
                   : 'Tap to calculate';
 
               return Row(
@@ -723,6 +726,18 @@ class DashboardOverviewScreen extends StatelessWidget {
     );
   }
 
+  String _formatCurrency(double amount) {
+    if (amount >= 1000000000) {
+      return 'Rp ${(amount / 1000000000).toStringAsFixed(1)}B';
+    } else if (amount >= 1000000) {
+      return 'Rp ${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount >= 1000) {
+      return 'Rp ${(amount / 1000).toStringAsFixed(1)}K';
+    } else {
+      return 'Rp ${amount.toStringAsFixed(0)}';
+    }
+  }
+
   Widget _buildQuickActionButton(
     BuildContext context,
     String title,
@@ -751,5 +766,363 @@ class DashboardOverviewScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class SalesChartWidget extends StatefulWidget {
+  const SalesChartWidget({Key? key}) : super(key: key);
+
+  @override
+  State<SalesChartWidget> createState() => _SalesChartWidgetState();
+}
+
+class _SalesChartWidgetState extends State<SalesChartWidget> {
+  bool _isMonthlyView = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load initial data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadChartData();
+    });
+  }
+
+  void _loadChartData() {
+    final ordersProvider = context.read<AdminOrdersProvider>();
+    if (_isMonthlyView) {
+      if (ordersProvider.monthlyQuantityData.isEmpty) {
+        ordersProvider.calculateMonthlyQuantitySales();
+      }
+    } else {
+      if (ordersProvider.yearlyQuantityData.isEmpty) {
+        ordersProvider.calculateYearlyQuantitySales();
+      }
+    }
+  }
+
+  void _toggleView() {
+    setState(() {
+      _isMonthlyView = !_isMonthlyView;
+    });
+    _loadChartData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AdminOrdersProvider>(
+      builder: (context, ordersProvider, child) {
+        final isLoading = ordersProvider.isCalculatingQuantitySales;
+        final data = _isMonthlyView
+            ? ordersProvider.monthlyQuantityData
+            : ordersProvider.yearlyQuantityData;
+
+        return Card(
+          elevation: 4,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Center(
+                  child: Text(
+                    'Quantity Sales Chart',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Toggle buttons below title
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildToggleButton('Monthly', _isMonthlyView),
+                    const SizedBox(width: 8),
+                    _buildToggleButton('Yearly', !_isMonthlyView),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Chart
+                SizedBox(
+                  height: 300,
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : data.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.bar_chart,
+                                size: 48,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'No data available',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+                        )
+                      : LineChart(
+                          LineChartData(
+                            maxY: _getMaxY(data),
+                            lineTouchData: LineTouchData(
+                              enabled: true,
+                              touchTooltipData: LineTouchTooltipData(
+                                getTooltipColor: (touchedSpot) =>
+                                    Theme.of(context).primaryColor,
+                                getTooltipItems: (touchedSpots) {
+                                  return touchedSpots.map((touchedSpot) {
+                                    final index = touchedSpot.spotIndex;
+                                    final value = touchedSpot.y;
+                                    return LineTooltipItem(
+                                      '${data[index]['label']}: ${value.toInt()}',
+                                      const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                              ),
+                            ),
+                            titlesData: FlTitlesData(
+                              show: true,
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    final index = value.toInt();
+                                    if (index >= 0 && index < data.length) {
+                                      // For monthly view (days), show fewer labels to avoid crowding
+                                      if (_isMonthlyView && data.length > 10) {
+                                        // Show every 5th day for monthly view
+                                        if ((index + 1) % 5 == 0 ||
+                                            index == 0 ||
+                                            index == data.length - 1) {
+                                          return Text(
+                                            data[index]['label'],
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          );
+                                        }
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Text(
+                                        data[index]['label'],
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      );
+                                    }
+                                    return const Text('');
+                                  },
+                                  reservedSize: 30,
+                                ),
+                              ),
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    return Text(
+                                      value.toInt().toString(),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    );
+                                  },
+                                  reservedSize: 40,
+                                ),
+                              ),
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                            ),
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: _getGridInterval(data),
+                              getDrawingHorizontalLine: (value) {
+                                return FlLine(
+                                  color: Colors.grey.withOpacity(0.3),
+                                  strokeWidth: 1,
+                                );
+                              },
+                            ),
+                            borderData: FlBorderData(
+                              show: true,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.grey.withOpacity(0.3),
+                                ),
+                                left: BorderSide(
+                                  color: Colors.grey.withOpacity(0.3),
+                                ),
+                              ),
+                            ),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: data.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final item = entry.value;
+                                  final quantity = item['quantity'] as double;
+                                  return FlSpot(index.toDouble(), quantity);
+                                }).toList(),
+                                isCurved: true,
+                                color: Theme.of(context).primaryColor,
+                                barWidth: 3,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter:
+                                      (spot, percent, barData, index) {
+                                        return FlDotCirclePainter(
+                                          radius: 4,
+                                          color: Theme.of(context).primaryColor,
+                                          strokeWidth: 2,
+                                          strokeColor: Colors.white,
+                                        );
+                                      },
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.1),
+                                ),
+                              ),
+                            ],
+                          ),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeInOut,
+                        ),
+                ),
+
+                // Summary
+                if (!isLoading && data.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildSummaryItem(
+                          'Total',
+                          data
+                              .fold<double>(
+                                0,
+                                (sum, item) =>
+                                    sum + (item['quantity'] as double),
+                              )
+                              .toInt()
+                              .toString(),
+                          Icons.inventory,
+                        ),
+                        _buildSummaryItem(
+                          'Average',
+                          (data.fold<double>(
+                                    0,
+                                    (sum, item) =>
+                                        sum + (item['quantity'] as double),
+                                  ) /
+                                  data.length)
+                              .toStringAsFixed(1),
+                          Icons.trending_up,
+                        ),
+                        _buildSummaryItem(
+                          'Peak',
+                          data
+                              .fold<double>(
+                                0,
+                                (max, item) => item['quantity'] > max
+                                    ? item['quantity']
+                                    : max,
+                              )
+                              .toInt()
+                              .toString(),
+                          Icons.bar_chart,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildToggleButton(String text, bool isSelected) {
+    return GestureDetector(
+      onTap: isSelected ? null : _toggleView,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Theme.of(context).primaryColor,
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: Theme.of(context).primaryColor),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  double _getMaxY(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) return 100;
+    final maxValue = data.fold<double>(
+      0,
+      (max, item) => item['quantity'] > max ? item['quantity'] : max,
+    );
+    // Ensure maxY is never 0 or negative
+    final paddedValue = maxValue * 1.2; // Add 20% padding
+    return paddedValue > 0
+        ? paddedValue
+        : 10; // Minimum of 10 if all values are 0
+  }
+
+  double _getGridInterval(List<Map<String, dynamic>> data) {
+    final maxY = _getMaxY(data);
+    // Ensure horizontalInterval is never 0
+    if (maxY <= 0) return 1.0;
+    return maxY / 5; // 5 grid lines
   }
 }

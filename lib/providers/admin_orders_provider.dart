@@ -1200,10 +1200,20 @@ class AdminOrdersProvider extends ChangeNotifier {
   double _yearlySales = 0.0;
   bool _isCalculatingSales = false;
 
+  // Quantity sales chart data
+  List<Map<String, dynamic>> _monthlyQuantityData = [];
+  List<Map<String, dynamic>> _yearlyQuantityData = [];
+  bool _isCalculatingQuantitySales = false;
+
   // Getters for sales values
   double get monthlySales => _monthlySales;
   double get yearlySales => _yearlySales;
   bool get isCalculatingSales => _isCalculatingSales;
+
+  // Getters for quantity sales data
+  List<Map<String, dynamic>> get monthlyQuantityData => _monthlyQuantityData;
+  List<Map<String, dynamic>> get yearlyQuantityData => _yearlyQuantityData;
+  bool get isCalculatingQuantitySales => _isCalculatingQuantitySales;
 
   // Calculate total sales for current month on demand (optimized - direct DB query)
   Future<void> calculateMonthlySales() async {
@@ -1217,17 +1227,15 @@ class AdminOrdersProvider extends ChangeNotifier {
       final startOfMonth = DateTime(now.year, now.month, 1);
       final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
-      // Query orders directly from database for monthly sales
+      // Query orders directly from database for monthly sales - only completed payments
       var query = _supabase
           .from('kl_orders')
-          .select('total_amount, status, created_at')
+          .select('total_amount')
           .gte('created_at', startOfMonth.toIso8601String())
-          .lte('created_at', endOfMonth.toIso8601String());
-
-      // Apply status filter using or conditions
-      query = query.or(
-        'status.eq.${OrderStatus.menungguPembayaran.databaseValue},status.eq.${OrderStatus.pembayaranPartial.databaseValue},status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
-      );
+          .lte('created_at', endOfMonth.toIso8601String())
+          .or(
+            'status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
+          );
 
       final ordersResponse = await query;
 
@@ -1261,17 +1269,15 @@ class AdminOrdersProvider extends ChangeNotifier {
       final startOfYear = DateTime(now.year, 1, 1);
       final endOfYear = DateTime(now.year, 12, 31, 23, 59, 59);
 
-      // Query orders directly from database for yearly sales
+      // Query orders directly from database for yearly sales - only completed payments
       var query = _supabase
           .from('kl_orders')
-          .select('total_amount, status, created_at')
+          .select('total_amount')
           .gte('created_at', startOfYear.toIso8601String())
-          .lte('created_at', endOfYear.toIso8601String());
-
-      // Apply status filter using or conditions
-      query = query.or(
-        'status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
-      );
+          .lte('created_at', endOfYear.toIso8601String())
+          .or(
+            'status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
+          );
 
       final ordersResponse = await query;
 
@@ -1309,6 +1315,176 @@ class AdminOrdersProvider extends ChangeNotifier {
     _monthlySales = 0.0;
     _yearlySales = 0.0;
     notifyListeners();
+  }
+
+  // Calculate monthly quantity sales data for current month (daily breakdown)
+  Future<void> calculateMonthlyQuantitySales() async {
+    if (_isCalculatingQuantitySales) return;
+
+    _isCalculatingQuantitySales = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+      // Get all completed orders for the current month
+      final ordersResponse = await _supabase
+          .from('kl_orders')
+          .select('''
+            id,
+            created_at,
+            kl_order_items(quantity)
+          ''')
+          .gte('created_at', startOfMonth.toIso8601String())
+          .lte('created_at', endOfMonth.toIso8601String())
+          .or(
+            'status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
+          );
+
+      final ordersData = ordersResponse as List;
+
+      // Group by day and sum quantities
+      final dailyData = <int, double>{};
+      for (final order in ordersData) {
+        final orderDate = DateTime.parse(order['created_at']);
+        final day = orderDate.day;
+
+        final orderItems = order['kl_order_items'] as List? ?? [];
+        final totalQuantity = orderItems.fold<double>(
+          0,
+          (sum, item) => sum + (item['quantity'] as num).toDouble(),
+        );
+
+        dailyData[day] = (dailyData[day] ?? 0) + totalQuantity;
+      }
+
+      // Get number of days in current month
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+
+      // Create data for all days in the month
+      _monthlyQuantityData = List.generate(daysInMonth, (index) {
+        final day = index + 1;
+        final quantity = dailyData[day] ?? 0.0;
+        return {'day': day, 'quantity': quantity, 'label': day.toString()};
+      });
+
+      print(
+        'AdminOrdersProvider: Calculated daily quantity sales data for ${now.year}-${now.month.toString().padLeft(2, '0')}',
+      );
+    } catch (e) {
+      print(
+        'AdminOrdersProvider: Error calculating monthly quantity sales: $e',
+      );
+      // Fallback to empty data for current month
+      final now = DateTime.now();
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+      _monthlyQuantityData = List.generate(
+        daysInMonth,
+        (index) => {
+          'day': index + 1,
+          'quantity': 0.0,
+          'label': (index + 1).toString(),
+        },
+      );
+    } finally {
+      _isCalculatingQuantitySales = false;
+      notifyListeners();
+    }
+  }
+
+  // Calculate yearly quantity sales data for current year (monthly breakdown Jan-Dec)
+  Future<void> calculateYearlyQuantitySales() async {
+    if (_isCalculatingQuantitySales) return;
+
+    _isCalculatingQuantitySales = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now();
+      final startOfYear = DateTime(now.year, 1, 1);
+      final endOfYear = DateTime(now.year, 12, 31, 23, 59, 59);
+
+      // Get all completed orders for the current year
+      final ordersResponse = await _supabase
+          .from('kl_orders')
+          .select('''
+            id,
+            created_at,
+            kl_order_items(quantity)
+          ''')
+          .gte('created_at', startOfYear.toIso8601String())
+          .lte('created_at', endOfYear.toIso8601String())
+          .or(
+            'status.eq.${OrderStatus.lunas.databaseValue},status.eq.${OrderStatus.barangDikirim.databaseValue}',
+          );
+
+      final ordersData = ordersResponse as List;
+
+      // Group by month and sum quantities
+      final monthlyData = <int, double>{};
+      for (final order in ordersData) {
+        final orderDate = DateTime.parse(order['created_at']);
+        final month = orderDate.month;
+
+        final orderItems = order['kl_order_items'] as List? ?? [];
+        final totalQuantity = orderItems.fold<double>(
+          0,
+          (sum, item) => sum + (item['quantity'] as num).toDouble(),
+        );
+
+        monthlyData[month] = (monthlyData[month] ?? 0) + totalQuantity;
+      }
+
+      // Create data for all 12 months of the current year
+      _yearlyQuantityData = List.generate(12, (index) {
+        final month = index + 1;
+        final quantity = monthlyData[month] ?? 0.0;
+        return {
+          'month': month,
+          'quantity': quantity,
+          'label': _getMonthName(month),
+        };
+      });
+
+      print(
+        'AdminOrdersProvider: Calculated monthly quantity sales data for ${now.year} (Jan-Dec)',
+      );
+    } catch (e) {
+      print('AdminOrdersProvider: Error calculating yearly quantity sales: $e');
+      // Fallback to empty data for all 12 months
+      _yearlyQuantityData = List.generate(
+        12,
+        (index) => {
+          'month': index + 1,
+          'quantity': 0.0,
+          'label': _getMonthName(index + 1),
+        },
+      );
+    } finally {
+      _isCalculatingQuantitySales = false;
+      notifyListeners();
+    }
+  }
+
+  // Helper method to get month name
+  String _getMonthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month - 1];
   }
 
   // Apply payment filter by checking kl_payments table
