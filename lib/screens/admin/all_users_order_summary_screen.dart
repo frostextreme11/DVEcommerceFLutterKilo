@@ -4,6 +4,10 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:csv/csv.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../../models/user.dart' as app_user;
 import '../../models/payment.dart';
 
@@ -69,15 +73,7 @@ class _AllUsersOrderSummaryScreenState
           ),
         ],
       ),
-      floatingActionButton: _summaryData.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: _exportToPdf,
-              icon: const Icon(Icons.picture_as_pdf),
-              label: const Text('Export PDF'),
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            )
-          : null,
+      floatingActionButton: null,
     );
   }
 
@@ -130,6 +126,44 @@ class _AllUsersOrderSummaryScreenState
                 ),
               ),
             ),
+            if (_summaryData.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _exportToPdf,
+                      icon: const Icon(Icons.picture_as_pdf),
+                      label: const Text('Export PDF'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _exportToCsv,
+                      icon: const Icon(Icons.file_download),
+                      label: const Text('Export CSV'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -720,19 +754,23 @@ class _AllUsersOrderSummaryScreenState
     final endDate = _endDate!.add(const Duration(days: 1)).toIso8601String();
 
     // OPTIMIZED: Use efficient batch queries instead of N+1 pattern
-    final orderSummaries = await _getOrderSummaries(startDate, endDate);
-    final paymentSummaries = await _getPaymentSummaries(startDate, endDate);
+    final orderResult = await _getOrderSummaries(startDate, endDate);
+    final orderSummaries =
+        orderResult['summaries'] as Map<String, Map<String, dynamic>>;
+    final orderIds = orderResult['orderIds'] as Set<String>;
+    final paymentSummaries = await _getPaymentSummaries(orderIds);
 
     return _combineSummaries(orderSummaries, paymentSummaries);
   }
 
-  Future<Map<String, Map<String, dynamic>>> _getOrderSummaries(
+  Future<Map<String, dynamic>> _getOrderSummaries(
     String startDate,
     String endDate,
   ) async {
     final response = await _supabase
         .from('kl_orders')
         .select('''
+          id,
           user_id,
           status,
           additional_costs,
@@ -747,8 +785,11 @@ class _AllUsersOrderSummaryScreenState
 
     final ordersData = response as List;
     final summaries = <String, Map<String, dynamic>>{};
+    final orderIds = <String>{};
 
     for (final order in ordersData) {
+      final orderId = order['id'] as String;
+      orderIds.add(orderId);
       final userId = order['user_id'] as String;
       final orderItems = (order['kl_order_items'] as List?) ?? [];
 
@@ -774,19 +815,19 @@ class _AllUsersOrderSummaryScreenState
       summaries[userId] = summary;
     }
 
-    return summaries;
+    return {'summaries': summaries, 'orderIds': orderIds};
   }
 
-  Future<Map<String, double>> _getPaymentSummaries(
-    String startDate,
-    String endDate,
-  ) async {
+  Future<Map<String, double>> _getPaymentSummaries(Set<String> orderIds) async {
     final response = await _supabase
         .from('kl_payments')
         .select('user_id, amount')
         .eq('status', 'completed')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+        .filter(
+          'order_id',
+          'in',
+          '(${orderIds.map((id) => '"$id"').join(',')})',
+        );
 
     final paymentsData = response as List;
     final summaries = <String, double>{};
@@ -933,6 +974,60 @@ class _AllUsersOrderSummaryScreenState
     );
 
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+  }
+
+  Future<void> _exportToCsv() async {
+    final csvData = [
+      [
+        'Customer Name',
+        'Customer Email',
+        'Quantity',
+        'Total Sales',
+        'Total Ongkir',
+        'Total Payment',
+        'Total Debt',
+      ],
+      ..._summaryData.map(
+        (summary) => [
+          summary.customerName,
+          summary.customerEmail,
+          _formatNumber(summary.totalQuantity),
+          _formatCurrency(summary.totalSales),
+          _formatCurrency(summary.totalOngkir),
+          _formatCurrency(summary.totalPayment),
+          _formatCurrency(summary.totalDebt),
+        ],
+      ),
+      [
+        'GRAND TOTAL',
+        '',
+        _formatNumber(
+          _summaryData.fold<int>(0, (sum, item) => sum + item.totalQuantity),
+        ),
+        _formatCurrency(
+          _summaryData.fold<double>(0, (sum, item) => sum + item.totalSales),
+        ),
+        _formatCurrency(
+          _summaryData.fold<double>(0, (sum, item) => sum + item.totalOngkir),
+        ),
+        _formatCurrency(
+          _summaryData.fold<double>(0, (sum, item) => sum + item.totalPayment),
+        ),
+        _formatCurrency(
+          _summaryData.fold<double>(0, (sum, item) => sum + item.totalDebt),
+        ),
+      ],
+    ];
+
+    final csvString = const ListToCsvConverter().convert(csvData);
+
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/order_summary.csv');
+    await file.writeAsString(csvString);
+
+    await Share.shareXFiles([
+      XFile(file.path),
+    ], subject: 'All Users Order Summary Report');
   }
 
   String _formatNumber(int number) {
