@@ -47,8 +47,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final totalAmount =
-        widget.order.totalAmount + (widget.order.additionalCosts ?? 0);
+    final totalAmount = widget.order.totalAmount;
 
     return Scaffold(
       appBar: AppBar(

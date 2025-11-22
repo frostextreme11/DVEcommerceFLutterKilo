@@ -209,7 +209,7 @@ class PaymentProvider extends ChangeNotifier {
         final orderTotal = (orderResponse['total_amount'] as num).toDouble();
         final additionalCosts =
             (orderResponse['additional_costs'] as num?)?.toDouble() ?? 0.0;
-        final fullTotal = orderTotal + additionalCosts;
+        final fullTotal = orderTotal;
 
         // Calculate total paid
         final totalPaid = getTotalPaidForOrder(orderId);
