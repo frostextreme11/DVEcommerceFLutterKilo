@@ -564,7 +564,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       final paymentProgress = paymentProvider
                           .calculatePaymentProgress(
                             _currentOrder!.id,
-                            _currentOrder!.totalAmount,
+                            _currentOrder!.totalAmount +
+                                (_currentOrder!.additionalCosts ?? 0),
                           );
 
                       return Card(

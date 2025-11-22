@@ -476,7 +476,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           )
                         : Text(
-                            'Checkout Sekarang - Rp ${(cartProvider.total.toInt() + _shippingCost).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                            'Checkout Sekarang - Rp ${(cartProvider.total.toInt() + _shippingCost).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,

@@ -284,8 +284,7 @@ class OrdersProvider extends ChangeNotifier {
       );
 
       // Calculate final total including additional costs (shipping) and unique identifier
-      final totalAmount =
-          subtotalAmount + additionalCosts + orderNumberLast3Digits;
+      final totalAmount = subtotalAmount;
 
       // Create order data
       final orderData = {
@@ -294,7 +293,7 @@ class OrdersProvider extends ChangeNotifier {
         'status': 'menunggu_pembayaran',
         'total_amount': totalAmount,
         'subtotal_amount': subtotalAmount,
-        'additional_costs': additionalCosts,
+        'additional_costs': additionalCosts + orderNumberLast3Digits,
         'shipping_address': shippingAddress,
         'payment_method': paymentMethod,
         'payment_status': 'pending',
