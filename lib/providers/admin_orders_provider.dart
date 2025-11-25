@@ -339,7 +339,7 @@ class AdminOrdersProvider extends ChangeNotifier {
 
     // Add ordering and limit for better performance
     final orderedQuery = query.order('created_at', ascending: false);
-    final finalQuery = orderedQuery.limit(500);
+    final finalQuery = orderedQuery.limit(1000);
 
     // Execute the optimized query
     final ordersResponse = await finalQuery;
@@ -685,7 +685,7 @@ class AdminOrdersProvider extends ChangeNotifier {
       }
 
       // Limit results
-      _orders = _orders.take(500).toList();
+      _orders = _orders.take(1000).toList();
 
       // Cache the result
       final cacheKey = _generateCacheKey();
