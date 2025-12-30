@@ -394,29 +394,32 @@ class DashboardOverviewScreen extends StatelessWidget {
                 ) {
                   final totalProducts = productsProvider.products.length;
                   final totalOrders = ordersProvider.orders.length;
-                  final totalUsers = usersProvider.users.length;
                   final totalCategories = categoriesProvider.categories.length;
 
                   // Handle order stats - show 0 if orders not loaded yet
                   final pendingOrders = ordersProvider.orders.isNotEmpty
                       ? ordersProvider
-                                .getOrdersByStatus(OrderStatus.menungguOngkir)
-                                .length +
-                            ordersProvider
-                                .getOrdersByStatus(
-                                  OrderStatus.menungguPembayaran,
-                                )
-                                .length +
-                            ordersProvider
-                                .getOrdersByStatus(
-                                  OrderStatus.pembayaranPartial,
-                                )
-                                .length
+                          .getOrdersByStatus(OrderStatus.menungguOngkir)
+                          .length +
+                          ordersProvider
+                              .getOrdersByStatus(
+                                OrderStatus.menungguPembayaran,
+                              )
+                              .length +
+                          ordersProvider
+                              .getOrdersByStatus(
+                                OrderStatus.pembayaranPartial,
+                              )
+                              .length
                       : 0;
 
                   final activeProducts = productsProvider.products
                       .where((p) => p.isActive)
                       .length;
+
+                  final activeProductQuantity = productsProvider.products
+                      .where((p) => p.isActive)
+                      .fold(0, (sum, p) => sum + p.stockQuantity);
 
                   return GridView.count(
                     crossAxisCount: 2,
@@ -455,9 +458,9 @@ class DashboardOverviewScreen extends StatelessWidget {
                       ),
                       _buildStatCard(
                         context,
-                        'Total Users',
-                        totalUsers.toString(),
-                        Icons.people,
+                        'All Quantity Active Product',
+                        activeProductQuantity.toString(),
+                        Icons.production_quantity_limits,
                         Colors.purple,
                       ),
                       _buildStatCard(
