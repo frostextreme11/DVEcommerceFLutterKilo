@@ -819,24 +819,38 @@ class _AllUsersOrderSummaryScreenState
   }
 
   Future<Map<String, double>> _getPaymentSummaries(Set<String> orderIds) async {
-    final response = await _supabase
-        .from('kl_payments')
-        .select('user_id, amount')
-        .eq('status', 'completed')
-        .filter(
-          'order_id',
-          'in',
-          '(${orderIds.map((id) => '"$id"').join(',')})',
-        );
-
-    final paymentsData = response as List;
     final summaries = <String, double>{};
+    final orderIdList = orderIds.toList();
 
-    for (final payment in paymentsData) {
-      final userId = payment['user_id'] as String;
-      final amount = (payment['amount'] as num?)?.toDouble() ?? 0.0;
+    // Batch size to prevent URL length errors (PostgREST 400 Bad Request)
+    const int batchSize = 50;
 
-      summaries[userId] = (summaries[userId] ?? 0.0) + amount;
+    for (var i = 0; i < orderIdList.length; i += batchSize) {
+      final end = (i + batchSize < orderIdList.length)
+          ? i + batchSize
+          : orderIdList.length;
+      final batch = orderIdList.sublist(i, end);
+
+      if (batch.isEmpty) continue;
+
+      final response = await _supabase
+          .from('kl_payments')
+          .select('user_id, amount')
+          .eq('status', 'completed')
+          .filter(
+            'order_id',
+            'in',
+            '(${batch.map((id) => '"$id"').join(',')})',
+          );
+
+      final paymentsData = response as List;
+
+      for (final payment in paymentsData) {
+        final userId = payment['user_id'] as String;
+        final amount = (payment['amount'] as num?)?.toDouble() ?? 0.0;
+
+        summaries[userId] = (summaries[userId] ?? 0.0) + amount;
+      }
     }
 
     return summaries;
